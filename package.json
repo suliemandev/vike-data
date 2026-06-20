@@ -2,5 +2,6 @@
   "name": "vike-interext-spike-root",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Workspace root for the Vike inter-extension registration spike"
 }
