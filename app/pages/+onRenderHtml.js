@@ -4,8 +4,8 @@
 //  contributions from every extension + the app. (Recap section.)
 //
 //  Spike 2 (ORM-agnostic schema): each extension defines its tables ONCE in the
-//  neutral DSL (@spike/schema). The data layer compiles them to whichever ORM
-//  the app selected (SPIKE_ORM env var). We render all three so you can see the
+//  neutral DSL (vike-data/schema). The data layer compiles them to whichever ORM
+//  the app selected (VIKE_DATA_ORM env var). We render all three so you can see the
 //  single definition becoming Prisma + Drizzle + native side by side.
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
 import { COMPILERS } from 'vike-data/schema'
@@ -16,7 +16,7 @@ const ORMS = ['prisma', 'drizzle', 'native']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export default function onRenderHtml(pageContext) {
-  const selected = (process.env.SPIKE_ORM || 'drizzle').toLowerCase()
+  const selected = (process.env.VIKE_DATA_ORM || 'drizzle').toLowerCase()
 
   // --- Spike 1 recap: merged contributions from the cumulative config --------
   const migrations = (pageContext.config.migrations || []).flat().sort((a, b) => a.localeCompare(b))
@@ -52,7 +52,7 @@ export default function onRenderHtml(pageContext) {
     <ol>${migrationRows}</ol>
 
     <h2 style="margin-top:2rem;">2. One schema definition &rarr; any ORM</h2>
-    <p>Selected ORM: <strong>${escapeHtml(selected)}</strong> (set <code>SPIKE_ORM=prisma|drizzle|native</code>). Each table below is authored once by its extension in the neutral DSL, then compiled to all three.</p>
+    <p>Selected ORM: <strong>${escapeHtml(selected)}</strong> (set <code>VIKE_DATA_ORM=prisma|drizzle|native</code>). Each table below is authored once by its extension in the neutral DSL, then compiled to all three.</p>
     ${schemaBlocks}
   </body>
 </html>`

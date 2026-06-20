@@ -19,7 +19,7 @@ that contribute to it, and an example app that installs them.
 ```bash
 pnpm install
 cd app && pnpm dev            # http://localhost:4000
-SPIKE_ORM=prisma pnpm dev     # switch the target ORM (prisma|drizzle|native)
+VIKE_DATA_ORM=prisma pnpm dev     # switch the target ORM (prisma|drizzle|native)
 ```
 
 ---
@@ -95,7 +95,7 @@ of which ORM the user picked?
   inside `vike-data` for now; can be split into a standalone `vike-schema` later.)
 - Each extension authors its tables **once** (`packages/example-*/schema.js`)
   with no ORM imported.
-- The app picks an ORM via `SPIKE_ORM`; the page renders the single definition
+- The app picks an ORM via `VIKE_DATA_ORM`; the page renders the single definition
   compiled to all three side by side, marking the selected one as "gets applied".
 
 Declarative is the key choice: Prisma/Drizzle diff desired-state into a
