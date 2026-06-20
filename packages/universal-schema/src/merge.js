@@ -41,9 +41,13 @@ export function mergeSchemas(fragments) {
 // known deferred hard part.)
 //
 // Duplicate `create`s are skipped: when several extensions each self-install a
-// shared extension (e.g. both auth and billing extend vike-schema), Vike includes
-// that extension's cumulative contributions once per occurrence, so its tables
-// arrive more than once. We dedupe by table name here.
+// shared extension (e.g. both auth and billing extend vike-schema), older Vike
+// included that extension's cumulative contributions once per occurrence, so its
+// tables arrived more than once. We dedupe by table name here.
+//
+// Vike fixed this upstream (extension installation is now idempotent, vikejs/vike
+// #3355, merged 2026-06-20). This dedupe stays as defense-in-depth and back-compat
+// for users on a Vike version without the fix.
 export function deriveMigrations(fragments) {
   const pad = (x) => String(x).padStart(3, '0')
   const seenCreate = new Set()
