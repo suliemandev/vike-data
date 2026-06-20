@@ -1,5 +1,10 @@
 # @vike-data/universal-schema
 
+> **This repo is a read-only mirror.** The source of truth is the `vike-data`
+> monorepo (`packages/universal-schema`); this standalone copy is regenerated from it
+> via `git subtree split`. Do not edit it here. (It exists so the core can stand
+> alone and to claim its place ahead of a future standalone publish.)
+
 > **Status: early experiment / spike.** The API is still throwaway and the per-ORM
 > compilers emit representative output (they don't run against real databases yet).
 
