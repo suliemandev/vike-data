@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example app: installs vike-data + two feature extensions, picks an ORM via VIKE_DATA_ORM",
+  "description": "Example app: installs two feature extensions (each self-installs vike-schema), picks an ORM via VIKE_DATA_ORM",
   "scripts": {
     "dev": "vite",
     "dev:prisma": "VIKE_DATA_ORM=prisma vite",
@@ -13,7 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vike-data": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
     "example-auth": "workspace:*",
     "example-billing": "workspace:*",
     "vike": "^0.4.0",

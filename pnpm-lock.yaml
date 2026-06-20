@@ -10,6 +10,9 @@ importers:
 
   app:
     dependencies:
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../packages/vike-schema
       example-auth:
         specifier: workspace:*
         version: link:../packages/example-auth
@@ -19,26 +22,29 @@ importers:
       vike:
         specifier: ^0.4.0
         version: 0.4.259(srvx@0.11.17)(vite@7.3.5)
-      vike-data:
-        specifier: workspace:*
-        version: link:../packages/vike-data
       vite:
         specifier: ^7.1.0
         version: 7.3.5
 
   packages/example-auth:
     dependencies:
-      vike-data:
+      '@vike-data/vike-schema':
         specifier: workspace:*
-        version: link:../vike-data
+        version: link:../vike-schema
 
   packages/example-billing:
     dependencies:
-      vike-data:
+      '@vike-data/vike-schema':
         specifier: workspace:*
-        version: link:../vike-data
+        version: link:../vike-schema
 
-  packages/vike-data: {}
+  packages/universal-schema: {}
+
+  packages/vike-schema:
+    dependencies:
+      '@vike-data/universal-schema':
+        specifier: workspace:*
+        version: link:../universal-schema
 
 packages:
 

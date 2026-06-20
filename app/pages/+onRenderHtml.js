@@ -1,14 +1,14 @@
-// The consumer: vike-data's job, done in one place.
+// The consumer: vike-schema's job, done in one place.
 //
 // 1. Read every schema fragment contributed through the `schemas` cumulative
-//    config (from vike-data + every extension).
+//    config (from vike-schema + every extension).
 // 2. Merge creates + extends into final tables (3rd-party column adds land here;
 //    column edits are flagged as conflicts).
 // 3. DERIVE migrations from the merged schema (not hand-authored).
 // 4. Compile each table to the ORM the app picked (VIKE_DATA_ORM), shown next to
 //    the other targets so the "define once, any ORM" point is visible.
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
-import { COMPILERS, mergeSchemas, deriveMigrations } from 'vike-data/schema'
+import { COMPILERS, mergeSchemas, deriveMigrations } from '@vike-data/vike-schema/schema'
 
 const ORMS = ['prisma', 'drizzle', 'native']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -56,10 +56,10 @@ export default function onRenderHtml(pageContext) {
 
   const doc = `<!DOCTYPE html>
 <html>
-  <head><meta charset="utf-8" /><title>vike-data</title></head>
+  <head><meta charset="utf-8" /><title>vike-schema</title></head>
   <body style="font-family: ui-monospace, monospace; max-width: 1100px; margin: 2.5rem auto; line-height:1.5; color:#222;">
-    <h1>vike-data</h1>
-    <p>${String(fragments.length)} schema fragments contributed through one cumulative config (vike-data + ${String(fragments.length - 1)} from extensions), merged into ${String(tables.length)} tables. Schema is the source of truth; everything below is derived.</p>
+    <h1>vike-schema</h1>
+    <p>${String(fragments.length)} schema fragments contributed through one cumulative config (vike-schema + ${String(fragments.length - 1)} from extensions), merged into ${String(tables.length)} tables. Schema is the source of truth; everything below is derived.</p>
 
     <h2>Derived migrations</h2>
     <p style="color:#666;">Generated from the schema in contribution order, not hand-authored.</p>

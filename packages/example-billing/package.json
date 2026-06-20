@@ -3,11 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example feature extension (billing): ships its own table via vike-data, ORM-agnostic",
+  "description": "Example feature extension (billing): ships its own table via vike-schema, ORM-agnostic",
   "exports": {
     "./config": "./+config.js"
   },
   "dependencies": {
-    "vike-data": "workspace:*"
+    "@vike-data/vike-schema": "workspace:*"
   }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "@vike-data/universal-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic schema core: the neutral schema IR + DSL (defineSchema/extendSchema), the merge/derive logic, and the per-ORM compilers. Zero Vike imports; usable standalone by any framework or ORM.",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}

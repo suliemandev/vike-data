@@ -3,11 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example feature extension (auth): ships its own tables via vike-data, ORM-agnostic",
+  "description": "Example feature extension (auth): ships its own tables via vike-schema, ORM-agnostic",
   "exports": {
     "./config": "./+config.js"
   },
   "dependencies": {
-    "vike-data": "workspace:*"
+    "@vike-data/vike-schema": "workspace:*"
   }
 }

@@ -1,6 +1,6 @@
 // Merge every contributed schema fragment into final tables, then derive the
-// migrations from the result. This is what vike-data does with the contributions
-// it collects through its cumulative config point.
+// migrations from the result. This is what a binding (e.g. vike-schema) does with
+// the contributions it collects through its cumulative config point.
 
 export function mergeSchemas(fragments) {
   const tables = new Map()
@@ -41,7 +41,7 @@ export function mergeSchemas(fragments) {
 // known deferred hard part.)
 //
 // Duplicate `create`s are skipped: when several extensions each self-install a
-// shared extension (e.g. both auth and billing extend vike-data), Vike includes
+// shared extension (e.g. both auth and billing extend vike-schema), Vike includes
 // that extension's cumulative contributions once per occurrence, so its tables
 // arrive more than once. We dedupe by table name here.
 export function deriveMigrations(fragments) {
