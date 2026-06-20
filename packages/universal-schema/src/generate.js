@@ -89,12 +89,19 @@ function nativeFiles(fragments) {
 
 // Conventional output path per ORM, so each ORM's own tooling + editor types pick
 // the file up where they expect it.
+//
+// Suffix convention: the "generated, don't edit" header is the portable signal and
+// rides on every artifact. The `.generated.` *filename* suffix (cf. Vike's own
+// `vike.generated.d.ts`, vikejs/vike#698) is added only where the name is OURS to
+// choose. Prisma mandates `schema.prisma`, so it keeps the conventional name and
+// leans on the header; Drizzle's schema path is configurable, so it gets the
+// suffix. Native migrations stay conventionally named (an ordered ledger), header-only.
 export function generateArtifacts({ tables, fragments }, orm) {
   switch (orm) {
     case 'prisma':
       return [{ path: 'prisma/schema.prisma', contents: prismaFile(tables) }]
     case 'drizzle':
-      return [{ path: 'drizzle/schema.ts', contents: drizzleFile(tables) }]
+      return [{ path: 'drizzle/schema.generated.ts', contents: drizzleFile(tables) }]
     case 'native':
       return nativeFiles(fragments)
     default:
