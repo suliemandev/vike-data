@@ -18,9 +18,11 @@ that contribute to it, and an example app that installs them.
 
 ```bash
 pnpm install
-cd app && pnpm dev            # http://localhost:4000
-VIKE_DATA_ORM=prisma pnpm dev     # switch the target ORM (prisma|drizzle|native)
+cd app && pnpm dev            # http://localhost:4000 (defaults to drizzle)
+pnpm dev:prisma               # or dev:drizzle / dev:native to pick the target ORM
 ```
+
+(`dev:prisma` etc. just set the `VIKE_DATA_ORM` env var for you.)
 
 ---
 

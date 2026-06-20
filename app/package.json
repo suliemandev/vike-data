@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example app: installs vike-data + two feature extensions, picks an ORM via SPIKE_ORM",
+  "description": "Example app: installs vike-data + two feature extensions, picks an ORM via VIKE_DATA_ORM",
   "scripts": {
     "dev": "vite",
+    "dev:prisma": "VIKE_DATA_ORM=prisma vite",
+    "dev:drizzle": "VIKE_DATA_ORM=drizzle vite",
+    "dev:native": "VIKE_DATA_ORM=native vite",
     "build": "vite build",
     "preview": "vite preview"
   },
