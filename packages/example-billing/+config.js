@@ -1,11 +1,11 @@
 // Example feature extension (billing). It creates its own `subscriptions` table,
 // and ALSO adds a column to auth's `users` table via extendSchema, demonstrating
 // 3rd-party column contribution across independent extensions.
-import { defineSchema, extendSchema } from 'vike-data/schema'
+import { defineSchema, extendSchema } from '@vike-data/vike-schema/schema'
 
 export default {
   name: 'example-billing',
-  extends: ['import:vike-data/config:default'],
+  extends: ['import:@vike-data/vike-schema/config:default'],
   schemas: [
     defineSchema('subscriptions', (t) => {
       t.uuid('id').primary()
