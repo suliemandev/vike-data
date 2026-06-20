@@ -9,6 +9,10 @@
     "dev:prisma": "VIKE_DATA_ORM=prisma vite",
     "dev:drizzle": "VIKE_DATA_ORM=drizzle vite",
     "dev:native": "VIKE_DATA_ORM=native vite",
+    "gen": "node generate.mjs",
+    "gen:prisma": "VIKE_DATA_ORM=prisma node generate.mjs",
+    "gen:drizzle": "VIKE_DATA_ORM=drizzle node generate.mjs",
+    "gen:native": "VIKE_DATA_ORM=native node generate.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -5,3 +5,10 @@ dist/
 .DS_Store
 .env
 .env.*
+
+# Generated schema artifacts (app/prisma, app/drizzle, app/database/migrations)
+# are intentionally COMMITTED, not ignored: they carry a "generated, don't edit"
+# header so diffs stay visible and CI is reproducible. Only an ORM's generated
+# *client* is ignored.
+.prisma/
+**/generated/client/

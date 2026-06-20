@@ -26,9 +26,33 @@ The code is split into two packages along a clean seam:
 pnpm install
 cd app && pnpm dev            # http://localhost:4000 (defaults to drizzle)
 pnpm dev:prisma               # or dev:drizzle / dev:native to pick the target ORM
+
+pnpm gen:prisma               # WRITE the artifacts to disk (or gen:drizzle / gen:native)
 ```
 
-(`dev:prisma` etc. just set the `VIKE_DATA_ORM` env var for you.)
+(`dev:prisma` / `gen:prisma` etc. just set the `VIKE_DATA_ORM` env var for you. The
+`dev` server only *renders* the compiled schema; `gen` is what writes files.)
+
+## File generation
+
+`pnpm gen:<orm>` (the Prisma-style explicit command, `app/generate.mjs`) writes the
+derived artifacts to their conventional paths, each with a `// GENERATED ... do not
+edit by hand` header (the Prisma/Cloudflare precedent). Division of labour follows
+each ORM's own model:
+
+- **Prisma** -> `prisma/schema.prisma`, **Drizzle** -> `drizzle/schema.ts`: ONE
+  declarative schema file (desired state). Their own tooling (`prisma migrate` /
+  `drizzle-kit`) derives the migrations. The 3rd-party column add is folded in.
+- **Native** -> `database/migrations/NNN_*.ts`: the engine we own, so WE emit the
+  ordered migration ledger. The cross-extension add becomes its OWN
+  `alter_users_add_stripe_customer_id` migration, separate from `create_users` -
+  mirroring how the columns were actually contributed.
+
+These files are **committed**, not gitignored: diffs stay visible and CI is
+reproducible, while the header keeps them honestly marked as output. Only an ORM's
+generated *client* (e.g. Prisma Client) is ignored. Generation is idempotent -
+re-running produces byte-identical files. Schema is the source of truth; declarations
+are authored, the ORM schema is generated output (the usual model, inverted).
 
 ## How it flows
 
