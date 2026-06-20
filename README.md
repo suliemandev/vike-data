@@ -40,13 +40,20 @@ derived artifacts to their conventional paths, each with a `// GENERATED ... do 
 edit by hand` header (the Prisma/Cloudflare precedent). Division of labour follows
 each ORM's own model:
 
-- **Prisma** -> `prisma/schema.prisma`, **Drizzle** -> `drizzle/schema.ts`: ONE
-  declarative schema file (desired state). Their own tooling (`prisma migrate` /
+- **Prisma** -> `prisma/schema.prisma`, **Drizzle** -> `drizzle/schema.generated.ts`:
+  ONE declarative schema file (desired state). Their own tooling (`prisma migrate` /
   `drizzle-kit`) derives the migrations. The 3rd-party column add is folded in.
 - **Native** -> `database/migrations/NNN_*.ts`: the engine we own, so WE emit the
   ordered migration ledger. The cross-extension add becomes its OWN
   `alter_users_add_stripe_customer_id` migration, separate from `create_users` -
   mirroring how the columns were actually contributed.
+
+**Suffix convention.** The `// GENERATED ... don't edit` header is the portable
+signal and rides on every artifact. The `.generated.` *filename* suffix (cf. Vike's
+own `vike.generated.d.ts`, [vikejs/vike#698](https://github.com/vikejs/vike/issues/698))
+is added only where the name is ours to choose: Prisma mandates `schema.prisma` and
+the native migration ledger is conventionally named, so those lean on the header;
+Drizzle's schema path is configurable, so it gets the suffix (`schema.generated.ts`).
 
 These files are **committed**, not gitignored: diffs stay visible and CI is
 reproducible, while the header keeps them honestly marked as output. Only an ORM's
