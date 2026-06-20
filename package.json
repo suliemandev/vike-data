@@ -1,0 +1,6 @@
+{
+  "name": "vike-interext-spike-root",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Workspace root for the Vike inter-extension registration spike"
+}

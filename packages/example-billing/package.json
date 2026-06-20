@@ -1,0 +1,14 @@
+{
+  "name": "example-billing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Example feature extension (billing): ships its own table via vike-data, ORM-agnostic",
+  "exports": {
+    "./config": "./+config.js",
+    "./schema": "./schema.js"
+  },
+  "dependencies": {
+    "vike-data": "workspace:*"
+  }
+}
