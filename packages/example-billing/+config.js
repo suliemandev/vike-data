@@ -5,6 +5,7 @@ import { defineSchema, extendSchema } from 'vike-data/schema'
 
 export default {
   name: 'example-billing',
+  extends: ['import:vike-data/config:default'],
   schemas: [
     defineSchema('subscriptions', (t) => {
       t.uuid('id').primary()

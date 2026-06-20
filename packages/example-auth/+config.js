@@ -2,15 +2,15 @@
 // schema DSL and contributes them through vike-data's `schemas` point. It does
 // not know which ORM the app uses, and does not author any migration.
 //
-// NOTE: ideally this would also `extends: ['vike-data/config']` so installing
-// auth pulls vike-data in automatically. From source that fails (Vike runs its
-// import->pointer transform only on the app's own +config files, not on extension
-// configs loaded from node_modules), so the app wires vike-data in directly. That
-// gap is itself a finding worth confirming with Vike.
+// It self-installs vike-data: `extends: ['import:vike-data/config:default']` uses
+// Vike's pre-serialized pointer-import string, which works from a node_modules
+// extension config (it doesn't rely on the app-only import->pointer transform).
+// So installing auth pulls vike-data in automatically; the app needn't wire it.
 import { defineSchema } from 'vike-data/schema'
 
 export default {
   name: 'example-auth',
+  extends: ['import:vike-data/config:default'],
   schemas: [
     defineSchema('users', (t) => {
       t.uuid('id').primary()

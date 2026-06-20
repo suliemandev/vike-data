@@ -66,11 +66,17 @@ native side by side.
    the data layer's job.
 4. No conflict detection at the Vike layer; dedupe/collision handling is the data
    layer's job (done here in `merge.js`).
-5. A node_modules extension can't `extends` another from raw source - Vike runs
-   its import->pointer transform only on the app's own `+config` files. So
-   "installing auth auto-pulls vike-data" needs Vike's build step, or the app
-   wires both. (Today the app wires them.)
-6. Hooks must be separate `+hook.js` files, not inline functions in a config.
+5. An extension CAN self-install another from its own config using Vike's
+   pre-serialized pointer-import string: `extends: ['import:vike-data/config:default']`.
+   (A bare `import x from '...'; extends: [x]` fails in a node_modules config
+   because the import->pointer transform runs only on the app's own `+config`
+   files, but the explicit string form needs no transform.) So installing auth
+   alone pulls vike-data in; the app no longer wires it.
+6. When several extensions each self-install the same shared extension, Vike
+   includes that extension's cumulative contributions once *per occurrence* (it
+   doesn't dedupe by extension identity for cumulative values). So vike-data's own
+   `_migrations` table arrived twice. The merge/derive layer dedupes it here.
+7. Hooks must be separate `+hook.js` files, not inline functions in a config.
 
 **On the schema model:**
 
@@ -90,8 +96,8 @@ native side by side.
 
 ## Open design questions
 
-- The ergonomic side of finding #5: a clean way for an extension to declare "I
-  depend on vike-data and contribute to it" so installing it alone wires everything
-  up, without the app having to `extends` vike-data too.
+- Whether a shared extension's cumulative contributions should be deduped by
+  extension identity at the Vike layer (finding #6), or always left to the host to
+  dedupe.
 - How far the neutral schema IR should go before an escape hatch is the better
   answer (relations, DB-specific types).

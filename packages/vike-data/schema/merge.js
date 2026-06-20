@@ -39,11 +39,24 @@ export function mergeSchemas(fragments) {
 // Migrations are DERIVED from the schema, in contribution order. (Ordering is
 // contribution/specificity order, not dependency-aware: that reconciliation is a
 // known deferred hard part.)
+//
+// Duplicate `create`s are skipped: when several extensions each self-install a
+// shared extension (e.g. both auth and billing extend vike-data), Vike includes
+// that extension's cumulative contributions once per occurrence, so its tables
+// arrive more than once. We dedupe by table name here.
 export function deriveMigrations(fragments) {
   const pad = (x) => String(x).padStart(3, '0')
-  return fragments.map((f, i) => {
-    if (f.mode === 'create') return `${pad(i + 1)}_create_${f.table}_table`
-    const cols = f.columns.map((c) => c.name).join('_')
-    return `${pad(i + 1)}_alter_${f.table}_add_${cols}`
-  })
+  const seenCreate = new Set()
+  const out = []
+  for (const f of fragments) {
+    if (f.mode === 'create') {
+      if (seenCreate.has(f.table)) continue
+      seenCreate.add(f.table)
+      out.push(`${pad(out.length + 1)}_create_${f.table}_table`)
+    } else {
+      const cols = f.columns.map((c) => c.name).join('_')
+      out.push(`${pad(out.length + 1)}_alter_${f.table}_add_${cols}`)
+    }
+  }
+  return out
 }
