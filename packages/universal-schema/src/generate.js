@@ -77,29 +77,28 @@ function nativeFiles(fragments) {
       if (seenCreate.has(f.table)) continue // dedupe a shared extension's repeated create
       seenCreate.add(f.table)
       const name = `${pad(files.length + 1)}_create_${f.table}_table`
-      files.push({ path: `database/migrations/${name}.ts`, contents: `${header('//')}\n${toNative(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${toNative(f)}\n` })
     } else {
       const cols = f.columns.map((c) => c.name).join('_')
       const name = `${pad(files.length + 1)}_alter_${f.table}_add_${cols}`
-      files.push({ path: `database/migrations/${name}.ts`, contents: `${header('//')}\n${nativeAlter(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${nativeAlter(f)}\n` })
     }
   }
   return files
 }
 
-// Conventional output path per ORM, so each ORM's own tooling + editor types pick
-// the file up where they expect it.
+// Output path per ORM. Every artifact carries the "generated, don't edit" header
+// AND a `.generated.` filename suffix, matching the Vike-wide convention (cf. Vike's
+// own `vike.generated.d.ts`, vikejs/vike#698) that brillout asked for: the header is
+// the portable signal, the suffix makes generated files obvious at a glance.
 //
-// Suffix convention: the "generated, don't edit" header is the portable signal and
-// rides on every artifact. The `.generated.` *filename* suffix (cf. Vike's own
-// `vike.generated.d.ts`, vikejs/vike#698) is added only where the name is OURS to
-// choose. Prisma mandates `schema.prisma`, so it keeps the conventional name and
-// leans on the header; Drizzle's schema path is configurable, so it gets the
-// suffix. Native migrations stay conventionally named (an ordered ledger), header-only.
+// Note: `prisma/schema.generated.prisma` isn't Prisma's default path, so point Prisma
+// at it via package.json `"prisma": { "schema": "prisma/schema.generated.prisma" }`
+// (or `--schema`). Drizzle's schema path is configured in `drizzle.config.ts` anyway.
 export function generateArtifacts({ tables, fragments }, orm) {
   switch (orm) {
     case 'prisma':
-      return [{ path: 'prisma/schema.prisma', contents: prismaFile(tables) }]
+      return [{ path: 'prisma/schema.generated.prisma', contents: prismaFile(tables) }]
     case 'drizzle':
       return [{ path: 'drizzle/schema.generated.ts', contents: drizzleFile(tables) }]
     case 'native':
