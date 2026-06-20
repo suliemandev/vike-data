@@ -115,13 +115,14 @@ native side by side.
    because the import->pointer transform runs only on the app's own `+config`
    files, but the explicit string form needs no transform.) So installing auth
    alone pulls vike-schema in; the app no longer wires it.
-6. When several extensions each self-install the same shared extension, Vike
-   includes that extension's cumulative contributions once *per occurrence* (it
-   doesn't dedupe by extension identity for cumulative values). So vike-schema's own
+6. When several extensions each self-install the same shared extension, *older* Vike
+   included that extension's cumulative contributions once *per occurrence* (it
+   didn't dedupe by extension identity for cumulative values). So vike-schema's own
    `_migrations` table arrived twice. The merge/derive layer dedupes it here.
-   **Upstreamed:** Vike accepted this as a bug and is making extension installation
+   **Fixed upstream:** Vike accepted this as a bug and made extension installation
    idempotent ([vikejs/vike#3354](https://github.com/vikejs/vike/issues/3354), PR
-   #3355); once released, the host-side dedupe becomes a belt-and-suspenders guard.
+   #3355 merged 2026-06-20). The host-side dedupe now stays as defense-in-depth and
+   back-compat for older Vike.
 7. Hooks must be separate `+hook.js` files, not inline functions in a config.
 
 **On the schema model:**
@@ -142,9 +143,9 @@ native side by side.
 
 ## Open design questions
 
-- Whether a shared extension's cumulative contributions should be deduped by
+- ~~Whether a shared extension's cumulative contributions should be deduped by
   extension identity at the Vike layer (finding #6), or always left to the host to
-  dedupe. **Resolved upstream:** Vike is making extension installation idempotent
-  ([#3354](https://github.com/vikejs/vike/issues/3354)).
+  dedupe.~~ **Resolved upstream:** Vike made extension installation idempotent
+  ([#3354](https://github.com/vikejs/vike/issues/3354), PR #3355 merged 2026-06-20).
 - How far the neutral schema IR should go before an escape hatch is the better
   answer (relations, DB-specific types).
