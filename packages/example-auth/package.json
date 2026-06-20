@@ -5,8 +5,7 @@
   "type": "module",
   "description": "Example feature extension (auth): ships its own tables via vike-data, ORM-agnostic",
   "exports": {
-    "./config": "./+config.js",
-    "./schema": "./schema.js"
+    "./config": "./+config.js"
   },
   "dependencies": {
     "vike-data": "workspace:*"

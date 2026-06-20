@@ -1,16 +1,14 @@
-// Consumer for BOTH spikes:
+// The consumer: vike-data's job, done in one place.
 //
-//  Spike 1 (wiring): the host's cumulative `migrations` config collected
-//  contributions from every extension + the app. (Recap section.)
-//
-//  Spike 2 (ORM-agnostic schema): each extension defines its tables ONCE in the
-//  neutral DSL (vike-data/schema). The data layer compiles them to whichever ORM
-//  the app selected (VIKE_DATA_ORM env var). We render all three so you can see the
-//  single definition becoming Prisma + Drizzle + native side by side.
+// 1. Read every schema fragment contributed through the `schemas` cumulative
+//    config (from vike-data + every extension).
+// 2. Merge creates + extends into final tables (3rd-party column adds land here;
+//    column edits are flagged as conflicts).
+// 3. DERIVE migrations from the merged schema (not hand-authored).
+// 4. Compile each table to the ORM the app picked (VIKE_DATA_ORM), shown next to
+//    the other targets so the "define once, any ORM" point is visible.
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
-import { COMPILERS } from 'vike-data/schema'
-import authSchemas from 'example-auth/schema'
-import billingSchemas from 'example-billing/schema'
+import { COMPILERS, mergeSchemas, deriveMigrations } from 'vike-data/schema'
 
 const ORMS = ['prisma', 'drizzle', 'native']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -18,15 +16,22 @@ const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace
 export default function onRenderHtml(pageContext) {
   const selected = (process.env.VIKE_DATA_ORM || 'drizzle').toLowerCase()
 
-  // --- Spike 1 recap: merged contributions from the cumulative config --------
-  const migrations = (pageContext.config.migrations || []).flat().sort((a, b) => a.localeCompare(b))
+  const fragments = (pageContext.config.schemas || []).flat()
+  const { tables, conflicts } = mergeSchemas(fragments)
+  const migrations = deriveMigrations(fragments)
+
   const migrationRows = migrations.map((m) => `<li><code>${escapeHtml(m)}</code></li>`).join('')
 
-  // --- Spike 2: one neutral schema -> three ORMs -----------------------------
-  const schemas = [...authSchemas, ...billingSchemas]
-  const schemaBlocks = schemas.map((ir) => {
+  const tableBlocks = tables.map((table) => {
+    const cols = table.columns
+      .map((c) => {
+        const badge = c.added ? ' <span style="color:#0a7;">+ added by extension</span>' : ''
+        return `<li><code>${escapeHtml(c.name)}</code> <span style="color:#999;">${c.type}</span>${badge}</li>`
+      })
+      .join('')
+
     const cards = ORMS.map((orm) => {
-      const code = COMPILERS[orm](ir)
+      const code = COMPILERS[orm]({ table: table.table, columns: table.columns })
       const sel = orm === selected
       return `
         <div style="border:1px solid ${sel ? '#0a7' : '#ddd'}; border-radius:6px; padding:.5rem .75rem; background:${sel ? '#f2fbf7' : '#fff'};">
@@ -34,26 +39,37 @@ export default function onRenderHtml(pageContext) {
           <pre style="margin:.4rem 0 0; white-space:pre-wrap; font-size:12px;">${escapeHtml(code)}</pre>
         </div>`
     }).join('')
+
     return `
-      <section>
-        <h3 style="margin-bottom:.3rem;"><code>${ir.table}</code> &mdash; ${String(ir.columns.length)} columns, defined once</h3>
+      <section style="margin-bottom:1.6rem;">
+        <h3 style="margin-bottom:.3rem;"><code>${table.table}</code> &mdash; merged schema (${String(table.columns.length)} columns)</h3>
+        <ul style="margin:.2rem 0 .7rem;">${cols}</ul>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.6rem;">${cards}</div>
       </section>`
   }).join('')
 
+  const conflictBlock = conflicts.length
+    ? `<h2 style="color:#b00;">Conflicts (${String(conflicts.length)})</h2><ul>${conflicts
+        .map((c) => `<li>${escapeHtml(c.kind)}: <code>${escapeHtml(c.table)}${c.column ? '.' + c.column : ''}</code></li>`)
+        .join('')}</ul>`
+    : ''
+
   const doc = `<!DOCTYPE html>
 <html>
-  <head><meta charset="utf-8" /><title>Vike data-layer spikes</title></head>
+  <head><meta charset="utf-8" /><title>vike-data</title></head>
   <body style="font-family: ui-monospace, monospace; max-width: 1100px; margin: 2.5rem auto; line-height:1.5; color:#222;">
-    <h1>Vike data-layer spikes</h1>
+    <h1>vike-data</h1>
+    <p>${String(fragments.length)} schema fragments contributed through one cumulative config (vike-data + ${String(fragments.length - 1)} from extensions), merged into ${String(tables.length)} tables. Schema is the source of truth; everything below is derived.</p>
 
-    <h2>1. Inter-extension contribution (wiring)</h2>
-    <p>${String(migrations.length)} migrations collected via the host's cumulative config, from the host + both extensions + the app. No side-channel global.</p>
+    <h2>Derived migrations</h2>
+    <p style="color:#666;">Generated from the schema in contribution order, not hand-authored.</p>
     <ol>${migrationRows}</ol>
 
-    <h2 style="margin-top:2rem;">2. One schema definition &rarr; any ORM</h2>
-    <p>Selected ORM: <strong>${escapeHtml(selected)}</strong> (set <code>VIKE_DATA_ORM=prisma|drizzle|native</code>). Each table below is authored once by its extension in the neutral DSL, then compiled to all three.</p>
-    ${schemaBlocks}
+    ${conflictBlock}
+
+    <h2 style="margin-top:1.5rem;">Merged tables &rarr; selected ORM: <strong>${escapeHtml(selected)}</strong></h2>
+    <p style="color:#666;">Each table defined once; compiled to all three (set VIKE_DATA_ORM / run pnpm dev:prisma|drizzle|native). Note <code>users</code> gets <code>stripe_customer_id</code> added by the billing extension.</p>
+    ${tableBlocks}
   </body>
 </html>`
 

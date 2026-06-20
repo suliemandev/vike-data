@@ -1,26 +1,17 @@
 // Neutral, DECLARATIVE schema IR + a tiny builder DSL.
 //
-// An extension calls defineSchema('users', t => { ... }) ONCE. The result is
-// plain data (no ORM imported) describing the desired table state. Each adapter
-// compiler turns that same IR into its own artifact. "Declarative" is the key
-// choice: Prisma/Drizzle diff desired-state to produce a migration, and the
-// native engine generates one from it, so the shared format stays state, not
-// imperative migration steps.
+// An extension describes its tables ONCE; the result is plain data (no ORM
+// imported) that flows through Vike's cumulative config as a contribution.
+//
+//   defineSchema('users', t => ...)   -> create a new table
+//   extendSchema('users', t => ...)   -> add columns to an existing table
+//                                        (possibly one ANOTHER extension created)
+//
+// Migrations are NOT authored here; they are derived from this schema (see
+// merge.js). Schema is the source of truth.
 
-/**
- * @typedef {Object} Column
- * @property {string}  name
- * @property {'uuid'|'string'|'text'|'integer'|'boolean'|'timestamp'} type
- * @property {boolean} nullable
- * @property {boolean} unique
- * @property {boolean} primary
- * @property {*}       default   // undefined = none; 'now' = current timestamp
- */
-
-export function defineSchema(table, build) {
-  /** @type {Column[]} */
+function buildColumns(build) {
   const columns = []
-
   const col = (name, type) => {
     const c = { name, type, nullable: false, unique: false, primary: false, default: undefined }
     columns.push(c)
@@ -32,7 +23,6 @@ export function defineSchema(table, build) {
     }
     return api
   }
-
   const t = {
     uuid: (n) => col(n, 'uuid'),
     string: (n) => col(n, 'string'),
@@ -46,7 +36,14 @@ export function defineSchema(table, build) {
       col('updated_at', 'timestamp').default('now')
     },
   }
-
   build(t)
-  return { table, columns }
+  return columns
+}
+
+export function defineSchema(table, build) {
+  return { table, mode: 'create', columns: buildColumns(build) }
+}
+
+export function extendSchema(table, build) {
+  return { table, mode: 'extend', columns: buildColumns(build) }
 }

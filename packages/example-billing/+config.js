@@ -1,8 +1,22 @@
-// A second feature extension (think: a billing package). Contributes its own
-// migration to the host's cumulative point. The `001_` prefix deliberately
-// collides with auth's first migration, so the spike shows how/whether Vike
-// surfaces ordering + naming conflicts across independent extensions.
+// Example feature extension (billing). It creates its own `subscriptions` table,
+// and ALSO adds a column to auth's `users` table via extendSchema, demonstrating
+// 3rd-party column contribution across independent extensions.
+import { defineSchema, extendSchema } from 'vike-data/schema'
+
 export default {
   name: 'example-billing',
-  migrations: ['001_create_subscriptions_table'],
+  schemas: [
+    defineSchema('subscriptions', (t) => {
+      t.uuid('id').primary()
+      t.uuid('user_id')
+      t.string('plan')
+      t.integer('seats').default(1)
+      t.boolean('active').default(true)
+      t.timestamps()
+    }),
+    // 3rd-party ADD: billing adds a column to the `users` table auth created.
+    extendSchema('users', (t) => {
+      t.string('stripe_customer_id').nullable()
+    }),
+  ],
 }

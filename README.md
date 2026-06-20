@@ -5,16 +5,14 @@
 > run against real databases yet). This repo exists to explore a design, not to be
 > installed.
 
-A proof-of-concept exploring what a **data-layer extension for [Vike](https://vike.dev)**
-could look like. It probes two questions:
+A proof-of-concept for a **data-layer extension for [Vike](https://vike.dev)**.
+The model in one line:
 
-1. **Inter-extension registration** - can one extension expose a contribution
-   point that other extensions plug into, using Vike's own config system?
-2. **ORM-agnostic schema** - can an extension define a schema *once* and have it
-   work regardless of the ORM the user picked (Prisma, Drizzle, or a native engine)?
+> **Extensions declare schema once. vike-data collects it through one Vike config
+> point, merges it, and derives migrations + per-ORM artifacts from the result.**
 
-It's a pnpm workspace: a `vike-data` extension, two example feature extensions
-that contribute to it, and an example app that installs them.
+Schema is the single source of truth. Migrations are an output, not something you
+hand-author. The same schema targets Prisma, Drizzle, or a native engine.
 
 ```bash
 pnpm install
@@ -24,107 +22,76 @@ pnpm dev:prisma               # or dev:drizzle / dev:native to pick the target O
 
 (`dev:prisma` etc. just set the `VIKE_DATA_ORM` env var for you.)
 
----
+## How it flows
 
-## Spike 1 - inter-extension registration
+1. **`vike-data` defines a contribution point** - a custom `cumulative` Vike
+   config named `schemas` (`packages/vike-data/+config.js`).
+2. **Each extension contributes declarative schema** - `defineSchema('users', t => ...)`
+   to create a table, or `extendSchema('users', t => ...)` to add columns to a
+   table another extension created. No ORM imported (`packages/example-*/+config.js`).
+3. **vike-data merges everything** and **derives** the migration list, then
+   **compiles** each merged table to the selected ORM (`app/pages/+onRenderHtml.js`).
 
-**Question:** Can one Vike extension expose a contribution point that *other*
-extensions plug into, using Vike's own config system (no side-channel global)?
-This is the mechanism a data-layer extension needs so an auth/billing extension
-can ship its own migrations + seeds.
+The page renders: the derived migrations, each merged table (with columns added
+by other extensions flagged), and each table compiled to Prisma + Drizzle +
+native side by side.
 
-**Answer: yes.** Vike's **cumulative custom config** does exactly this.
+## Can a 3rd-party extension touch another's table?
 
-### How it works
+- **Add columns: yes.** `example-billing` adds `stripe_customer_id` to the `users`
+  table that `example-auth` created. It lands in the merged schema and compiles
+  into every ORM. This is a first-class, supported pattern.
+- **Edit an existing column: detected, not silently applied.** If an `extendSchema`
+  names a column that already exists, the merge step records a `column-edit`
+  conflict rather than letting one extension quietly rewrite another's contract.
+  Resolution is left to an explicit policy (out of scope for v1).
 
-`vike-data` defines a custom config `migrations` with `cumulative: true`:
+## Layout
 
-```js
-// packages/vike-data/+config.js
-export default {
-  name: 'vike-data',
-  meta: { migrations: { env: { config: true, server: true }, cumulative: true } },
-  migrations: ['000_create_migrations_table'], // vike-data's own contribution
-}
-```
+- `packages/vike-data` - the extension: defines the `schemas` point, ships the
+  schema DSL + compilers at `vike-data/schema` (splittable into a standalone
+  `vike-schema` later), and dogfoods the point with its own `_migrations` table.
+- `packages/example-auth` - creates `users` + `sessions`.
+- `packages/example-billing` - creates `subscriptions`, and adds a column to `users`.
+- `app` - installs all three via `extends`; defines nothing itself.
 
-Every other source just sets `migrations: [...]`; Vike accumulates them all.
-The consumer reads the merged list via `pageContext.config.migrations`
-(see `app/pages/+onRenderHtml.js`).
+## Findings
 
-### Layout
+**On the wiring (Vike's cumulative config as the contribution point):**
 
-- `packages/vike-data` - the data layer: defines + seeds the `migrations` point,
-  and ships the schema DSL + compilers at `vike-data/schema` (splittable into a
-  standalone `vike-schema` package later).
-- `packages/example-auth` - a feature extension contributing 2 migrations + 2 tables.
-- `packages/example-billing` - a feature extension contributing 1 migration + 1
-  table (with a deliberately clashing `001_` prefix).
-- `app` - installs all three via `extends` and adds its own migration.
+1. Cumulative config is the right primitive: independent extensions contribute and
+   vike-data sees them all, with no side-channel global.
+2. It accumulates one entry per source (no flattening); the consumer flattens.
+3. Order is config-specificity order, not dependency-aware. Migration ordering is
+   the data layer's job.
+4. No conflict detection at the Vike layer; dedupe/collision handling is the data
+   layer's job (done here in `merge.js`).
+5. A node_modules extension can't `extends` another from raw source - Vike runs
+   its import->pointer transform only on the app's own `+config` files. So
+   "installing auth auto-pulls vike-data" needs Vike's build step, or the app
+   wires both. (Today the app wires them.)
+6. Hooks must be separate `+hook.js` files, not inline functions in a config.
 
-Renders: **5 migrations collected from 4 sources.**
+**On the schema model:**
 
-### Findings (what Vike does and does NOT do)
+- A neutral, declarative IR + per-adapter compilers is enough to make one schema
+  target Prisma / Drizzle / native. Declarative (desired-state) is the right
+  shape, since Prisma/Drizzle diff state and a native engine generates a migration.
 
-1. **Accumulation works across independent extensions** - cumulative config is
-   the right primitive for inter-extension contribution.
-2. **One entry per source, no flattening** - each source's value is kept as-is,
-   so contributing arrays yields an array-of-arrays. The consumer must flatten.
-3. **Order is by config specificity, not dependency or name** - the app's `100_`
-   came before the foundational `000_`. The data layer must sort itself (here, by
-   numeric prefix).
-4. **No conflict detection** - auth's `001_` and billing's `001_` coexist
-   silently. Dedupe/collision handling is the data layer's job.
-5. **A node_modules extension cannot `extends` another from raw source** - Vike
-   runs its import->pointer transform only on the app's own `+config` files, not
-   on extension configs loaded from `node_modules` (those are expected to be
-   pre-built by Vike's build tooling). So "installing auth auto-pulls vike-data"
-   needs Vike's build step, or the app wires both.
-6. **Hooks must be separate `+hook.js` files**, not inline functions in a config
-   (config values get serialized).
+## v1 scope / deferred (the interesting hard parts)
 
----
-
-## Spike 2 - one schema definition, any ORM
-
-**Question:** what's a minimal way for an extension to define a schema regardless
-of which ORM the user picked?
-
-**Approach:** a neutral, *declarative* schema IR + per-adapter compilers.
-
-- `vike-data/schema` - `defineSchema('users', t => ...)` returns plain-data IR;
-  `toPrisma` / `toDrizzle` / `toNative` compile that one IR to each ORM. (Lives
-  inside `vike-data` for now; can be split into a standalone `vike-schema` later.)
-- Each extension authors its tables **once** (`packages/example-*/schema.js`)
-  with no ORM imported.
-- The app picks an ORM via `VIKE_DATA_ORM`; the page renders the single definition
-  compiled to all three side by side, marking the selected one as "gets applied".
-
-Declarative is the key choice: Prisma/Drizzle diff desired-state into a
-migration, and a native engine generates one, so the shared format stays
-*state*, not imperative steps.
-
-### What's proven
-
-One `defineSchema('users', ...)` becomes, with zero per-ORM authoring:
-- a Prisma `model Users { ... @@map("users") }`
-- a Drizzle `pgTable('users', { ... })`
-- a native `Schema.create('users', t => ...)` migration
-
-### v1 scope / deferred (the interesting hard parts)
-
-- Types: uuid/string/text/integer/boolean/timestamp + nullable/unique/primary/default. Enough to prove it.
+- Types: uuid/string/text/integer/boolean/timestamp + nullable/unique/primary/default.
 - **Relations / foreign keys** - deferred; the genuinely hard bit.
-- **Type escape hatches** - DB-specific types (pg arrays, enums, JSON) need a per-adapter `.raw()` override so the neutral layer isn't lowest-common-denominator.
-- **Declarative -> migration reconciliation** - how a native engine turns desired-state into an *ordered* migration (ties back to spike 1's ordering finding).
+- **Type escape hatches** - DB-specific types (pg arrays, enums, JSON) need a
+  per-adapter override so the neutral layer isn't lowest-common-denominator.
+- **Declarative -> ordered migration reconciliation** - real diffing/ordering.
+- **Column-edit policy** - conflicts are detected but resolution is unspecified.
 - Compilers emit representative artifacts; they don't run against real DBs yet.
-
----
 
 ## Open design questions
 
-- The ergonomic side of finding #5: what's a clean way for an extension to declare
-  "I depend on vike-data and contribute to it" so that installing the extension
-  alone wires everything up, without the app having to `extends` vike-data too.
+- The ergonomic side of finding #5: a clean way for an extension to declare "I
+  depend on vike-data and contribute to it" so installing it alone wires everything
+  up, without the app having to `extends` vike-data too.
 - How far the neutral schema IR should go before an escape hatch is the better
   answer (relations, DB-specific types).

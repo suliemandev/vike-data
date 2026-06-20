@@ -1,29 +1,33 @@
 // vike-data: the data-layer extension.
 //
-// Its job here is to DEFINE the contribution point: a custom CUMULATIVE config
-// named `migrations`. Any extension or the app can add to it, and Vike merges
-// every contribution into one array. The host also seeds its own baseline
-// migration.
+// It defines ONE contribution point: a custom CUMULATIVE config named `schemas`.
+// Every extension (and vike-data itself) contributes declarative schema fragments
+// to it via defineSchema / extendSchema. vike-data collects them, merges them
+// into final tables, and DERIVES migrations + per-ORM artifacts from the result
+// (see app/pages/+onRenderHtml.js for the consumer).
 //
-// (It also ships the neutral schema DSL + compilers at `vike-data/schema` for
-// now; that subpath can be split into a standalone `vike-schema` package later.)
+// Schema is the single source of truth. There is no hand-authored migration list.
 //
-// (The consumer that reads the merged list lives in a +onRenderHtml.js hook.
-// Vike requires hooks to be separate files, not inline functions in a config,
-// because config values get serialized. In a published extension the host would
-// ship that hook itself; here it lives in the app for simplicity.)
+// (The schema DSL + compilers live at `vike-data/schema`; splittable into a
+// standalone `vike-schema` package later.)
+import { defineSchema } from './schema/index.js'
+
 export default {
   name: 'vike-data',
 
   meta: {
-    migrations: {
-      // config: available at config-time; server: available in server hooks.
+    schemas: {
       env: { config: true, server: true },
-      // THE crux: accumulate values from every source instead of overriding.
       cumulative: true,
     },
   },
 
-  // The host contributes its own baseline migration.
-  migrations: ['000_create_migrations_table'],
+  // vike-data dogfoods its own contribution point with its migration-ledger table.
+  schemas: [
+    defineSchema('_migrations', (t) => {
+      t.integer('id').primary()
+      t.string('name').unique()
+      t.integer('batch')
+    }),
+  ],
 }

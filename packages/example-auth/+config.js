@@ -1,14 +1,29 @@
-// A feature extension (think: an auth package). It ships its own tables by
-// contributing to the host's cumulative `migrations` point. It does NOT know
-// about any other extension.
+// Example feature extension (auth). It declares its tables ONCE via the neutral
+// schema DSL and contributes them through vike-data's `schemas` point. It does
+// not know which ORM the app uses, and does not author any migration.
 //
 // NOTE: ideally this would also `extends: ['vike-data/config']` so installing
-// auth pulls vike-data in automatically. From source that fails: Vike runs its
-// import->pointer transform only on the app's own +config files, not on
-// extension +config files loaded from node_modules (those are expected to be
-// pre-built by Vike's build tooling). So for this spike the app wires vike-data
-// in directly. That gap is itself a finding worth confirming with Vike.
+// auth pulls vike-data in automatically. From source that fails (Vike runs its
+// import->pointer transform only on the app's own +config files, not on extension
+// configs loaded from node_modules), so the app wires vike-data in directly. That
+// gap is itself a finding worth confirming with Vike.
+import { defineSchema } from 'vike-data/schema'
+
 export default {
   name: 'example-auth',
-  migrations: ['001_create_users_table', '002_create_sessions_table'],
+  schemas: [
+    defineSchema('users', (t) => {
+      t.uuid('id').primary()
+      t.string('email').unique()
+      t.string('name').nullable()
+      t.boolean('active').default(true)
+      t.timestamps()
+    }),
+    defineSchema('sessions', (t) => {
+      t.uuid('id').primary()
+      t.uuid('user_id')
+      t.timestamp('expires_at')
+      t.timestamps()
+    }),
+  ],
 }
