@@ -6,9 +6,13 @@
   "description": "Vike binding for the data layer: contributes the `schemas` cumulative config point (the inter-extension contribution point) and re-exports the framework-agnostic schema core at ./schema.",
   "exports": {
     "./config": "./+config.js",
-    "./schema": "./schema.js"
+    "./schema": "./schema.js",
+    "./plugin": "./plugin.js"
   },
   "dependencies": {
     "@vike-data/universal-schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "vike": "^0.4.0"
   }
 }

@@ -71,19 +71,24 @@ await auth.destroySession(session.token) // real logout
   declared schema load-bearing.
 - **Two findings for Vike** (both worked around in this package, both worth fixing
   upstream):
-  1. The built-in **`middleware` cumulative config is not deduped by identity.**
+  1. On a Vike **without [#3355](https://github.com/vikejs/vike/pull/3355)**, the
+     built-in `middleware` cumulative config is included once per install path.
      vike-auth is self-installed by the app *and* by vike-teams *and* by
-     vike-billing, so its middleware is collected once per install path and runs
-     several times per request — and a universal middleware runs even after an
-     earlier one returned a `Response` (a `Response` only short-circuits route
-     *handlers*). A body-reading middleware then double-reads (`Body already
-     read`). vike-auth guards with a per-request `WeakSet`; Vike could dedupe by
-     identity, mirroring how the schema layer dedupes `_migrations`.
+     vike-billing, so its middleware ran three times per request on the released
+     `0.4.259` — and a universal middleware runs even after an earlier one
+     returned a `Response` (a `Response` only short-circuits route *handlers*), so
+     a body-reading middleware double-reads (`Body already read`). **Fixed
+     upstream by #3355** (idempotent extension installation): verified against the
+     `0.4.259-commit-a91659b` build, the middleware runs exactly once. This is the
+     same bug as the schema layer's `_migrations` duplication, one layer up — the
+     one fix covers both. The per-request `WeakSet` guard stays as back-compat for
+     users on a pre-#3355 release.
   2. A **3xx redirect returned from a universal middleware crashes Vike's request
      logger**, which looks for a `Location` header with a capital `L` while the
      Web `Headers` object lower-cases it (`assert(headerRedirect)` throws). The
-     endpoints use a `200` + meta-refresh instead; a case-insensitive header
-     lookup in `logHttpResponse` would fix it.
+     endpoints use a `200` + meta-refresh instead. Filed as
+     [vikejs/vike#3357](https://github.com/vikejs/vike/issues/3357) (a
+     case-insensitive header lookup in `logHttpResponse` fixes it).
 - **Why the user lands on `pageContext` via `onCreatePageContext` and not the
   middleware:** in Vike 0.4.259 a middleware's returned *context* is not bridged
   into `pageContext`, so the middleware can't hand `user` to the renderer. If
