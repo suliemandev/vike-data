@@ -15,7 +15,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { resolveSchemas, orderFragments, mergeSchemas, generateArtifacts } from '@vike-data/universal-schema'
 
-export function vikeSchemaGenerate(options = {}) {
+export function vikeSchema(options = {}) {
   let root = process.cwd()
 
   async function run(ctx) {
@@ -84,3 +84,7 @@ export function vikeSchemaGenerate(options = {}) {
     },
   }
 }
+
+// Default export too, so it imports the same way as `vike` itself:
+//   import vikeSchema from '@vike-data/vike-schema/plugin'
+export default vikeSchema
