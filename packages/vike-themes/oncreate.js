@@ -1,10 +1,15 @@
-// Read the theme cookie into pageContext so the runtime selection (the picker)
-// survives a reload and SSRs without a flash. Framework-agnostic (cookie parsing
-// only); the React binding resolves `themeCookie || config.theme` to the active
-// theme. Null when there is no cookie, so the app's configured `theme` default
-// decides the first visit rather than this hook hardcoding one.
+// Read the theme + appearance cookies into pageContext so the runtime selection
+// (the picker) survives a reload and SSRs without a flash. Framework-agnostic
+// (cookie parsing only); the React binding resolves these against the configured
+// defaults. Null when absent, so the app's configured `theme`/`appearance` decide
+// the first visit rather than this hook hardcoding values.
+const read = (cookie, name) => {
+  const match = new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(cookie)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 export default function onCreatePageContext(pageContext) {
   const cookie = pageContext.headers?.cookie || ''
-  const match = /(?:^|;\s*)vike_theme=([^;]+)/.exec(cookie)
-  pageContext.themeCookie = match ? decodeURIComponent(match[1]) : null
+  pageContext.themeCookie = read(cookie, 'vike_theme')
+  pageContext.appearanceCookie = read(cookie, 'vike_appearance')
 }

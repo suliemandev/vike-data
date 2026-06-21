@@ -1,11 +1,12 @@
 // The vike-react Wrapper contributed by vike-react-themes/config. It turns the
-// declarative theme config into a running ThemeProvider: the registered presets
-// (cumulative `themes` config, contributed by vike-themes + any theme package +
-// the app's own defineTheme) become the selectable set, and the active theme is
-// the cookie (runtime picker) falling back to the configured `theme` default.
+// declarative theme config into a running ThemeProvider:
+//   - the registered brands (cumulative `themes` config, from vike-themes + theme
+//     packages + the app's own defineTheme) become the selectable set,
+//   - the active brand is the `vike_theme` cookie || configured `theme`,
+//   - the appearance is the `vike_appearance` cookie || configured `appearance`.
 //
-// Because it is a Wrapper it sits outside the Layout, so the theme's CSS variables
-// are set before any shell renders — themes restyle layouts, not the other way.
+// `theme` config may be a brand NAME or a theme OBJECT (both are accepted); an
+// object not already in the registry is folded in.
 import { usePageContext } from 'vike-react/usePageContext'
 import { ThemeProvider } from './ThemeProvider.jsx'
 import { ThemePicker } from './ThemePicker.jsx'
@@ -13,18 +14,25 @@ import { ThemePicker } from './ThemePicker.jsx'
 export default function ThemeWrapper({ children }) {
   const pageContext = usePageContext()
   const config = pageContext.config || {}
-  // `themes` is cumulative: an array of each source's contribution (itself an
-  // array of theme defs). Flatten and key by name into the selectable set.
-  const list = (config.themes || []).flat()
-  const themes = Object.fromEntries(list.map((t) => [t.name, t]))
-  const initial = pageContext.themeCookie || config.theme || 'light'
 
-  // No themes registered (extension installed but nothing contributed) — render
+  let list = (config.themes || []).flat()
+  const t = config.theme
+  const themeName = typeof t === 'string' ? t : t?.name
+  // `theme` given as an object that no package registered -> include it.
+  if (t && typeof t === 'object' && t.name && !list.some((x) => x.name === t.name)) {
+    list = [...list, t]
+  }
+
+  const themes = Object.fromEntries(list.map((x) => [x.name, x]))
+  const theme = pageContext.themeCookie || themeName || 'default'
+  const appearance = pageContext.appearanceCookie || config.appearance || 'system'
+
+  // No brands registered (extension installed but nothing contributed) — render
   // children untouched rather than crashing.
   if (!list.length) return children
 
   return (
-    <ThemeProvider themes={themes} initial={initial}>
+    <ThemeProvider themes={themes} theme={theme} appearance={appearance}>
       {children}
       <ThemePicker />
     </ThemeProvider>

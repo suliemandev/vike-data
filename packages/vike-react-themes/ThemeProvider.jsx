@@ -1,14 +1,14 @@
-// vike-react-themes — the React wrapper over the framework-agnostic vike-themes
-// core. The core turns tokens into a CSS-variable rule (themeToCss); this applies
-// the ACTIVE one and owns the runtime dark/light selection (the build-time vs
-// runtime split: definitions are static, selection is state).
+// vike-react-themes — the React binding over the framework-agnostic vike-themes
+// core. It owns the two runtime axes: the active THEME (brand) and the APPEARANCE
+// (mode: system/light/dark). The core turns a (theme, appearance) pair into CSS
+// (themeToAppearanceCss); this applies it and persists each axis to its cookie.
 //
-// SSR-safe: the provider renders the active theme's <style> on the server from
-// `initial` (a page can read the cookie off pageContext and pass it in), so the
-// first paint already matches and there is no theme flash. On the client,
-// toggle() swaps the active theme and persists the choice to a cookie.
+// SSR-safe: the provider renders from `theme`/`appearance` props (a page reads the
+// cookies off pageContext and passes them in), so first paint matches and there is
+// no flash. `system` is applied via the core's `@media (prefers-color-scheme)` CSS,
+// so it follows the OS even before hydration.
 import { createContext, useContext, useState, useMemo, useCallback } from 'react'
-import { themeToCss, presets } from 'vike-themes'
+import { themeToAppearanceCss, presets, APPEARANCES } from 'vike-themes'
 
 const ThemeCtx = createContext(null)
 
@@ -17,33 +17,41 @@ const writeCookie = (name, value) => {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`
 }
 
-export function ThemeProvider({ themes = presets, initial = 'light', cookieName = 'vike_theme', children }) {
+export function ThemeProvider({ themes = presets, theme: initialTheme = 'default', appearance: initialAppearance = 'system', children }) {
   const names = Object.keys(themes)
-  const [name, setName] = useState(themes[initial] ? initial : names[0])
-  const theme = themes[name]
+  const [themeName, setThemeName] = useState(themes[initialTheme] ? initialTheme : names[0])
+  const [appearance, setApp] = useState(APPEARANCES.includes(initialAppearance) ? initialAppearance : 'system')
+  const theme = themes[themeName]
 
   const setTheme = useCallback(
     (next) => {
       if (!themes[next]) return
-      setName(next)
-      writeCookie(cookieName, next)
+      setThemeName(next)
+      writeCookie('vike_theme', next)
     },
-    [themes, cookieName],
+    [themes],
   )
 
-  const toggle = useCallback(() => {
-    const i = names.indexOf(name)
-    setTheme(names[(i + 1) % names.length])
-  }, [names, name, setTheme])
+  const setAppearance = useCallback((next) => {
+    if (!APPEARANCES.includes(next)) return
+    setApp(next)
+    writeCookie('vike_appearance', next)
+  }, [])
 
-  const value = useMemo(() => ({ name, theme, themes, names, setTheme, toggle }), [name, theme, themes, names, setTheme, toggle])
+  const value = useMemo(
+    () => ({ theme, themeName, themes, names, setTheme, appearance, appearances: APPEARANCES, setAppearance }),
+    [theme, themeName, themes, names, setTheme, appearance, setAppearance],
+  )
 
   return (
     <ThemeCtx.Provider value={value}>
-      {/* The entire theme contract: the active theme's CSS variables at :root.
-          color-scheme keeps native form controls / scrollbars in step — inferred
-          from the theme's `scheme` token, else from a `dark` in its name. */}
-      <style data-vike-theme={name} dangerouslySetInnerHTML={{ __html: `${themeToCss(theme, ':root')}\n:root { color-scheme: ${theme.scheme || (/dark/i.test(name) ? 'dark' : 'light')}; }` }} />
+      {/* The whole theme contract: the active brand's variables for the active
+          appearance (system -> light + a prefers-color-scheme dark media rule). */}
+      <style
+        data-vike-theme={themeName}
+        data-vike-appearance={appearance}
+        dangerouslySetInnerHTML={{ __html: themeToAppearanceCss(theme, appearance, ':root') }}
+      />
       {children}
     </ThemeCtx.Provider>
   )

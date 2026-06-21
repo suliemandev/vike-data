@@ -15,14 +15,15 @@ import layoutsExt from 'vike-react-layouts/config'
 import emeraldExt from 'vike-theme-emerald/config'
 import { defineTheme } from 'vike-themes'
 
-// (customization) the app's own brand theme — override only the tokens you want.
-// Contributed via the cumulative `themes` config below, exactly like a package.
+// (customization) the app's own brand theme — one brand carrying BOTH modes.
+// Override only the tokens you want; contributed via the cumulative `themes`
+// config below, exactly like a theme package.
 const acme = defineTheme({
   name: 'acme',
   fonts: { sans: 'Georgia, "Times New Roman", serif', mono: 'ui-monospace, monospace' },
   radius: '4px',
   spacing: { sm: '0.5rem', md: '1rem', lg: '2rem' },
-  colors: {
+  light: {
     bg: '#fffdf7',
     surface: '#faf3e6',
     text: '#2a2016',
@@ -31,15 +32,25 @@ const acme = defineTheme({
     primary: '#b4530d',
     'primary-text': '#fffaf2',
   },
+  dark: {
+    bg: '#1a140d',
+    surface: '#241c12',
+    text: '#f3ead9',
+    muted: '#b39e80',
+    border: '#3a2e1d',
+    primary: '#e0772a',
+    'primary-text': '#1a140d',
+  },
 })
 
 export default {
   extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt],
   title: 'vike-data — React UI tier',
 
-  // theme: pick the active theme by name (like billing's `billingSubject`).
-  theme: 'light',
-  themes: [acme], // the app contributes its own brand theme to the registry
+  // two axes: which brand, and which mode (system follows the OS).
+  appearance: 'system', // 'system' | 'light' | 'dark'
+  theme: 'acme', // active brand, from the cumulative `themes` registry
+  themes: [acme], // the app contributes its own brand (built-ins + emerald compose in)
 
   // layout: pick the app-shell + fill its slots. pages/login overrides to centered.
   layout: 'topbar',
