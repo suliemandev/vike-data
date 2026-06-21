@@ -37,6 +37,10 @@ export default {
 }
 ```
 
-> Cross-table references (`user_id`, `organization_id`, `owner_id`) are by `uuid`
-> convention today. Enforced foreign keys / relations are the deferred **v2
-> relations** surface that this keystone motivates.
+> Cross-table references (`user_id`, `organization_id`, `owner_id`) are real
+> foreign keys via `.references('table.column', { onDelete })`. `merge.js`
+> validates the target exists across extensions, so a FK into auth's `users`
+> only resolves once vike-auth is installed (a dangling ref is a flagged
+> conflict, not a crash). `users` <-> `organizations` is a relation cycle, and it
+> compiles cleanly to all three ORMs. See the
+> [relations section](../../README.md#relations-v2) of the root README.

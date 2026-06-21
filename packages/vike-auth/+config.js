@@ -29,7 +29,7 @@ export default {
     }),
     defineSchema('sessions', (t) => {
       t.uuid('id').primary()
-      t.uuid('user_id')
+      t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
       t.string('token').unique()
       t.timestamp('expires_at')
       t.timestamps()

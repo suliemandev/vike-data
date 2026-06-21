@@ -8,7 +8,7 @@ export default class extends Migration {
   async up() {
     await Schema.create('sessions', (t) => {
       t.uuid('id').primary()
-      t.uuid('user_id')
+      t.uuid('user_id').references('id').on('users').onDelete('cascade')
       t.string('token').unique()
       t.timestamp('expires_at')
       t.timestamp('created_at').useCurrent()

@@ -8,8 +8,8 @@ export default class extends Migration {
   async up() {
     await Schema.create('memberships', (t) => {
       t.uuid('id').primary()
-      t.uuid('organization_id')
-      t.uuid('user_id')
+      t.uuid('organization_id').references('id').on('organizations').onDelete('cascade')
+      t.uuid('user_id').references('id').on('users').onDelete('cascade')
       t.string('role').default("member")
       t.timestamp('created_at').useCurrent()
       t.timestamp('updated_at').useCurrent()

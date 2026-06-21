@@ -19,12 +19,12 @@ export const users = pgTable('users', {
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  currentOrganizationId: uuid('current_organization_id'),
+  currentOrganizationId: uuid('current_organization_id').references(() => organizations.id, { onDelete: 'set null' }),
 })
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  userId: uuid('user_id').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -35,15 +35,15 @@ export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
-  ownerId: uuid('owner_id').notNull(),
+  ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 export const memberships = pgTable('memberships', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  organizationId: uuid('organization_id').notNull(),
-  userId: uuid('user_id').notNull(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 255 }).notNull().default("member"),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
