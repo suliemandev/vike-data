@@ -1,0 +1,16 @@
+{
+  "name": "vike-react-layouts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React shell components for vike-layouts: <CenteredShell> (public/auth), <TopbarShell>, <SidebarShell>, and a <Layout> dispatcher. Authored against vike-themes CSS variables. The per-framework UI half of the layout core.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "vike-layouts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "vike-themes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic theme core: design tokens (colors/fonts/radius/spacing) compiled to CSS variables. The presentation-layer composition primitive a per-framework wrapper (vike-react-themes) applies. Zero framework imports.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

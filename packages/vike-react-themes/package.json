@@ -1,0 +1,16 @@
+{
+  "name": "vike-react-themes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React wrapper for vike-themes: <ThemeProvider> applies the active theme's CSS variables (SSR-safe) and useTheme() reads/toggles dark/light.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "vike-themes": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}
