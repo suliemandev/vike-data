@@ -28,6 +28,11 @@ export default {
   extends: ['import:@vike-data/vike-schema/config:default'],
   middleware: 'import:vike-auth/middleware:default',
   onCreatePageContext: 'import:vike-auth/onCreatePageContext:default',
+  // onCreatePageContext sets a serializable `pageContext.user` ({id,email,name});
+  // expose it to the client so a UI hook (vike-react-auth's useUser) reads the same
+  // value after hydration instead of flipping to signed-out. Cumulative — merges
+  // with the host's other passToClient keys.
+  passToClient: ['user'],
   schemas: [
     defineSchema('users', (t) => {
       t.uuid('id').primary()
