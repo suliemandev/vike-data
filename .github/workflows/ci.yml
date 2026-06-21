@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Unit tests for the framework-agnostic core (merge/derive/compilers).
+      - name: Unit tests (universal-schema)
+        run: pnpm --filter @vike-data/universal-schema test
+
+      # Drift gate: committed artifacts must match what generation would emit,
+      # for every target ORM.
+      - name: Artifact drift gate
+        working-directory: app
+        run: |
+          VIKE_DATA_ORM=drizzle pnpm gen:check
+          VIKE_DATA_ORM=prisma pnpm gen:check
+          VIKE_DATA_ORM=native pnpm gen:check

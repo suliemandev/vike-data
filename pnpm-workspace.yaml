@@ -2,6 +2,13 @@ packages:
   - app
   - packages/*
 
+# pnpm 11 requires build scripts to be explicitly approved via `allowBuilds`;
+# `onlyBuiltDependencies` alone now fails a fresh/frozen install with
+# ERR_PNPM_IGNORED_BUILDS (e.g. on a clean clone or in CI).
+allowBuilds:
+  esbuild: true
+
 onlyBuiltDependencies:
   - esbuild
+
 verifyDepsBeforeRun: false
