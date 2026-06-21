@@ -98,9 +98,6 @@ native side by side.
   The composition base (see below).
 - `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
   `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
-- `packages/example-auth` / `packages/example-billing` - the original minimal
-  primitive demo (users/sessions + subscriptions + a column add). Kept for reference;
-  the app now showcases the keystone instead.
 - `app` - installs `vike-auth` + `vike-teams` (the chain self-installs `vike-schema`);
   defines nothing itself.
 
