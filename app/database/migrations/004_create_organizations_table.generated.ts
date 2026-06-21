@@ -6,8 +6,13 @@ import { Migration, Schema } from '@rudderjs/database'
 
 export default class extends Migration {
   async up() {
-    await Schema.table('users', (t) => {
-      t.string('stripe_customer_id').nullable()
+    await Schema.create('organizations', (t) => {
+      t.uuid('id').primary()
+      t.string('name')
+      t.string('slug').unique()
+      t.uuid('owner_id')
+      t.timestamp('created_at').useCurrent()
+      t.timestamp('updated_at').useCurrent()
     })
   }
 }

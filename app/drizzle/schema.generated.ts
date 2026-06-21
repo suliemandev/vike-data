@@ -14,26 +14,37 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
+  passwordHash: varchar('password_hash', { length: 255 }),
+  emailVerified: boolean('email_verified').notNull().default(false),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  currentOrganizationId: uuid('current_organization_id'),
 })
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   userId: uuid('user_id').notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const subscriptions = pgTable('subscriptions', {
+export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  ownerId: uuid('owner_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const memberships = pgTable('memberships', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  organizationId: uuid('organization_id').notNull(),
   userId: uuid('user_id').notNull(),
-  plan: varchar('plan', { length: 255 }).notNull(),
-  seats: integer('seats').notNull().default(1),
-  active: boolean('active').notNull().default(true),
+  role: varchar('role', { length: 255 }).notNull().default("member"),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

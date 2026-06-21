@@ -23,10 +23,12 @@ model Users {
   id String @id @default(uuid())
   email String @unique
   name String?
+  password_hash String?
+  email_verified Boolean @default(false)
   active Boolean @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
-  stripe_customer_id String?
+  current_organization_id String?
 
   @@map("users")
 }
@@ -34,6 +36,7 @@ model Users {
 model Sessions {
   id String @id @default(uuid())
   user_id String
+  token String @unique
   expires_at DateTime
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
@@ -41,14 +44,24 @@ model Sessions {
   @@map("sessions")
 }
 
-model Subscriptions {
+model Organizations {
   id String @id @default(uuid())
-  user_id String
-  plan String
-  seats Int @default(1)
-  active Boolean @default(true)
+  name String
+  slug String @unique
+  owner_id String
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
 
-  @@map("subscriptions")
+  @@map("organizations")
+}
+
+model Memberships {
+  id String @id @default(uuid())
+  organization_id String
+  user_id String
+  role String @default("member")
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  @@map("memberships")
 }

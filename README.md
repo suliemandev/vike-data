@@ -45,7 +45,7 @@ each ORM's own model:
   `drizzle-kit`) derives the migrations. The 3rd-party column add is folded in.
 - **Native** -> `database/migrations/NNN_*.generated.ts`: the engine we own, so WE emit
   the ordered migration ledger. The cross-extension add becomes its OWN
-  `alter_users_add_stripe_customer_id` migration, separate from `create_users` -
+  `alter_users_add_current_organization_id` migration, separate from `create_users` -
   mirroring how the columns were actually contributed.
 
 **Suffix convention.** Every artifact carries both the `// GENERATED ... don't edit`
@@ -68,7 +68,8 @@ are authored, the ORM schema is generated output (the usual model, inverted).
    config named `schemas` (`packages/vike-schema/+config.js`).
 2. **Each extension contributes declarative schema** - `defineSchema('users', t => ...)`
    to create a table, or `extendSchema('users', t => ...)` to add columns to a
-   table another extension created. No ORM imported (`packages/example-*/+config.js`).
+   table another extension created. No ORM imported (`packages/vike-auth/+config.js`,
+   `packages/vike-teams/+config.js`).
 3. **vike-schema merges everything** and **derives** the migration list, then
    **compiles** each merged table to the selected ORM (`app/pages/+onRenderHtml.js`).
 
@@ -78,8 +79,8 @@ native side by side.
 
 ## Can a 3rd-party extension touch another's table?
 
-- **Add columns: yes.** `example-billing` adds `stripe_customer_id` to the `users`
-  table that `example-auth` created. It lands in the merged schema and compiles
+- **Add columns: yes.** `vike-teams` adds `current_organization_id` to the `users`
+  table that `vike-auth` created. It lands in the merged schema and compiles
   into every ORM. This is a first-class, supported pattern.
 - **Edit an existing column: detected, not silently applied.** If an `extendSchema`
   names a column that already exists, the merge step records a `column-edit`
@@ -93,10 +94,32 @@ native side by side.
 - `packages/vike-schema` - the Vike binding: defines the `schemas` point, re-exports
   the core at `@vike-data/vike-schema/schema`, and dogfoods the point with its own
   `_migrations` table.
-- `packages/example-auth` - creates `users` + `sessions`.
-- `packages/example-billing` - creates `subscriptions`, and adds a column to `users`.
-- `app` - installs the two extensions (each self-installs `vike-schema`); defines
-  nothing itself.
+- `packages/vike-auth` - the keystone auth extension: owns `users` + `sessions`.
+  The composition base (see below).
+- `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
+  `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
+- `packages/example-auth` / `packages/example-billing` - the original minimal
+  primitive demo (users/sessions + subscriptions + a column add). Kept for reference;
+  the app now showcases the keystone instead.
+- `app` - installs `vike-auth` + `vike-teams` (the chain self-installs `vike-schema`);
+  defines nothing itself.
+
+## Keystone: vike-auth + vike-teams (the Stem Vision)
+
+The point of the data layer is **extensions that compose on each other's schema**.
+`vike-auth` owns everything auth needs, starting with the `users` table. `vike-teams`
+then builds on top without vike-auth knowing it exists:
+
+- it **references** `users` by `user_id` (memberships) and `owner_id` (organizations);
+- it **extends** `users` with `current_organization_id` via `extendSchema`;
+- it **self-installs** vike-auth, which self-installs vike-schema, so the whole chain
+  composes from one install: `vike-schema <- vike-auth <- vike-teams`.
+
+That composition is the Stem Vision in miniature: a foundational extension owns a
+table, and the higher-level extensions of a SaaS spine (teams, billing, audit logs)
+layer on top of it additively. The same merged schema compiles to all three ORMs.
+These are the framework-agnostic **core** tier; per-framework UI wrappers
+(`vike-react-auth`, etc.) would layer on top reusing the exact same schema.
 
 ## Findings
 

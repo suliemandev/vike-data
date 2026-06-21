@@ -12,12 +12,13 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { mergeSchemas, generateArtifacts } from '@vike-data/vike-schema/schema'
 import vikeSchema from '@vike-data/vike-schema/config'
-import authExt from 'example-auth/config'
-import billingExt from 'example-billing/config'
+import authExt from 'vike-auth/config'
+import teamsExt from 'vike-teams/config'
 
 // Contribution order: vike-schema's own `_migrations` first (each extension
-// self-installs it), then the feature extensions.
-const installed = [vikeSchema, authExt, billingExt]
+// self-installs it), then the feature extensions in dependency order
+// (auth before teams, since teams references + extends auth's `users`).
+const installed = [vikeSchema, authExt, teamsExt]
 const fragments = installed.flatMap((c) => c.schemas || []).flat()
 const { tables, conflicts } = mergeSchemas(fragments)
 
