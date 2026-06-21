@@ -48,3 +48,15 @@ export const memberships = pgTable('memberships', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
+
+export const subscriptions = pgTable('subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  plan: varchar('plan', { length: 255 }).notNull(),
+  status: varchar('status', { length: 255 }).notNull().default("active"),
+  seats: integer('seats').notNull().default(1),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  currentPeriodEnd: timestamp('current_period_end'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})

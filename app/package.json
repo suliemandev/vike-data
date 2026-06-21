@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example app: installs the vike-auth + vike-teams keystone extensions (the composition proof), picks an ORM via VIKE_DATA_ORM",
+  "description": "Example app: installs the vike-auth + vike-teams + vike-billing extensions (the composition proof), picks an ORM via VIKE_DATA_ORM and a billing subject via BILLING_SUBJECT",
   "scripts": {
     "dev": "vite",
     "dev:prisma": "VIKE_DATA_ORM=prisma vite",
@@ -20,6 +20,7 @@
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*",
     "vike-teams": "workspace:*",
+    "vike-billing": "workspace:*",
     "vike": "^0.4.0",
     "vite": "^7.1.0"
   }
