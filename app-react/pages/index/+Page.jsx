@@ -6,7 +6,7 @@ import { UserButton, useUser } from 'vike-react-auth'
 export default function HomePage() {
   const user = useUser()
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
         <UserButton />
       </div>
