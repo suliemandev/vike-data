@@ -19,6 +19,9 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../packages/vike-auth
+      vike-billing:
+        specifier: workspace:*
+        version: link:../packages/vike-billing
       vike-teams:
         specifier: workspace:*
         version: link:../packages/vike-teams
@@ -33,6 +36,18 @@ importers:
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
+
+  packages/vike-billing:
+    dependencies:
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+      vike-auth:
+        specifier: workspace:*
+        version: link:../vike-auth
+      vike-teams:
+        specifier: workspace:*
+        version: link:../vike-teams
 
   packages/vike-schema:
     dependencies:

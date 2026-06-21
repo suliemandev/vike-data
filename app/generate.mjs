@@ -14,11 +14,17 @@ import { mergeSchemas, generateArtifacts } from '@vike-data/vike-schema/schema'
 import vikeSchema from '@vike-data/vike-schema/config'
 import authExt from 'vike-auth/config'
 import teamsExt from 'vike-teams/config'
+import { billingFor } from 'vike-billing/billing'
+
+// vike-billing is parameterized: BILLING_SUBJECT picks what it bills against. The
+// codegen driver is plain JS, so unlike Vike's `extends` it CAN call the factory.
+const subject = process.env.BILLING_SUBJECT === 'user' ? 'user' : 'organization'
 
 // Contribution order: vike-schema's own `_migrations` first (each extension
-// self-installs it), then the feature extensions in dependency order
-// (auth before teams, since teams references + extends auth's `users`).
-const installed = [vikeSchema, authExt, teamsExt]
+// self-installs it), then the feature extensions in dependency order (auth before
+// teams, since teams references + extends auth's `users`; billing references
+// whichever subject it bills against).
+const installed = [vikeSchema, authExt, teamsExt, billingFor(subject)]
 const fragments = installed.flatMap((c) => c.schemas || []).flat()
 const { tables, conflicts } = mergeSchemas(fragments)
 
