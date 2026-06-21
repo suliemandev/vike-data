@@ -57,6 +57,9 @@ importers:
       '@vike-data/universal-schema':
         specifier: workspace:*
         version: link:../universal-schema
+      vike:
+        specifier: ^0.4.0
+        version: 0.4.259(srvx@0.11.17)(vite@7.3.5)
 
   packages/vike-teams:
     dependencies:

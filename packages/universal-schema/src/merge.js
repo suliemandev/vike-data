@@ -6,9 +6,82 @@
 // / +file, since inline functions can't be serialized into a runtime config);
 // here we just call it with the resolved config.
 export function resolveSchemas(contributions, config) {
-  return (contributions || []).flatMap((entry) =>
+  const fragments = (contributions || []).flatMap((entry) =>
     typeof entry === 'function' ? entry(config) || [] : entry || [],
   )
+  return dedupeFragments(fragments)
+}
+
+// Drop structurally-IDENTICAL fragments. When several extensions each
+// self-install a shared extension, a Vike without idempotent installation
+// (pre-#3355) includes that extension's cumulative `schemas` once per occurrence,
+// so the exact same fragment arrives multiple times (vike-schema's `_migrations`,
+// vike-auth's `users`, etc.). Deduping by structural identity here collapses those
+// to one — the generalized form of the `_migrations` dedupe — so every consumer
+// (runtime render AND the build-time generator) sees a clean list. A genuine
+// conflict (the same table defined DIFFERENTLY) has a different key, survives, and
+// is still flagged by mergeSchemas. Defense-in-depth + back-compat; on a Vike with
+// #3355 there are no duplicates and this is a no-op.
+export function dedupeFragments(fragments) {
+  const seen = new Set()
+  const out = []
+  for (const f of fragments) {
+    const key = `${f.mode}:${f.table}:${JSON.stringify(f.columns)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(f)
+  }
+  return out
+}
+
+// Order fragments so a table is created AFTER the tables its foreign keys point
+// at. Vike's cumulative config hands contributions back in config-specificity
+// order, which is NOT dependency-aware — so e.g. billing's `subscriptions`
+// (FK -> organizations) can arrive before teams' `organizations`. That is
+// harmless for the declarative ORMs (Prisma/Drizzle desired-state), but a broken
+// order for native migrations (a create referencing a not-yet-created table).
+//
+// This is a stable topological sort: creates come out in dependency order
+// (FK target before dependant), alters come after their own table's create, and
+// ties keep original order. Self-references and FKs whose target isn't a create
+// in this set are ignored (a users<->organizations cycle stays acyclic here
+// because the back-reference, current_organization_id, is contributed as an
+// alter, not part of either create). Any genuine residual cycle falls back to
+// original order rather than dropping fragments.
+export function orderFragments(fragments) {
+  const creates = fragments.filter((f) => f.mode === 'create')
+  const createTables = new Set(creates.map((f) => f.table))
+  const deps = (f) =>
+    new Set(
+      f.columns
+        .filter((c) => c.references && c.references.table !== f.table && createTables.has(c.references.table))
+        .map((c) => c.references.table),
+    )
+
+  const emitted = new Set()
+  const out = []
+  const emittedTable = (t) => out.some((f) => f.mode === 'create' && f.table === t)
+
+  let progress = true
+  while (out.length < fragments.length && progress) {
+    progress = false
+    for (const f of fragments) {
+      if (emitted.has(f)) continue
+      // A create waits for the tables its FKs point at; an alter additionally
+      // waits for its own table's create (it can only add a column once the
+      // table exists).
+      const depsReady = [...deps(f)].every((t) => emittedTable(t))
+      const ready = f.mode === 'create' ? depsReady : depsReady && emittedTable(f.table)
+      if (ready) {
+        out.push(f)
+        emitted.add(f)
+        progress = true
+      }
+    }
+  }
+  // Residual cycle (shouldn't happen here): append the rest in original order.
+  for (const f of fragments) if (!emitted.has(f)) out.push(f)
+  return out
 }
 
 // Merge every contributed schema fragment into final tables, then derive the

@@ -28,17 +28,37 @@ cd app && pnpm dev            # http://localhost:4000 (defaults to drizzle)
 pnpm dev:prisma               # or dev:drizzle / dev:native to pick the target ORM
 
 pnpm gen:prisma               # WRITE the artifacts to disk (or gen:drizzle / gen:native)
+pnpm gen:check                # CI drift gate: fail if committed artifacts are stale
 ```
 
-(`dev:prisma` / `gen:prisma` etc. just set the `VIKE_DATA_ORM` env var for you. The
-`dev` server only *renders* the compiled schema; `gen` is what writes files.)
+(`dev:prisma` / `gen:prisma` etc. just set the `VIKE_DATA_ORM` env var for you.)
 
 ## File generation
 
-`pnpm gen:<orm>` (the Prisma-style explicit command, `app/generate.mjs`) writes the
-derived artifacts to their conventional paths, each with a `// GENERATED ... do not
-edit by hand` header (the Prisma/Cloudflare precedent). Division of labour follows
-each ORM's own model:
+Generation is a **vike-schema Vite plugin** (`@vike-data/vike-schema/plugin`, added to
+the app's `vite.config.js`). It runs on `vike build` and on dev-server start, reads
+Vike's **resolved config graph** via `getVikeConfig()` — the merged cumulative
+`schemas` from *every* installed extension, plus the app's own options (e.g.
+`billingSubject`, which computed contributions read) — and writes the per-ORM
+artifacts. So `pnpm dev` now both renders *and* keeps the artifacts in sync; `pnpm
+gen:<orm>` is the explicit one-shot (it just runs `vike build`, which fires the same
+hook), and `pnpm gen:check` is the same path in compare-only mode for CI.
+
+Because it reads what Vike actually merged, adding or removing an extension needs no
+change here (the old `generate.mjs` stand-in hard-coded the contribution list). Two
+things the real graph forced it to handle, both in `@vike-data/universal-schema` so
+the runtime consumer benefits too:
+
+- **Dedupe identical contributions** (`dedupeFragments`). On a Vike without #3355, a
+  shared extension's `schemas` arrive once per install path; structurally-identical
+  fragments are collapsed (a genuine redefinition still conflicts). This also clears
+  the spurious duplicate-table conflicts the render page used to show.
+- **Order by FK dependency** (`orderFragments`). Vike's contribution order isn't
+  dependency-aware, so codegen topologically sorts fragments — a table is created
+  after the tables it references — making the native migration order runnable
+  regardless of how the contributions happened to arrive.
+
+Division of labour follows each ORM's own model:
 
 - **Prisma** -> `prisma/schema.generated.prisma`, **Drizzle** -> `drizzle/schema.generated.ts`:
   ONE declarative schema file (desired state). Their own tooling (`prisma migrate` /
@@ -204,7 +224,9 @@ beyond "FK column is `unique`".
    vike-schema sees them all, with no side-channel global.
 2. It accumulates one entry per source (no flattening); the consumer flattens.
 3. Order is config-specificity order, not dependency-aware. Migration ordering is
-   the data layer's job.
+   the data layer's job: the codegen hook topologically sorts fragments by FK
+   (`orderFragments`) so a table is created after the tables it references,
+   regardless of the order Vike hands them back.
 4. No conflict detection at the Vike layer; dedupe/collision handling is the data
    layer's job (done here in `merge.js`).
 5. An extension CAN self-install another from its own config using Vike's
@@ -216,7 +238,9 @@ beyond "FK column is `unique`".
 6. When several extensions each self-install the same shared extension, *older* Vike
    included that extension's cumulative contributions once *per occurrence* (it
    didn't dedupe by extension identity for cumulative values). So vike-schema's own
-   `_migrations` table arrived twice. The merge/derive layer dedupes it here.
+   `_migrations` table (and every shared extension's tables) arrived more than once.
+   `resolveSchemas` dedupes structurally-identical fragments (`dedupeFragments`), so
+   both the runtime render and the build-time codegen see a clean list.
    **Fixed upstream:** Vike accepted this as a bug and made extension installation
    idempotent ([vikejs/vike#3354](https://github.com/vikejs/vike/issues/3354), PR
    #3355 merged 2026-06-20). The host-side dedupe now stays as defense-in-depth and
