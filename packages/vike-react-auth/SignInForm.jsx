@@ -1,8 +1,10 @@
 // <SignInForm> — posts an email to the vike-auth server tier's /auth/request
-// endpoint and shows the "check your inbox" state. Styled entirely with the
-// theme's CSS variables (vike-themes), so installing a theme restyles it — the
-// login page is exactly issue #24's first theme consumer.
+// endpoint and shows the "check your inbox" state. Styled with the theme's CSS
+// variables (vike-themes) and localized via vike-react-i18n: every string is a
+// t() lookup keyed under `auth.*`, and vike-react-auth ships the translations
+// (see ./messages.js + +config.js), so the login UI follows the active locale.
 import { useState } from 'react'
+import { useTranslation } from 'vike-react-i18n'
 
 const field = {
   width: '100%',
@@ -29,7 +31,8 @@ const primaryBtn = {
   cursor: 'pointer',
 }
 
-export function SignInForm({ action = '/auth/request', heading = 'Sign in' }) {
+export function SignInForm({ action = '/auth/request', appName = 'Acme' }) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [state, setState] = useState('idle') // idle | sending | sent | error
 
@@ -49,13 +52,12 @@ export function SignInForm({ action = '/auth/request', heading = 'Sign in' }) {
   if (state === 'sent') {
     return (
       <div>
-        <h1 style={{ margin: '0 0 0.5rem', fontSize: 20 }}>Check your inbox</h1>
+        <h1 style={{ margin: '0 0 0.5rem', fontSize: 20 }}>{t('auth.inboxTitle')}</h1>
         <p style={{ color: 'var(--color-muted)', fontSize: 14, lineHeight: 1.6 }}>
-          We sent a sign-in link to <strong style={{ color: 'var(--color-text)' }}>{email}</strong>.
-          In dev no email is sent — the magic link is printed in the server console.
+          {t('auth.inboxBody', { email })} {t('auth.devNote')}
         </p>
         <button type="button" style={{ ...primaryBtn, background: 'transparent', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }} onClick={() => setState('idle')}>
-          Use a different email
+          {t('auth.different')}
         </button>
       </div>
     )
@@ -63,12 +65,12 @@ export function SignInForm({ action = '/auth/request', heading = 'Sign in' }) {
 
   return (
     <form onSubmit={onSubmit}>
-      <h1 style={{ margin: '0 0 0.25rem', fontSize: 20 }}>{heading}</h1>
+      <h1 style={{ margin: '0 0 0.25rem', fontSize: 20 }}>{t('auth.signIn', { app: appName })}</h1>
       <p style={{ margin: '0 0 var(--space-lg, 1.5rem)', color: 'var(--color-muted)', fontSize: 14 }}>
-        Passwordless — we email you a one-time link.
+        {t('auth.subtitle')}
       </p>
       <label style={{ display: 'block', fontSize: 13, color: 'var(--color-muted)' }}>
-        Email
+        {t('auth.email')}
         <input
           type="email"
           required
@@ -80,13 +82,13 @@ export function SignInForm({ action = '/auth/request', heading = 'Sign in' }) {
         />
       </label>
       <button type="submit" disabled={state === 'sending'} style={{ ...primaryBtn, opacity: state === 'sending' ? 0.7 : 1 }}>
-        {state === 'sending' ? 'Sending…' : 'Send magic link'}
+        {state === 'sending' ? t('auth.sending') : t('auth.send')}
       </button>
       {state === 'error' && (
-        <p style={{ color: '#dc2626', fontSize: 13, marginTop: 'var(--space-md, 1rem)' }}>Something went wrong. Please try again.</p>
+        <p style={{ color: '#dc2626', fontSize: 13, marginTop: 'var(--space-md, 1rem)' }}>{t('auth.error')}</p>
       )}
       <p style={{ marginTop: 'var(--space-lg, 1.5rem)', color: 'var(--color-muted)', fontSize: 12, lineHeight: 1.5 }}>
-        Served by the <code>vike-auth</code> extension — sessions are backed by the <code>sessions</code> table it declares.
+        {t('auth.footer')}
       </p>
     </form>
   )

@@ -1,0 +1,19 @@
+{
+  "name": "vike-react-i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React binding for vike-i18n: a vike-react Wrapper + LocaleProvider, useTranslation() -> t(), and a runtime locale picker. Installed as an extension; extensions contribute strings via the cumulative messages config.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./LocaleWrapper": "./LocaleWrapper.jsx"
+  },
+  "dependencies": {
+    "vike-i18n": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6"
+  }
+}

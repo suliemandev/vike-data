@@ -43,12 +43,21 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../packages/vike-auth
+      vike-i18n:
+        specifier: workspace:*
+        version: link:../packages/vike-i18n
       vike-react:
         specifier: ^0.6.0
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
       vike-react-auth:
         specifier: workspace:*
         version: link:../packages/vike-react-auth
+      vike-react-auth-fr:
+        specifier: workspace:*
+        version: link:../packages/vike-react-auth-fr
+      vike-react-i18n:
+        specifier: workspace:*
+        version: link:../packages/vike-react-i18n
       vike-react-layouts:
         specifier: workspace:*
         version: link:../packages/vike-react-layouts
@@ -88,6 +97,8 @@ importers:
         specifier: workspace:*
         version: link:../vike-teams
 
+  packages/vike-i18n: {}
+
   packages/vike-layouts: {}
 
   packages/vike-react-auth:
@@ -98,6 +109,30 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../vike-auth
+      vike-i18n:
+        specifier: workspace:*
+        version: link:../vike-i18n
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
+      vike-react-i18n:
+        specifier: workspace:*
+        version: link:../vike-react-i18n
+
+  packages/vike-react-auth-fr:
+    dependencies:
+      vike-i18n:
+        specifier: workspace:*
+        version: link:../vike-i18n
+
+  packages/vike-react-i18n:
+    dependencies:
+      react:
+        specifier: '>=18'
+        version: 18.3.1
+      vike-i18n:
+        specifier: workspace:*
+        version: link:../vike-i18n
       vike-react:
         specifier: '>=0.6'
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))

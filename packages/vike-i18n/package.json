@@ -1,0 +1,15 @@
+{
+  "name": "vike-i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic localization core: a cumulative `messages` contribution point so extensions ship translations that compose, merged per active locale. Sits on top of Vike's locale routing (pageContext.locale). Zero framework imports.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./oncreate": "./oncreate.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
