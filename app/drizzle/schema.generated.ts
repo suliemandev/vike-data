@@ -31,6 +31,16 @@ export const sessions = pgTable('sessions', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
+export const loginTokens = pgTable('login_tokens', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  consumedAt: timestamp('consumed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
 export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   name: varchar('name', { length: 255 }).notNull(),

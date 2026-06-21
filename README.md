@@ -94,8 +94,10 @@ native side by side.
 - `packages/vike-schema` - the Vike binding: defines the `schemas` point, re-exports
   the core at `@vike-data/vike-schema/schema`, and dogfoods the point with its own
   `_migrations` table.
-- `packages/vike-auth` - the keystone auth extension: owns `users` + `sessions`.
-  The composition base (see below).
+- `packages/vike-auth` - the keystone auth extension: owns `users` + `sessions` +
+  `login_tokens`, **and** a working server tier (magic-link sessions via universal
+  middleware). The composition base (see below). See its
+  [README](packages/vike-auth/README.md#server-tier).
 - `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
   `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
 - `packages/vike-billing` - subscriptions, the third leg. A *configurable*
@@ -126,6 +128,13 @@ table, and the higher-level extensions of a SaaS spine (teams, billing, audit lo
 layer on top of it additively. The same merged schema compiles to all three ORMs.
 These are the framework-agnostic **core** tier; per-framework UI wrappers
 (`vike-react-auth`, etc.) would layer on top reusing the exact same schema.
+
+And it is not schema-only: `vike-auth` also ships a **server tier** — a working
+passwordless magic-link flow (universal middleware for the `/auth/*` endpoints +
+the session cookie, `onCreatePageContext` for `pageContext.user`), with sessions
+stored in the `sessions` table it declares. The demo page's sign-in panel is
+driven entirely by `pageContext.user`. See
+[vike-auth's README](packages/vike-auth/README.md#server-tier).
 
 ## Configurable extensions (computed schema)
 
@@ -213,6 +222,25 @@ beyond "FK column is `unique`".
    #3355 merged 2026-06-20). The host-side dedupe now stays as defense-in-depth and
    back-compat for older Vike.
 7. Hooks must be separate `+hook.js` files, not inline functions in a config.
+
+**On the server tier (vike-auth's `middleware` + `onCreatePageContext`, added with the magic-link auth):**
+
+8. The built-in **`middleware` config is cumulative but not deduped by identity** —
+   the same finding as #6, one layer up. vike-auth is self-installed by the app,
+   teams, and billing, so its middleware runs several times per request; and a
+   universal middleware runs even after an earlier one returned a `Response` (a
+   `Response` only short-circuits route *handlers*). A body-reading middleware then
+   double-reads. vike-auth guards with a per-request `WeakSet`. Vike could dedupe
+   the `middleware` config by identity, exactly as the schema layer dedupes `_migrations`.
+9. A **3xx redirect returned from a universal middleware crashes Vike's request
+   logger**: it looks for a `Location` header with a capital `L`, but the Web
+   `Headers` object lower-cases it (`assert(headerRedirect)` throws). Worked around
+   with `200` + meta-refresh; a case-insensitive lookup in `logHttpResponse` fixes it.
+10. A **middleware's returned context is not bridged into `pageContext`** (Vike
+    invokes the chain with a fresh `{}` and renders from its own closure). So the
+    current user is resolved in `onCreatePageContext`, not the middleware. Bridging
+    universal-middleware context into `pageContext` would let one middleware both
+    handle endpoints and populate `pageContext.user`.
 
 **On the schema model:**
 

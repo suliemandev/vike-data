@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Auth extension (core tier): owns the users + sessions tables, ORM-agnostic. The composition base other extensions build on.",
+  "description": "Auth extension (core tier): owns the users + sessions + login_tokens tables and a server tier (magic-link sessions via universal middleware), ORM-agnostic. The composition base other extensions build on.",
   "exports": {
-    "./config": "./+config.js"
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./middleware": "./vike-middleware.js",
+    "./onCreatePageContext": "./oncreate.js"
   },
   "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
     "@vike-data/vike-schema": "workspace:*"
   }
 }
