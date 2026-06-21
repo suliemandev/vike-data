@@ -55,6 +55,25 @@ export default function onRenderHtml(pageContext) {
       </section>`
   }).join('')
 
+  // Auth panel — driven entirely by `pageContext.user`, which the vike-auth
+  // server tier resolves from the session cookie. The app knows nothing about
+  // how auth works; it reads one field and posts to the extension's endpoints.
+  const user = pageContext.user
+  const authPanel = user
+    ? `<div style="border:1px solid #0a7; background:#f2fbf7; border-radius:6px; padding:.8rem 1rem; margin-bottom:1.5rem;">
+         Signed in as <strong>${escapeHtml(user.email)}</strong>
+         <form method="post" action="/auth/logout" style="display:inline; margin-left:.6rem;">
+           <button type="submit">Log out</button>
+         </form>
+       </div>`
+    : `<div style="border:1px solid #ddd; border-radius:6px; padding:.8rem 1rem; margin-bottom:1.5rem;">
+         <form method="post" action="/auth/request" style="display:flex; gap:.5rem;">
+           <input name="email" type="email" placeholder="you@example.com" required style="flex:1; padding:.3rem .5rem;" />
+           <button type="submit">Send magic link</button>
+         </form>
+         <p style="color:#666; margin:.5rem 0 0; font-size:13px;">Passwordless sign-in, served by the <code>vike-auth</code> extension (sessions backed by the <code>sessions</code> table it declares).</p>
+       </div>`
+
   const conflictBlock = conflicts.length
     ? `<h2 style="color:#b00;">Conflicts (${String(conflicts.length)})</h2><ul>${conflicts
         .map((c) => `<li>${escapeHtml(c.kind)}: <code>${escapeHtml(c.table)}${c.column ? '.' + c.column : ''}</code></li>`)
@@ -66,6 +85,7 @@ export default function onRenderHtml(pageContext) {
   <head><meta charset="utf-8" /><title>vike-schema</title></head>
   <body style="font-family: ui-monospace, monospace; max-width: 1100px; margin: 2.5rem auto; line-height:1.5; color:#222;">
     <h1>vike-schema</h1>
+    ${authPanel}
     <p>${String(fragments.length)} schema fragments contributed through one cumulative config (vike-schema + ${String(fragments.length - 1)} from extensions), merged into ${String(tables.length)} tables. Schema is the source of truth; everything below is derived.</p>
 
     <h2>Derived migrations</h2>

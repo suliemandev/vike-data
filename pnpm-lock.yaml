@@ -33,6 +33,9 @@ importers:
 
   packages/vike-auth:
     dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema

@@ -51,6 +51,18 @@ model Sessions {
   @@map("sessions")
 }
 
+model LoginTokens {
+  id String @id @default(uuid())
+  email String
+  token String @unique
+  expires_at DateTime
+  consumed_at DateTime?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  @@map("login_tokens")
+}
+
 model Organizations {
   id String @id @default(uuid())
   name String

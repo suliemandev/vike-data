@@ -1,0 +1,111 @@
+// The Vike binding's request handler: a universal middleware (server-agnostic,
+// runs on Hono / Express / Cloudflare / the Vike dev server alike). It owns the
+// auth ENDPOINTS and the session cookie; it does not render the login UI (that
+// is the app's, or a future vike-react-auth's, job).
+//
+// As a universal middleware it runs on every request inside Vike's onion. For
+// non-/auth/ paths it returns nothing and the request falls through to Vike's
+// renderer. For /auth/* it short-circuits with a Response.
+//
+//   POST /auth/request   form `email`  -> issue a magic link (dev: show the link)
+//   GET  /auth/callback?token=...       -> verify, open a session, set cookie, redirect /
+//   POST /auth/logout                   -> destroy the session, clear cookie, redirect /
+//
+// NOTE: resolving the current user for RENDERING is done in oncreate.js, not
+// here. In Vike 0.4.259 a +middleware's returned context is not bridged into
+// pageContext, so the middleware can't hand `user` to onRenderHtml. See the
+// README design note — if Vike bridges universal-middleware context into
+// pageContext, the two halves collapse into one hook.
+import { enhance, MiddlewareOrder } from '@universal-middleware/core'
+import { SESSION_COOKIE } from './constants.js'
+import { parseCookies, serializeCookie } from './cookie.js'
+
+const html = (status, body) =>
+  new Response(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>vike-auth</title></head>` +
+      `<body style="font-family:ui-monospace,monospace;max-width:640px;margin:3rem auto;line-height:1.6;color:#222;">${body}</body></html>`,
+    { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+  )
+
+// Navigate to `to` and set the session cookie. We use a 200 + meta-refresh
+// rather than a 3xx redirect on purpose: in Vike 0.4.259, a redirect Response
+// returned from a universal middleware crashes Vike's request logger, which
+// looks for a `Location` header with a capital L while the Web `Headers` object
+// has lower-cased it to `location` (`assert(headerRedirect)` throws). 200 +
+// meta-refresh sets the cookie and navigates without tripping that path.
+// (Finding for Vike: case-insensitive header lookup in logHttpResponse.)
+const navigate = (to, cookie) => {
+  const headers = { 'Content-Type': 'text/html; charset=utf-8' }
+  if (cookie) headers['Set-Cookie'] = cookie
+  return new Response(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"/>` +
+      `<meta http-equiv="refresh" content="0; url=${esc(to)}"/></head>` +
+      `<body><a href="${esc(to)}">Continue</a></body></html>`,
+    { status: 200, headers },
+  )
+}
+
+const esc = (s) =>
+  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+export function createAuthMiddleware(auth, { dev = false } = {}) {
+  const sessionCookie = (token, maxAgeSec) =>
+    serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure: !dev })
+
+  // Idempotency guard. An extension that is self-installed by several others
+  // (vike-auth is pulled in by the app AND by vike-teams AND by vike-billing)
+  // has its `middleware` collected once per install path, and universal
+  // middlewares all run even after one returns a Response (a Response only
+  // short-circuits route HANDLERS, not middlewares). Without this guard the
+  // second run would re-read the request body ("Body already read") and re-issue
+  // the magic link. We handle each request object exactly once; later duplicates
+  // no-op and the first Response stands. (Finding for Vike: dedupe the built-in
+  // `middleware` config by identity, mirroring schema's `_migrations` dedupe.)
+  const handled = new WeakSet()
+
+  async function authMiddleware(request) {
+    const url = new URL(request.url)
+    if (!url.pathname.startsWith('/auth/')) return // fall through to Vike
+    if (handled.has(request)) return // a duplicate registration already handled it
+    handled.add(request)
+
+    // --- issue a magic link -------------------------------------------------
+    if (url.pathname === '/auth/request' && request.method === 'POST') {
+      const form = await request.formData()
+      const result = await auth.requestMagicLink(form.get('email'))
+      if (!result.ok) {
+        return html(400, `<p>Could not send a link: <code>${esc(result.error)}</code>.</p><p><a href="/">Back</a></p>`)
+      }
+      const link = `${url.origin}/auth/callback?token=${encodeURIComponent(result.token)}`
+      // No email provider in the proof: in dev we surface the link directly
+      // (the vike-dashboard pattern — dev logs the magic link to the console).
+      console.log(`[vike-auth] magic link for ${result.email}: ${link}`)
+      const devLink = dev
+        ? `<p>Dev mode, no email is sent. Follow your magic link:</p><p><a href="${esc(link)}">${esc(link)}</a></p>`
+        : `<p>If that address has an account, a sign-in link is on its way.</p>`
+      return html(200, `<h2>Check your inbox</h2>${devLink}<p><a href="/">Back</a></p>`)
+    }
+
+    // --- verify a magic link, open a session --------------------------------
+    if (url.pathname === '/auth/callback' && request.method === 'GET') {
+      const result = await auth.redeemMagicLink(url.searchParams.get('token') || '')
+      if (!result.ok) {
+        return html(401, `<h2>Sign-in failed</h2><p><code>${esc(result.error)}</code></p><p><a href="/">Try again</a></p>`)
+      }
+      return navigate('/', sessionCookie(result.session.token, Math.floor(auth.sessionTtlMs / 1000)))
+    }
+
+    // --- logout -------------------------------------------------------------
+    if (url.pathname === '/auth/logout' && request.method === 'POST') {
+      const token = parseCookies(request.headers.get('cookie'))[SESSION_COOKIE]
+      await auth.destroySession(token)
+      return navigate('/', sessionCookie('', 0))
+    }
+
+    return html(404, `<p>Unknown auth route.</p>`)
+  }
+
+  // order = AUTHENTICATION marks this as a middleware (not a route handler) and
+  // places it in the conventional slot; no `path` so it sees every request.
+  return enhance(authMiddleware, { name: 'vike-auth', order: MiddlewareOrder.AUTHENTICATION })
+}
