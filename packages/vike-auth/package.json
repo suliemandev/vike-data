@@ -10,6 +10,9 @@
     "./middleware": "./vike-middleware.js",
     "./onCreatePageContext": "./oncreate.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@universal-middleware/core": "^0.4.18",
     "@vike-data/vike-schema": "workspace:*"
