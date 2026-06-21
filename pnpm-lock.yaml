@@ -26,18 +26,6 @@ importers:
         specifier: ^7.1.0
         version: 7.3.5
 
-  packages/example-auth:
-    dependencies:
-      '@vike-data/vike-schema':
-        specifier: workspace:*
-        version: link:../vike-schema
-
-  packages/example-billing:
-    dependencies:
-      '@vike-data/vike-schema':
-        specifier: workspace:*
-        version: link:../vike-schema
-
   packages/universal-schema: {}
 
   packages/vike-auth:
