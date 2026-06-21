@@ -3,11 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Framework-agnostic theme core: design tokens (colors/fonts/radius/spacing) compiled to CSS variables. The presentation-layer composition primitive a per-framework wrapper (vike-react-themes) applies. Zero framework imports.",
+  "description": "Theme extension: a framework-agnostic core (design tokens -> CSS variables; theme brand + appearance axes) plus per-framework bindings as subpaths (vike-themes/react, and vue/solid later). One package, install and import the subpath for your framework.",
   "exports": {
     ".": "./index.js",
     "./config": "./+config.js",
-    "./oncreate": "./oncreate.js"
+    "./oncreate": "./oncreate.js",
+    "./react": "./react/+config.js",
+    "./react/hooks": "./react/context.js",
+    "./react/ThemeWrapper": "./react/ThemeWrapper.jsx"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true }
   },
   "scripts": {
     "test": "node --test"

@@ -1,16 +1,15 @@
-// vike-react-themes — the React binding over the framework-agnostic vike-themes
-// core. It owns the two runtime axes: the active THEME (brand) and the APPEARANCE
-// (mode: system/light/dark). The core turns a (theme, appearance) pair into CSS
-// (themeToAppearanceCss); this applies it and persists each axis to its cookie.
+// The React binding (vike-themes/react subpath) over the framework-agnostic
+// vike-themes core. It owns the two runtime axes: the active THEME (brand) and the
+// APPEARANCE (mode: system/light/dark). The core turns a (theme, appearance) pair
+// into CSS (themeToAppearanceCss); this applies it and persists each axis to a cookie.
 //
 // SSR-safe: the provider renders from `theme`/`appearance` props (a page reads the
 // cookies off pageContext and passes them in), so first paint matches and there is
 // no flash. `system` is applied via the core's `@media (prefers-color-scheme)` CSS,
 // so it follows the OS even before hydration.
-import { createContext, useContext, useState, useMemo, useCallback } from 'react'
-import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from 'vike-themes'
-
-const ThemeCtx = createContext(null)
+import { useState, useMemo, useCallback } from 'react'
+import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from '../index.js'
+import { ThemeCtx } from './context.js'
 
 const writeCookie = (name, value) => {
   if (typeof document === 'undefined') return
@@ -56,10 +55,4 @@ export function ThemeProvider({ themes = presets, theme: initialTheme = 'default
       {children}
     </ThemeCtx.Provider>
   )
-}
-
-export function useTheme() {
-  const ctx = useContext(ThemeCtx)
-  if (!ctx) throw new Error('[vike-react-themes] useTheme must be used inside <ThemeProvider>')
-  return ctx
 }

@@ -9,7 +9,7 @@ export default {
   // Wrapper/Layout components Vike pulls in); serve them as source instead of
   // pre-bundling, so esbuild's automatic-JSX transform applies uniformly.
   optimizeDeps: {
-    exclude: ['vike-themes', 'vike-layouts', 'vike-i18n', 'vike-react-themes', 'vike-react-layouts', 'vike-react-auth', 'vike-react-auth-fr', 'vike-react-i18n', 'vike-theme-emerald'],
+    exclude: ['vike-themes', 'vike-layouts', 'vike-i18n', 'vike-react-layouts', 'vike-react-auth', 'vike-react-auth-fr', 'vike-react-i18n', 'vike-theme-emerald'],
   },
   server: { port: 4100, strictPort: true },
 }

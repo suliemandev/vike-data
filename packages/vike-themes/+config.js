@@ -13,7 +13,7 @@
 //                    one by name — install a theme package and it is selectable.
 //
 // The React rendering (applying the CSS, the runtime picker) is the binding's job
-// (vike-react-themes) — same core/UI split as vike-auth -> vike-react-auth. Here we
+// (vike-themes/react) — same core/UI split as vike-auth -> vike-react-auth. Here we
 // only declare the seam, ship the built-in brand, and read the cookies.
 import { defaultTheme } from './index.js'
 

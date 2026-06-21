@@ -3,14 +3,14 @@
 // config key. No ThemeProvider, no shell wiring, no themes.js — those are the
 // extensions' job.
 //
-//   - themes:  install vike-react-themes + the emerald theme PACKAGE; pick the
+//   - themes:  install vike-themes/react + the emerald theme PACKAGE; pick the
 //              active one with `theme`. The app's OWN brand theme is contributed
 //              through the same cumulative `themes` point (customization).
 //   - layout:  install vike-react-layouts; pick the shell with `layout`, fill the
 //              slots with `logo`/`nav`. Per-page override in pages/login/+config.js.
 import vikeReact from 'vike-react/config'
 import authExt from 'vike-auth/config'
-import themesExt from 'vike-react-themes/config'
+import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-react-layouts/config'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-react-i18n/config'
