@@ -8,6 +8,9 @@
     "./config": "./+config.js",
     "./schemas": "./schemas.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*",
