@@ -1,320 +1,144 @@
 # vike-data (experiment)
 
-> **Status: early experiment / spike.** Not a published package. The APIs here are
-> throwaway and the per-ORM compilers emit representative output only (they don't
-> run against real databases yet). This repo exists to explore a design, not to be
-> installed.
+> **Status: experiment / spike.** Not published. APIs are throwaway and the ORM
+> compilers emit representative output (they don't run against a real database yet).
+> This repo explores a design; it isn't meant to be installed.
 
-A proof-of-concept for a **data-layer extension for [Vike](https://vike.dev)**.
-The model in one line:
+A proof that a **[Vike](https://vike.dev) extension can own and compose a whole
+vertical slice** of an app: its database tables, its server behaviour, and its UI
+(pages, auth, themes, layouts, translations). You install an extension and get all
+of it, composing through Vike's config with the app on top.
 
-> **Extensions declare schema once. vike-schema collects it through one Vike config
-> point, merges it, and derives migrations + per-ORM artifacts from the result.**
+**The model in one line:**
 
-Schema is the single source of truth. Migrations are an output, not something you
-hand-author. The same schema targets Prisma, Drizzle, or a native engine.
+> Each extension declares its slice once. Vike collects every contribution through
+> cumulative config. The app picks options and composes everyone together.
 
-The code is split into two packages along a clean seam:
+Two consequences run through everything here:
 
-- **`@vike-data/universal-schema`** - the framework-agnostic core: the neutral
-  schema IR + DSL (`defineSchema`/`extendSchema`), the merge/derive logic, and the
-  per-ORM compilers. Zero Vike imports; usable standalone by any framework or ORM.
-- **`@vike-data/vike-schema`** - the thin Vike binding: contributes the `schemas`
-  cumulative config point and re-exports the core at `@vike-data/vike-schema/schema`.
+- **Derive, don't author.** Schema is the single source of truth; migrations and
+  per-ORM files are *generated* from it. The same idea applies up the stack: themes
+  are derived to CSS variables, the active translation is merged per locale.
+- **Compose, don't wire.** An app installs an extension with `extends: [ext]` and
+  configures it with a sibling key (`theme`, `layout`, `locale`, `billingSubject`),
+  exactly like `vike-react`'s `ssr`. No bespoke wiring per extension.
+
+---
+
+## Two layers
+
+### 1. Data layer — schema as the source of truth
+
+Extensions declare tables with `defineSchema('users', t => ...)` (or `extendSchema`
+to add columns to a table another extension created). `vike-schema` collects every
+contribution through one cumulative `schemas` config point, merges them, **derives**
+the migration list, and **compiles** the result to **Prisma, Drizzle, or a native
+engine** — the same schema, three targets. Foreign keys validate *across* extensions;
+billing's schema is even *computed* from an app option.
+
+### 2. UI tier — themes, layouts, auth, i18n
+
+Same pattern, applied to the frontend. Each concern is a framework-agnostic **core**
+plus a thin **React binding** (so a `vike-vue-*` could reuse the core). The app
+installs each and sets a sibling config key:
+
+- **Themes** — a brand (light + dark tokens) compiled to CSS variables, plus an
+  *appearance* axis (`system` / `light` / `dark`; `system` follows the OS, flash-free).
+- **Layouts** — pick an app shell (`centered` / `topbar` / `sidebar`) per page.
+- **Auth UI** — `<SignInForm>` / `<UserButton>` / `useUser()` over vike-auth's server tier.
+- **i18n** — extensions ship their own strings; translations merge per locale. The
+  base ships English; other languages are separate, installable **locale packs**.
+
+Themes and translations **compose like packages**: install `vike-theme-emerald` and a
+new theme appears in the picker; install `vike-react-auth-fr` and the auth UI speaks
+French. Neither the app nor the extension being styled/translated knows the other exists.
+
+---
+
+## Structure
+
+| Package | Owns |
+|---|---|
+| **Data layer** | |
+| `universal-schema` | The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. **Zero Vike imports.** |
+| `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
+| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). |
+| `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
+| `vike-billing` | Event-sourced subscriptions; subject FK *computed* from `billingSubject`. Self-installs vike-teams. |
+| **UI tier** (core + React binding) | |
+| `vike-themes` / `vike-react-themes` | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
+| `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
+| `vike-layouts` / `vike-react-layouts` | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
+| `vike-react-auth` | Auth React components + `useUser()`. Ships English strings. |
+| `vike-react-auth-fr` | French locale pack for vike-react-auth. |
+| `vike-i18n` / `vike-react-i18n` | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
+| **Apps** | |
+| `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
+| `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home. |
+
+The split is consistent: every core is framework-agnostic and Vike-agnostic where it
+can be; every Vike-/React-specific concern lives in a `vike-*` / `vike-react-*` binding.
+
+---
+
+## Run it
 
 ```bash
 pnpm install
-cd app && pnpm dev            # http://localhost:4000 (defaults to drizzle)
-pnpm dev:prisma               # or dev:drizzle / dev:native to pick the target ORM
 
-pnpm gen:prisma               # WRITE the artifacts to disk (or gen:drizzle / gen:native)
+# Data-layer demo — schema merged + compiled to an ORM (default drizzle)
+cd app && pnpm dev            # http://localhost:4000
+pnpm dev:prisma               # or dev:drizzle / dev:native
+pnpm gen:prisma               # write the per-ORM artifacts (gen:drizzle / gen:native)
 pnpm gen:check                # CI drift gate: fail if committed artifacts are stale
+
+# UI-tier demo — themed + localized login
+cd app-react && pnpm dev      # http://localhost:4100
 ```
 
-(`dev:prisma` / `gen:prisma` etc. just set the `VIKE_DATA_ORM` env var for you.)
+In `app-react`, switch **Language** (bottom-left) and **Appearance / Theme**
+(bottom-right) live. The login flow is passwordless: submit an email, then open the
+magic link printed in the `pnpm dev` console.
 
-## File generation
+Run the package tests with `pnpm -r test`.
 
-Generation is a **vike-schema Vite plugin** (`@vike-data/vike-schema/plugin`, added to
-the app's `vite.config.js`). It runs on `vike build` and on dev-server start, reads
-Vike's **resolved config graph** via `getVikeConfig()` — the merged cumulative
-`schemas` from *every* installed extension, plus the app's own options (e.g.
-`billingSubject`, which computed contributions read) — and writes the per-ORM
-artifacts. So `pnpm dev` now both renders *and* keeps the artifacts in sync; `pnpm
-gen:<orm>` is the explicit one-shot (it just runs `vike build`, which fires the same
-hook), and `pnpm gen:check` is the same path in compare-only mode for CI.
+---
 
-Because it reads what Vike actually merged, adding or removing an extension needs no
-change here (the old `generate.mjs` stand-in hard-coded the contribution list). Two
-things the real graph forced it to handle, both in `@vike-data/universal-schema` so
-the runtime consumer benefits too:
+## How composition works
 
-- **Dedupe identical contributions** (`dedupeFragments`). On a Vike without #3355, a
-  shared extension's `schemas` arrive once per install path; structurally-identical
-  fragments are collapsed (a genuine redefinition still conflicts). This also clears
-  the spurious duplicate-table conflicts the render page used to show.
-- **Order by FK dependency** (`orderFragments`). Vike's contribution order isn't
-  dependency-aware, so codegen topologically sorts fragments — a table is created
-  after the tables it references — making the native migration order runnable
-  regardless of how the contributions happened to arrive.
+1. A binding **declares a cumulative config point** via `meta` (`schemas`, `themes`,
+   `messages`). It is framework-agnostic config — just a contribution channel.
+2. Each extension **contributes** to it (a schema fragment, a theme, a message map)
+   and **self-installs** its base with a pointer-import
+   (`extends: ['import:vike-themes/config:default']`), so one install pulls the chain.
+3. The app **picks** with a sibling key (`theme: 'acme'`, `locale: 'en'`) and can
+   **override** any contribution (retranslate a string, restyle a theme).
+4. The consumer **merges + derives**: schema → migrations + ORM files; themes →
+   the active CSS; messages → the dictionary for the active locale.
 
-Division of labour follows each ORM's own model:
+Non-serializable contributions (a computed schema, a live component for a Wrapper/
+Layout) are passed as **pointer-imports**, since Vike serializes runtime config and
+rejects inline functions.
 
-- **Prisma** -> `prisma/schema.generated.prisma`, **Drizzle** -> `drizzle/schema.generated.ts`:
-  ONE declarative schema file (desired state). Their own tooling (`prisma migrate` /
-  `drizzle-kit`) derives the migrations. The 3rd-party column add is folded in.
-- **Native** -> `database/migrations/NNN_*.generated.ts`: the engine we own, so WE emit
-  the ordered migration ledger. The cross-extension add becomes its OWN
-  `alter_users_add_current_organization_id` migration, separate from `create_users` -
-  mirroring how the columns were actually contributed.
+---
 
-**Suffix convention.** Every artifact carries both the `// GENERATED ... don't edit`
-header AND a `.generated.` filename suffix, matching the Vike-wide convention (cf.
-Vike's own `vike.generated.d.ts`, [vikejs/vike#698](https://github.com/vikejs/vike/issues/698)):
-the header is the portable signal, the suffix makes generated files obvious at a
-glance. Since `schema.generated.prisma` isn't Prisma's default path, point Prisma at
-it with `"prisma": { "schema": "prisma/schema.generated.prisma" }` (Drizzle's path is
-set in `drizzle.config.ts` anyway).
+## Notes & deferred
 
-These files are **committed**, not gitignored: diffs stay visible and CI is
-reproducible, while the header keeps them honestly marked as output. Only an ORM's
-generated *client* (e.g. Prisma Client) is ignored. Generation is idempotent -
-re-running produces byte-identical files. Schema is the source of truth; declarations
-are authored, the ORM schema is generated output (the usual model, inverted).
+Per-package design notes live in each package's README (see
+[vike-auth](packages/vike-auth/README.md), [vike-billing](packages/vike-billing/README.md)).
+Highlights and open ends:
 
-## How it flows
-
-1. **`vike-schema` defines a contribution point** - a custom `cumulative` Vike
-   config named `schemas` (`packages/vike-schema/+config.js`).
-2. **Each extension contributes declarative schema** - `defineSchema('users', t => ...)`
-   to create a table, or `extendSchema('users', t => ...)` to add columns to a
-   table another extension created. No ORM imported (`packages/vike-auth/+config.js`,
-   `packages/vike-teams/+config.js`).
-3. **vike-schema merges everything** and **derives** the migration list, then
-   **compiles** each merged table to the selected ORM (`app/pages/+onRenderHtml.js`).
-
-The page renders: the derived migrations, each merged table (with columns added
-by other extensions flagged), and each table compiled to Prisma + Drizzle +
-native side by side.
-
-## Can a 3rd-party extension touch another's table?
-
-- **Add columns: yes.** `vike-teams` adds `current_organization_id` to the `users`
-  table that `vike-auth` created. It lands in the merged schema and compiles
-  into every ORM. This is a first-class, supported pattern.
-- **Edit an existing column: detected, not silently applied.** If an `extendSchema`
-  names a column that already exists, the merge step records a `column-edit`
-  conflict rather than letting one extension quietly rewrite another's contract.
-  Resolution is left to an explicit policy (out of scope for v1).
-
-## Layout
-
-- `packages/universal-schema` - the framework-agnostic core: the schema IR + DSL,
-  the merge/derive logic, and the per-ORM compilers. No Vike imports.
-- `packages/vike-schema` - the Vike binding: defines the `schemas` point, re-exports
-  the core at `@vike-data/vike-schema/schema`, and dogfoods the point with its own
-  `_migrations` table.
-- `packages/vike-auth` - the keystone auth extension: owns `users` + `sessions` +
-  `login_tokens`, **and** a working server tier (magic-link sessions via universal
-  middleware). The composition base (see below). See its
-  [README](packages/vike-auth/README.md#server-tier).
-- `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
-  `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
-- `packages/vike-billing` - subscriptions, the third leg, in an **event-sourced**
-  shape: `event__subscription_events` (append-only) + `computed__subscriptions`
-  (projection). A *configurable* extension: the app sets `billingSubject`, and both
-  tables' subject FK is computed from it (`organizations` by default, or `users`).
-  Self-installs vike-teams. See its
-  [design note](packages/vike-billing/README.md#design-note--what-the-schema-ir-can-and-cant-express).
-- `app` - installs `vike-auth` + `vike-teams` + `vike-billing` (the chain
-  self-installs `vike-schema`); defines nothing itself.
-
-## Keystone: vike-auth + vike-teams (the Stem Vision)
-
-The point of the data layer is **extensions that compose on each other's schema**.
-`vike-auth` owns everything auth needs, starting with the `users` table. `vike-teams`
-then builds on top without vike-auth knowing it exists:
-
-- it **references** `users` by `user_id` (memberships) and `owner_id` (organizations);
-- it **extends** `users` with `current_organization_id` via `extendSchema`;
-- it **self-installs** vike-auth, which self-installs vike-schema, so the whole chain
-  composes from one install: `vike-schema <- vike-auth <- vike-teams`.
-
-`vike-billing` is the third leg, modelled **event-sourced**: an append-only
-`event__subscription_events` log + a `computed__subscriptions` projection that
-composes on auth and teams. It also shows a **configurable** extension — the app
-sets `billingSubject` and billing's schema is *computed* from it, putting the subject
-FK into `organizations` (B2B, default) or `users` (per-seat). The demo picks the
-value via `BILLING_SUBJECT` (mirroring `VIKE_DATA_ORM`).
-
-That composition is the Stem Vision in miniature: a foundational extension owns a
-table, and the higher-level extensions of a SaaS spine (teams, billing, audit logs)
-layer on top of it additively. The same merged schema compiles to all three ORMs.
-These are the framework-agnostic **core** tier; per-framework UI wrappers
-(`vike-react-auth`, etc.) would layer on top reusing the exact same schema.
-
-And it is not schema-only: `vike-auth` also ships a **server tier** — a working
-passwordless magic-link flow (universal middleware for the `/auth/*` endpoints +
-the session cookie, `onCreatePageContext` for `pageContext.user`), with sessions
-stored in the `sessions` table it declares. The demo page's sign-in panel is
-driven entirely by `pageContext.user`. See
-[vike-auth's README](packages/vike-auth/README.md#server-tier).
-
-## Configurable extensions (computed schema)
-
-An extension can let the app shape the schema it contributes — **no vike-data core
-change, no special Vike feature**. It's the standard Vike options pattern plus a
-*computed* contribution (verified by spike):
-
-1. The extension declares a config key via `meta` (`billingSubject`) and a default.
-2. The app sets it as a sibling to `extends` — the same way vike-react takes `ssr` /
-   `prerender`. App config wins over the extension's default.
-3. The extension contributes its `schemas` as a **function of the resolved config**
-   instead of a static array. vike-schema calls it with the merged config, so the
-   schema depends on the option (`resolveSchemas()` normalizes static + computed
-   contributions).
-
-The one constraint: the computed contribution must be a **`+file` / pointer-import**,
-not an inline function — Vike serializes runtime (server-env) config values and
-rejects inline functions with a clear `runtime-in-config` error. So billing's
-function lives in `schemas.js`, wired in via `schemas: 'import:vike-billing/schemas:default'`.
-At consume time it arrives as a live, callable function that receives the resolved
-config. (This corrects an earlier note that `extends` "can't pass options" — options
-flow as app-set config keys, never as args to the extension import.)
-
-## Relations (v2)
-
-A foreign key is one declaration on the owning column:
-
-```js
-defineSchema('sessions', (t) => {
-  t.uuid('id').primary()
-  t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
-  // ...
-})
-```
-
-`target` is `'table'` (defaults to its `id`) or `'table.column'`; `onDelete` is the
-referential action. From that single declaration:
-
-- **Validation.** `merge.js` checks every FK points at a table + column that exist in
-  the *merged* schema. This is cross-extension referential integrity: vike-teams' FK
-  into auth's `users` only resolves once vike-auth is installed; a dangling ref is a
-  flagged conflict (`unknown-reference-table` / `unknown-reference-column`), not a
-  runtime crash.
-- **Prisma.** `deriveRelations()` computes the full graph (a FK needs a field on
-  *both* models), so each model gets a scalar column + a relation field + the inverse
-  field on the referenced model. Every relation gets a unique `@relation("<table>_<fk>")`
-  name, so **multiple and circular relations between the same two models compile
-  without hand-authored names** — e.g. `users` <-> `organizations`
-  (`users.current_organization_id` and `organizations.owner_id`) is a cycle and Just
-  Works.
-- **Drizzle.** Column-level `.references(() => users.id, { onDelete: 'cascade' })`; the
-  lazy thunk means declaration order and cycles don't matter.
-- **Native.** We own migrations, so the FK is an inline constraint:
-  `t.uuid('user_id').references('id').on('users').onDelete('cascade')`. A
-  cross-extension add (teams' `current_organization_id` on `users`) carries its FK into
-  its own alter migration.
-
-Still deferred: composite keys, self-referential FKs, many-to-many through-table sugar,
-explicit control over the generated relation-field names, and one-to-one inference
-beyond "FK column is `unique`".
-
-## Findings
-
-**On the wiring (Vike's cumulative config as the contribution point):**
-
-1. Cumulative config is the right primitive: independent extensions contribute and
-   vike-schema sees them all, with no side-channel global.
-2. It accumulates one entry per source (no flattening); the consumer flattens.
-3. Order is config-specificity order, not dependency-aware. Migration ordering is
-   the data layer's job: the codegen hook topologically sorts fragments by FK
-   (`orderFragments`) so a table is created after the tables it references,
-   regardless of the order Vike hands them back.
-4. No conflict detection at the Vike layer; dedupe/collision handling is the data
-   layer's job (done here in `merge.js`).
-5. An extension CAN self-install another from its own config using Vike's
-   pre-serialized pointer-import string: `extends: ['import:@vike-data/vike-schema/config:default']`.
-   (A bare `import x from '...'; extends: [x]` fails in a node_modules config
-   because the import->pointer transform runs only on the app's own `+config`
-   files, but the explicit string form needs no transform.) So installing auth
-   alone pulls vike-schema in; the app no longer wires it.
-6. When several extensions each self-install the same shared extension, *older* Vike
-   included that extension's cumulative contributions once *per occurrence* (it
-   didn't dedupe by extension identity for cumulative values). So vike-schema's own
-   `_migrations` table (and every shared extension's tables) arrived more than once.
-   `resolveSchemas` dedupes structurally-identical fragments (`dedupeFragments`), so
-   both the runtime render and the build-time codegen see a clean list.
-   **Fixed upstream:** Vike accepted this as a bug and made extension installation
-   idempotent ([vikejs/vike#3354](https://github.com/vikejs/vike/issues/3354), PR
-   #3355 merged 2026-06-20). The host-side dedupe now stays as defense-in-depth and
-   back-compat for older Vike.
-7. Hooks must be separate `+hook.js` files, not inline functions in a config.
-
-**On the server tier (vike-auth's `middleware` + `onCreatePageContext`, added with the magic-link auth):**
-
-8. The built-in **`middleware` config is cumulative and was included once per
-   install path** — the same finding as #6, one layer up. vike-auth is
-   self-installed by the app, teams, and billing, so its middleware ran three
-   times per request on the released `0.4.259`; and a universal middleware runs
-   even after an earlier one returned a `Response` (a `Response` only
-   short-circuits route *handlers*), so a body-reading middleware double-reads.
-   **Fixed upstream by the same #3355 as #6** (verified: once per request on
-   `0.4.259-commit-a91659b`). The per-request `WeakSet` guard in vike-auth stays
-   as back-compat for pre-#3355 releases.
-9. A **3xx redirect returned from a universal middleware crashes Vike's request
-   logger**: it looks for a `Location` header with a capital `L`, but the Web
-   `Headers` object lower-cases it (`assert(headerRedirect)` throws). Worked around
-   with `200` + meta-refresh. Filed as
-   [vikejs/vike#3357](https://github.com/vikejs/vike/issues/3357).
-10. A **middleware's returned context is not bridged into `pageContext`** (Vike
-    invokes the chain with a fresh `{}` and renders from its own closure). So the
-    current user is resolved in `onCreatePageContext`, not the middleware. Bridging
-    universal-middleware context into `pageContext` would let one middleware both
-    handle endpoints and populate `pageContext.user`.
-
-**On the schema model:**
-
-- A neutral, declarative IR + per-adapter compilers is enough to make one schema
-  target Prisma / Drizzle / native. Declarative (desired-state) is the right
-  shape, since Prisma/Drizzle diff state and a native engine generates a migration.
-- **Relations are where the per-table model breaks down.** A FK is one declaration
-  on the owning column, but Prisma needs a field on *both* sides, so the compiler
-  can't stay strictly per-table — it needs a graph pass (`deriveRelations`) over the
-  merged schema. Drizzle/native stay per-column. The payoff of deriving the graph
-  ourselves: emitting a unique `@relation` name per FK makes Prisma's hardest case
-  (multiple / circular relations between two models) fall out for free, with no
-  hand-authored names.
-- **Event-sourcing is where the model is pressured next.** vike-billing models an
-  append-only `event__subscription_events` log + a `computed__subscriptions`
-  projection. The IR *does* express the load-bearing parts — idempotency
-  (`stripe_event_id` UNIQUE), the subject→projection 1:1 (a UNIQUE FK) — but it has
-  no first-class notion of **append-only** (nothing blocks an `UPDATE`/`DELETE` on an
-  event table) or of **a projection being derived from an event log** (the
-  `event__`/`computed__` link is naming convention only). `timestamps()` also bakes
-  in a mutable-row assumption (it always adds `updated_at`). These are candidate
-  first-class shapes to weigh with Vike before adding IR surface — they only earn
-  their keep if a compiler or the runtime acts on them. Full design note in
-  [vike-billing](packages/vike-billing/README.md#design-note--what-the-schema-ir-can-and-cant-express).
-
-## v1 scope / deferred (the interesting hard parts)
-
-- Types: uuid/string/text/integer/boolean/timestamp + nullable/unique/primary/default.
-- **Relations / foreign keys** - now implemented (single-column FKs + `onDelete` +
-  cross-extension validation; Prisma relation fields incl. cycles). See
-  [Relations (v2)](#relations-v2). Still deferred there: composite keys,
-  self-referential FKs, m2m through-table sugar, relation-field naming control.
-- **Type escape hatches** - DB-specific types (pg arrays, enums, JSON) need a
-  per-adapter override so the neutral layer isn't lowest-common-denominator.
-- **Declarative -> ordered migration reconciliation** - real diffing/ordering.
-- **Column-edit policy** - conflicts are detected but resolution is unspecified.
-- Compilers emit representative artifacts; they don't run against real DBs yet.
-
-## Open design questions
-
-- ~~Whether a shared extension's cumulative contributions should be deduped by
-  extension identity at the Vike layer (finding #6), or always left to the host to
-  dedupe.~~ **Resolved upstream:** Vike made extension installation idempotent
-  ([#3354](https://github.com/vikejs/vike/issues/3354), PR #3355 merged 2026-06-20).
-- How far the neutral schema IR should go before an escape hatch is the better
-  answer (relations, DB-specific types).
+- **Relations** — single-column FKs with `onDelete`, cross-extension validation,
+  self-referential FKs, and overridable Prisma relation-field names all work; deriving
+  the relation graph lets Prisma's multiple/circular-relation case fall out for free.
+  Deferred: composite keys, many-to-many through-table sugar.
+- **Event-sourcing** pressures the IR: it expresses idempotency and the 1:1 projection,
+  but has no first-class *append-only* or *projection-of* notion (convention only).
+- **i18n** builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`);
+  it adds the message-*composition* layer Vike leaves to userland. RTL (`dir` from
+  locale) and a `vike-react-auth-ar` pack are the next step.
+- **Upstream:** cumulative config is the right primitive; a few rough edges were filed
+  and fixed (idempotent extension installation
+  [vike#3354](https://github.com/vikejs/vike/issues/3354), redirect-logger casing
+  [vike#3357](https://github.com/vikejs/vike/issues/3357)).
+- Compilers emit representative artifacts; they don't run against real databases yet.
