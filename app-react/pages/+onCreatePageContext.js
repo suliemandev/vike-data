@@ -4,5 +4,7 @@
 export default function onCreatePageContext(pageContext) {
   const cookie = pageContext.headers?.cookie || ''
   const match = /(?:^|;\s*)vike_theme=([^;]+)/.exec(cookie)
-  pageContext.themeCookie = match ? decodeURIComponent(match[1]) : 'light'
+  // Null when there is no cookie, so the app's defaultTheme (in +Layout) decides
+  // the first-visit theme rather than this hook hardcoding one.
+  pageContext.themeCookie = match ? decodeURIComponent(match[1]) : null
 }

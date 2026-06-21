@@ -55,6 +55,12 @@ importers:
       vike-react-themes:
         specifier: workspace:*
         version: link:../packages/vike-react-themes
+      vike-theme-emerald:
+        specifier: workspace:*
+        version: link:../packages/vike-theme-emerald
+      vike-themes:
+        specifier: workspace:*
+        version: link:../packages/vike-themes
       vite:
         specifier: ^7.1.0
         version: 7.3.5
@@ -131,6 +137,12 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../vike-auth
+
+  packages/vike-theme-emerald:
+    dependencies:
+      vike-themes:
+        specifier: workspace:*
+        version: link:../vike-themes
 
   packages/vike-themes: {}
 
