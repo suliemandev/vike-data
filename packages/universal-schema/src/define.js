@@ -20,6 +20,18 @@ function buildColumns(build) {
       unique() { c.unique = true; return api },
       nullable() { c.nullable = true; return api },
       default(v) { c.default = v; return api },
+      // Foreign key. `target` is 'table' (defaults to its `id` column) or
+      // 'table.column'. The reference is plain data: merge.js validates the
+      // target exists (even when another extension owns the table), and each ORM
+      // compiler renders it natively (Prisma relations / Drizzle .references /
+      // a native FK constraint). `onDelete` is the referential action.
+      references(target, opts = {}) {
+        const [table, column = 'id'] = String(target).split('.')
+        c.references = { table, column }
+        if (opts.onDelete) c.onDelete = opts.onDelete
+        return api
+      },
+      onDelete(action) { c.onDelete = action; return api },
     }
     return api
   }

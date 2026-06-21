@@ -33,7 +33,60 @@ export function mergeSchemas(fragments) {
     }
   }
 
+  // references last: every foreign key must point at a table + column that
+  // actually exist in the MERGED schema. This is the cross-extension referential
+  // integrity check — e.g. vike-teams referencing vike-auth's `users.id` only
+  // validates once auth is installed; a dangling ref is a conflict, not a crash.
+  for (const t of tables.values()) {
+    for (const c of t.columns) {
+      if (!c.references) continue
+      const target = tables.get(c.references.table)
+      if (!target) {
+        conflicts.push({ kind: 'unknown-reference-table', table: t.table, column: c.name, target: c.references.table })
+      } else if (!target.columns.some((x) => x.name === c.references.column)) {
+        conflicts.push({ kind: 'unknown-reference-column', table: t.table, column: c.name, target: `${c.references.table}.${c.references.column}` })
+      }
+    }
+  }
+
   return { tables: [...tables.values()], conflicts }
+}
+
+// Derive the relation graph from the merged tables. A foreign key is a single
+// declaration on the owning column, but ORMs that model navigation (Prisma's
+// relation fields, Drizzle's relations()) need BOTH ends. So for each table we
+// compute the relations it OWNS (forward, one entry per FK column) and the ones
+// pointing AT it (inverse, contributed by other tables' FKs).
+//
+// Naming is mechanical and collision-free: the relation NAME is `<table>_<fk>`
+// (globally unique), so Prisma can disambiguate multiple/circular relations
+// between the same two models without hand-authored @relation names. The forward
+// FIELD name strips a trailing `_id` (`user_id` -> `user`); the inverse field
+// reuses the unique relation name. FKs are treated one-to-many unless the FK
+// column is unique (then one-to-one).
+export function deriveRelations(tables) {
+  const byTable = new Map(tables.map((t) => [t.table, { forward: [], inverse: [] }]))
+  for (const t of tables) {
+    for (const c of t.columns) {
+      if (!c.references) continue
+      const name = `${t.table}_${c.name}`
+      const fieldName = c.name.endsWith('_id') ? c.name.slice(0, -3) : `${c.name}_ref`
+      const rel = {
+        name,
+        owner: t.table,
+        fkColumn: c.name,
+        target: c.references.table,
+        refColumn: c.references.column,
+        nullable: c.nullable,
+        toOne: !!c.unique, // unique FK => one-to-one; otherwise one-to-many
+        onDelete: c.onDelete,
+        fieldName, // forward field name on the owner
+      }
+      byTable.get(t.table)?.forward.push(rel)
+      byTable.get(c.references.table)?.inverse.push(rel)
+    }
+  }
+  return byTable
 }
 
 // Migrations are DERIVED from the schema, in contribution order. (Ordering is

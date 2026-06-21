@@ -8,7 +8,7 @@
 // 4. Compile each table to the ORM the app picked (VIKE_DATA_ORM), shown next to
 //    the other targets so the "define once, any ORM" point is visible.
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
-import { COMPILERS, mergeSchemas, deriveMigrations } from '@vike-data/vike-schema/schema'
+import { COMPILERS, mergeSchemas, deriveMigrations, deriveRelations } from '@vike-data/vike-schema/schema'
 
 const ORMS = ['prisma', 'drizzle', 'native']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -19,6 +19,7 @@ export default function onRenderHtml(pageContext) {
   const fragments = (pageContext.config.schemas || []).flat()
   const { tables, conflicts } = mergeSchemas(fragments)
   const migrations = deriveMigrations(fragments)
+  const rels = deriveRelations(tables)
 
   const migrationRows = migrations.map((m) => `<li><code>${escapeHtml(m)}</code></li>`).join('')
 
@@ -26,12 +27,15 @@ export default function onRenderHtml(pageContext) {
     const cols = table.columns
       .map((c) => {
         const badge = c.added ? ' <span style="color:#0a7;">+ added by extension</span>' : ''
-        return `<li><code>${escapeHtml(c.name)}</code> <span style="color:#999;">${c.type}</span>${badge}</li>`
+        const fk = c.references
+          ? ` <span style="color:#36c;">&rarr; ${escapeHtml(c.references.table)}.${escapeHtml(c.references.column)}${c.onDelete ? ` (on delete ${escapeHtml(c.onDelete)})` : ''}</span>`
+          : ''
+        return `<li><code>${escapeHtml(c.name)}</code> <span style="color:#999;">${c.type}</span>${fk}${badge}</li>`
       })
       .join('')
 
     const cards = ORMS.map((orm) => {
-      const code = COMPILERS[orm]({ table: table.table, columns: table.columns })
+      const code = COMPILERS[orm]({ table: table.table, columns: table.columns }, rels.get(table.table))
       const sel = orm === selected
       return `
         <div style="border:1px solid ${sel ? '#0a7' : '#ddd'}; border-radius:6px; padding:.5rem .75rem; background:${sel ? '#f2fbf7' : '#fff'};">
@@ -68,7 +72,7 @@ export default function onRenderHtml(pageContext) {
     ${conflictBlock}
 
     <h2 style="margin-top:1.5rem;">Merged tables &rarr; selected ORM: <strong>${escapeHtml(selected)}</strong></h2>
-    <p style="color:#666;">Each table defined once; compiled to all three (set VIKE_DATA_ORM / run pnpm dev:prisma|drizzle|native). Note <code>users</code> gets <code>stripe_customer_id</code> added by the billing extension.</p>
+    <p style="color:#666;">Each table defined once; compiled to all three (set VIKE_DATA_ORM / run pnpm dev:prisma|drizzle|native). Note <code>users</code> gets <code>current_organization_id</code> added by the teams extension, and foreign keys (&rarr;) flow into every ORM.</p>
     ${tableBlocks}
   </body>
 </html>`

@@ -19,20 +19,24 @@ export default {
       t.uuid('id').primary()
       t.string('name')
       t.string('slug').unique()
-      t.uuid('owner_id') // -> users.id (by convention; FKs are v2)
+      // FK into auth's `users` table — a cross-extension reference. merge.js
+      // validates `users` exists; deleting an owner is restricted, not cascaded.
+      t.uuid('owner_id').references('users.id', { onDelete: 'restrict' })
       t.timestamps()
     }),
     defineSchema('memberships', (t) => {
       t.uuid('id').primary()
-      t.uuid('organization_id') // -> organizations.id
-      t.uuid('user_id') // -> users.id (auth owns this table)
+      t.uuid('organization_id').references('organizations.id', { onDelete: 'cascade' })
+      t.uuid('user_id').references('users.id', { onDelete: 'cascade' }) // auth owns this table
       t.string('role').default('member')
       t.timestamps()
     }),
-    // 3rd-party ADD: teams adds the user's active org to auth's `users` table.
-    // vike-auth never declared this column; merge flags it as `added`.
+    // 3rd-party ADD: teams adds the user's active org to auth's `users` table,
+    // AND points it back at its own `organizations` table — a cross-extension FK
+    // in BOTH directions (users <-> organizations is a relation cycle). vike-auth
+    // never declared this column; merge flags it as `added`.
     extendSchema('users', (t) => {
-      t.uuid('current_organization_id').nullable()
+      t.uuid('current_organization_id').nullable().references('organizations.id', { onDelete: 'set null' })
     }),
   ],
 }

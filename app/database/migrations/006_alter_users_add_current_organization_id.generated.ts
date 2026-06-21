@@ -7,7 +7,7 @@ import { Migration, Schema } from '@rudderjs/database'
 export default class extends Migration {
   async up() {
     await Schema.table('users', (t) => {
-      t.uuid('current_organization_id').nullable()
+      t.uuid('current_organization_id').nullable().references('id').on('organizations').onDelete('set null')
     })
   }
 }

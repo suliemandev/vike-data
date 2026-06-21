@@ -30,6 +30,11 @@ model Users {
   updated_at DateTime @default(now())
   current_organization_id String?
 
+  current_organization Organizations? @relation("users_current_organization_id", fields: [current_organization_id], references: [id], onDelete: SetNull)
+  sessions_user_id Sessions[] @relation("sessions_user_id")
+  organizations_owner_id Organizations[] @relation("organizations_owner_id")
+  memberships_user_id Memberships[] @relation("memberships_user_id")
+
   @@map("users")
 }
 
@@ -40,6 +45,8 @@ model Sessions {
   expires_at DateTime
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
+
+  user Users @relation("sessions_user_id", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -52,6 +59,10 @@ model Organizations {
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
 
+  owner Users @relation("organizations_owner_id", fields: [owner_id], references: [id], onDelete: Restrict)
+  users_current_organization_id Users[] @relation("users_current_organization_id")
+  memberships_organization_id Memberships[] @relation("memberships_organization_id")
+
   @@map("organizations")
 }
 
@@ -62,6 +73,9 @@ model Memberships {
   role String @default("member")
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
+
+  organization Organizations @relation("memberships_organization_id", fields: [organization_id], references: [id], onDelete: Cascade)
+  user Users @relation("memberships_user_id", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("memberships")
 }

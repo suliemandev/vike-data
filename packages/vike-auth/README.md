@@ -50,6 +50,8 @@ it without vike-auth knowing they exist:
 
 See [vike-teams](../vike-teams/README.md) for the composition proof.
 
-> Cross-table references are by `uuid` convention today. Enforced foreign keys /
-> relations are the deferred **v2 relations** surface; this keystone is what
-> motivates it.
+> Cross-table references are real foreign keys: `sessions.user_id` is declared
+> `t.uuid('user_id').references('users.id', { onDelete: 'cascade' })`, and it
+> compiles to a Prisma relation, a Drizzle `.references()`, and a native FK
+> constraint. See the [relations section](../../README.md#relations-v2) of the
+> root README.

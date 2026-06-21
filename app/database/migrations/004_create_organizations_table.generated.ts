@@ -10,7 +10,7 @@ export default class extends Migration {
       t.uuid('id').primary()
       t.string('name')
       t.string('slug').unique()
-      t.uuid('owner_id')
+      t.uuid('owner_id').references('id').on('users').onDelete('restrict')
       t.timestamp('created_at').useCurrent()
       t.timestamp('updated_at').useCurrent()
     })

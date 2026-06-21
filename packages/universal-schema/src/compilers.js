@@ -5,6 +5,9 @@
 const pascal = (s) => s.replace(/(^|_)([a-z])/g, (_, __, c) => c.toUpperCase())
 const camel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
 
+// Referential actions, mapped to each ORM's spelling.
+const PRISMA_ON_DELETE = { cascade: 'Cascade', 'set null': 'SetNull', restrict: 'Restrict', 'no action': 'NoAction', 'set default': 'SetDefault' }
+
 // ---------------------------------------------------------------- Prisma -----
 function prismaType(c) {
   const base = { uuid: 'String', string: 'String', text: 'String', integer: 'Int', boolean: 'Boolean', timestamp: 'DateTime' }[c.type] || 'String'
@@ -21,9 +24,22 @@ function prismaAttrs(c) {
   if (c.type === 'text') a.push('@db.Text')
   return a.join(' ')
 }
-export function toPrisma(ir) {
+// Prisma models the FK as a scalar column (kept below) PLUS a relation field, and
+// needs an inverse field on the referenced model. `rel` is that table's slice of
+// deriveRelations(); explicit @relation names make multiple/circular relations
+// between the same two models unambiguous.
+export function toPrisma(ir, rel = { forward: [], inverse: [] }) {
   const rows = ir.columns.map((c) => `  ${c.name} ${prismaType(c)} ${prismaAttrs(c)}`.trimEnd())
-  return `model ${pascal(ir.table)} {\n${rows.join('\n')}\n\n  @@map("${ir.table}")\n}`
+  const relRows = []
+  for (const r of rel.forward) {
+    const od = r.onDelete ? `, onDelete: ${PRISMA_ON_DELETE[r.onDelete] || 'NoAction'}` : ''
+    relRows.push(`  ${r.fieldName} ${pascal(r.target)}${r.nullable ? '?' : ''} @relation("${r.name}", fields: [${r.fkColumn}], references: [${r.refColumn}]${od})`)
+  }
+  for (const r of rel.inverse) {
+    relRows.push(`  ${r.name} ${pascal(r.owner)}${r.toOne ? '?' : '[]'} @relation("${r.name}")`)
+  }
+  const body = relRows.length ? `${rows.join('\n')}\n\n${relRows.join('\n')}` : rows.join('\n')
+  return `model ${pascal(ir.table)} {\n${body}\n\n  @@map("${ir.table}")\n}`
 }
 
 // --------------------------------------------------------------- Drizzle -----
@@ -41,6 +57,12 @@ function drizzleCol(c) {
   if (c.default === 'now') s += '.defaultNow()'
   else if (typeof c.default === 'boolean') s += `.default(${c.default})`
   else if (c.default !== undefined) s += `.default(${JSON.stringify(c.default)})`
+  // Column-level FK: Drizzle references the target table's exported column via a
+  // lazy thunk (so declaration order / circular refs don't matter).
+  if (c.references) {
+    const od = c.onDelete ? `, { onDelete: '${c.onDelete}' }` : ''
+    s += `.references(() => ${camel(c.references.table)}.${camel(c.references.column)}${od})`
+  }
   return `  ${camel(c.name)}: ${s},`
 }
 export function toDrizzle(ir) {
@@ -57,6 +79,12 @@ function nativeCol(c) {
   if (c.nullable) s += '.nullable()'
   if (c.default === 'now') s += '.useCurrent()'
   else if (c.default !== undefined) s += `.default(${JSON.stringify(c.default)})`
+  // Column-level FK constraint (Laravel/Rudder style): WE own native migrations,
+  // so the constraint is emitted inline on the column.
+  if (c.references) {
+    s += `.references('${c.references.column}').on('${c.references.table}')`
+    if (c.onDelete) s += `.onDelete('${c.onDelete}')`
+  }
   return `      ${s}`
 }
 export function toNative(ir) {

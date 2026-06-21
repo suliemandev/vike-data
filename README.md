@@ -118,6 +118,44 @@ layer on top of it additively. The same merged schema compiles to all three ORMs
 These are the framework-agnostic **core** tier; per-framework UI wrappers
 (`vike-react-auth`, etc.) would layer on top reusing the exact same schema.
 
+## Relations (v2)
+
+A foreign key is one declaration on the owning column:
+
+```js
+defineSchema('sessions', (t) => {
+  t.uuid('id').primary()
+  t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
+  // ...
+})
+```
+
+`target` is `'table'` (defaults to its `id`) or `'table.column'`; `onDelete` is the
+referential action. From that single declaration:
+
+- **Validation.** `merge.js` checks every FK points at a table + column that exist in
+  the *merged* schema. This is cross-extension referential integrity: vike-teams' FK
+  into auth's `users` only resolves once vike-auth is installed; a dangling ref is a
+  flagged conflict (`unknown-reference-table` / `unknown-reference-column`), not a
+  runtime crash.
+- **Prisma.** `deriveRelations()` computes the full graph (a FK needs a field on
+  *both* models), so each model gets a scalar column + a relation field + the inverse
+  field on the referenced model. Every relation gets a unique `@relation("<table>_<fk>")`
+  name, so **multiple and circular relations between the same two models compile
+  without hand-authored names** — e.g. `users` <-> `organizations`
+  (`users.current_organization_id` and `organizations.owner_id`) is a cycle and Just
+  Works.
+- **Drizzle.** Column-level `.references(() => users.id, { onDelete: 'cascade' })`; the
+  lazy thunk means declaration order and cycles don't matter.
+- **Native.** We own migrations, so the FK is an inline constraint:
+  `t.uuid('user_id').references('id').on('users').onDelete('cascade')`. A
+  cross-extension add (teams' `current_organization_id` on `users`) carries its FK into
+  its own alter migration.
+
+Still deferred: composite keys, self-referential FKs, many-to-many through-table sugar,
+explicit control over the generated relation-field names, and one-to-one inference
+beyond "FK column is `unique`".
+
 ## Findings
 
 **On the wiring (Vike's cumulative config as the contribution point):**
@@ -150,11 +188,21 @@ These are the framework-agnostic **core** tier; per-framework UI wrappers
 - A neutral, declarative IR + per-adapter compilers is enough to make one schema
   target Prisma / Drizzle / native. Declarative (desired-state) is the right
   shape, since Prisma/Drizzle diff state and a native engine generates a migration.
+- **Relations are where the per-table model breaks down.** A FK is one declaration
+  on the owning column, but Prisma needs a field on *both* sides, so the compiler
+  can't stay strictly per-table — it needs a graph pass (`deriveRelations`) over the
+  merged schema. Drizzle/native stay per-column. The payoff of deriving the graph
+  ourselves: emitting a unique `@relation` name per FK makes Prisma's hardest case
+  (multiple / circular relations between two models) fall out for free, with no
+  hand-authored names.
 
 ## v1 scope / deferred (the interesting hard parts)
 
 - Types: uuid/string/text/integer/boolean/timestamp + nullable/unique/primary/default.
-- **Relations / foreign keys** - deferred; the genuinely hard bit.
+- **Relations / foreign keys** - now implemented (single-column FKs + `onDelete` +
+  cross-extension validation; Prisma relation fields incl. cycles). See
+  [Relations (v2)](#relations-v2). Still deferred there: composite keys,
+  self-referential FKs, m2m through-table sugar, relation-field naming control.
 - **Type escape hatches** - DB-specific types (pg arrays, enums, JSON) need a
   per-adapter override so the neutral layer isn't lowest-common-denominator.
 - **Declarative -> ordered migration reconciliation** - real diffing/ordering.
