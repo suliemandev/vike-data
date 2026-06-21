@@ -8,7 +8,7 @@
 // no flash. `system` is applied via the core's `@media (prefers-color-scheme)` CSS,
 // so it follows the OS even before hydration.
 import { createContext, useContext, useState, useMemo, useCallback } from 'react'
-import { themeToAppearanceCss, presets, APPEARANCES } from 'vike-themes'
+import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from 'vike-themes'
 
 const ThemeCtx = createContext(null)
 
@@ -46,11 +46,12 @@ export function ThemeProvider({ themes = presets, theme: initialTheme = 'default
   return (
     <ThemeCtx.Provider value={value}>
       {/* The whole theme contract: the active brand's variables for the active
-          appearance (system -> light + a prefers-color-scheme dark media rule). */}
+          appearance (system -> light + a prefers-color-scheme dark media rule),
+          plus the minimal base/reset authored against those variables. */}
       <style
         data-vike-theme={themeName}
         data-vike-appearance={appearance}
-        dangerouslySetInnerHTML={{ __html: themeToAppearanceCss(theme, appearance, ':root') }}
+        dangerouslySetInnerHTML={{ __html: `${themeToAppearanceCss(theme, appearance, ':root')}\n${baseCss}` }}
       />
       {children}
     </ThemeCtx.Provider>
