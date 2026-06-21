@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example theme package for vike-themes: an emerald (green, rounded) light/dark preset pair. Demonstrates theme composition — install it and any UI authored against the theme CSS variables restyles.",
+  "description": "Example theme package for vike-themes: an emerald (green, rounded) light/dark preset pair. Registers into the cumulative `themes` config — install it and the theme is selectable, no app wiring.",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./config": "./+config.js"
   },
   "dependencies": {
     "vike-themes": "workspace:*"

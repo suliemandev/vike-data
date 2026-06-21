@@ -1,12 +1,11 @@
-// vike-theme-emerald — an example THEME PACKAGE. This is the composition story
-// of issue #24: a package ships presets, an app installs it, and every UI
-// extension that authors against the theme CSS variables (vike-react-auth's
-// login page, the layout shells) restyles — without the theme, the app, or the
-// auth extension importing each other. The only contract is the token names.
+// vike-theme-emerald — an example THEME PACKAGE. The composition story of issue
+// #24: install the package, and the login page (and every UI authored against the
+// theme CSS variables) can switch to it — without the app, vike-auth, or the
+// layout knowing the theme exists. The only contract is the token names.
 //
-// A theme package is just data on top of vike-themes' defineTheme. Emerald uses
-// a green brand + rounder corners so the restyle is unmistakable next to the
-// built-in light/dark.
+// A theme package is just data on top of defineTheme; +config.js registers these
+// presets into vike-themes' cumulative `themes` config so the app can select them
+// by name. Emerald uses a green brand + rounder corners so the restyle is obvious.
 import { defineTheme } from 'vike-themes'
 
 const base = {
@@ -43,6 +42,5 @@ export const emeraldDark = defineTheme({
   },
 })
 
-// The package's preset set, keyed by name — what an app spreads into its theme map.
 export const emerald = { 'emerald-light': emeraldLight, 'emerald-dark': emeraldDark }
 export default emerald

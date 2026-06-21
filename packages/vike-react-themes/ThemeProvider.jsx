@@ -43,7 +43,7 @@ export function ThemeProvider({ themes = presets, initial = 'light', cookieName 
       {/* The entire theme contract: the active theme's CSS variables at :root.
           color-scheme keeps native form controls / scrollbars in step — inferred
           from the theme's `scheme` token, else from a `dark` in its name. */}
-      <style data-vike-theme={name} dangerouslySetInnerHTML={{ __html: `${themeToCss(theme, ':root')}\n:root { color-scheme: ${(theme.scheme || (/dark/i.test(name) ? 'dark' : 'light'))}; }` }} />
+      <style data-vike-theme={name} dangerouslySetInnerHTML={{ __html: `${themeToCss(theme, ':root')}\n:root { color-scheme: ${theme.scheme || (/dark/i.test(name) ? 'dark' : 'light')}; }` }} />
       {children}
     </ThemeCtx.Provider>
   )

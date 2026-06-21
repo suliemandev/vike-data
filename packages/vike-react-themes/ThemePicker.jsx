@@ -1,13 +1,19 @@
-// A visible theme switcher (fixed, bottom-right). Lists every theme the app
-// composed in theme/themes.js — built-ins, the installed emerald package, and the
-// custom Acme brand — and switches the active one live. Selecting a theme calls
-// setTheme(name) from vike-react-themes; the whole UI restyles because every
-// component authors against the theme's CSS variables.
-import { useTheme } from 'vike-react-themes'
-import { themeLabels } from '../theme/themes.js'
+// The runtime theme switcher (fixed, bottom-right) — the optional runtime layer
+// on top of the configured default. Lists every registered theme and switches the
+// active one live (persisted via cookie). Ships with vike-react-themes so an app
+// that installs themes gets the picker for free; labels are derived from the
+// theme name (`emerald-dark` -> `Emerald · Dark`).
+import { useTheme } from './ThemeProvider.jsx'
+
+const prettyLabel = (name) =>
+  String(name)
+    .split('-')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' · ')
 
 export function ThemePicker() {
   const { name, names, setTheme } = useTheme()
+  if (!names || names.length < 2) return null
   return (
     <label
       style={{
@@ -42,7 +48,7 @@ export function ThemePicker() {
       >
         {names.map((n) => (
           <option key={n} value={n}>
-            {themeLabels[n] || n}
+            {prettyLabel(n)}
           </option>
         ))}
       </select>
