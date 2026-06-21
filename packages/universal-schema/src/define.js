@@ -25,10 +25,19 @@ function buildColumns(build) {
       // target exists (even when another extension owns the table), and each ORM
       // compiler renders it natively (Prisma relations / Drizzle .references /
       // a native FK constraint). `onDelete` is the referential action.
+      //
+      // Relation-field naming (Prisma navigation fields): by default the forward
+      // field strips a trailing `_id` (`user_id` -> `user`, else `<col>_ref`) and
+      // the inverse field reuses the unique relation name. `as` overrides the
+      // forward field name, `inverseAs` the inverse one — useful for readability
+      // and ESSENTIAL for self-references (e.g. `invited_by` -> `inviter` /
+      // `invitees`), where the auto names are awkward.
       references(target, opts = {}) {
         const [table, column = 'id'] = String(target).split('.')
         c.references = { table, column }
         if (opts.onDelete) c.onDelete = opts.onDelete
+        if (opts.as) c.relationField = opts.as
+        if (opts.inverseAs) c.inverseField = opts.inverseAs
         return api
       },
       onDelete(action) { c.onDelete = action; return api },

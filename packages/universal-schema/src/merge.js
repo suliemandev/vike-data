@@ -148,15 +148,19 @@ export function mergeSchemas(fragments) {
 // (globally unique), so Prisma can disambiguate multiple/circular relations
 // between the same two models without hand-authored @relation names. The forward
 // FIELD name strips a trailing `_id` (`user_id` -> `user`); the inverse field
-// reuses the unique relation name. FKs are treated one-to-many unless the FK
-// column is unique (then one-to-one).
+// defaults to the unique relation name. Both field names are OVERRIDABLE per FK
+// (`references(target, { as, inverseAs })`) — readability in general, and a
+// necessity for self-references, where forward + inverse land on the same model
+// and the auto names (`invited_by_ref` / `users_invited_by`) read poorly.
+// FKs are treated one-to-many unless the FK column is unique (then one-to-one).
 export function deriveRelations(tables) {
   const byTable = new Map(tables.map((t) => [t.table, { forward: [], inverse: [] }]))
   for (const t of tables) {
     for (const c of t.columns) {
       if (!c.references) continue
       const name = `${t.table}_${c.name}`
-      const fieldName = c.name.endsWith('_id') ? c.name.slice(0, -3) : `${c.name}_ref`
+      const fieldName = c.relationField || (c.name.endsWith('_id') ? c.name.slice(0, -3) : `${c.name}_ref`)
+      const inverseFieldName = c.inverseField || name
       const rel = {
         name,
         owner: t.table,
@@ -167,6 +171,7 @@ export function deriveRelations(tables) {
         toOne: !!c.unique, // unique FK => one-to-one; otherwise one-to-many
         onDelete: c.onDelete,
         fieldName, // forward field name on the owner
+        inverseFieldName, // field name on the referenced model (the back-reference)
       }
       byTable.get(t.table)?.forward.push(rel)
       byTable.get(c.references.table)?.inverse.push(rel)

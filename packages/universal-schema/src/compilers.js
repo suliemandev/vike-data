@@ -36,7 +36,7 @@ export function toPrisma(ir, rel = { forward: [], inverse: [] }) {
     relRows.push(`  ${r.fieldName} ${pascal(r.target)}${r.nullable ? '?' : ''} @relation("${r.name}", fields: [${r.fkColumn}], references: [${r.refColumn}]${od})`)
   }
   for (const r of rel.inverse) {
-    relRows.push(`  ${r.name} ${pascal(r.owner)}${r.toOne ? '?' : '[]'} @relation("${r.name}")`)
+    relRows.push(`  ${r.inverseFieldName ?? r.name} ${pascal(r.owner)}${r.toOne ? '?' : '[]'} @relation("${r.name}")`)
   }
   const body = relRows.length ? `${rows.join('\n')}\n\n${relRows.join('\n')}` : rows.join('\n')
   return `model ${pascal(ir.table)} {\n${body}\n\n  @@map("${ir.table}")\n}`
