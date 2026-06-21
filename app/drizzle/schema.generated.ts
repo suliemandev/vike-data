@@ -59,14 +59,24 @@ export const memberships = pgTable('memberships', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const subscriptions = pgTable('subscriptions', {
+export const event_SubscriptionEvents = pgTable('event__subscription_events', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 255 }).notNull(),
+  plan: varchar('plan', { length: 255 }).notNull(),
+  seats: integer('seats').notNull().default(1),
+  stripeEventId: varchar('stripe_event_id', { length: 255 }).notNull().unique(),
+  occurredAt: timestamp('occurred_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const computed_Subscriptions = pgTable('computed__subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  organizationId: uuid('organization_id').notNull().unique().references(() => organizations.id, { onDelete: 'cascade' }),
   plan: varchar('plan', { length: 255 }).notNull(),
   status: varchar('status', { length: 255 }).notNull().default("active"),
   seats: integer('seats').notNull().default(1),
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
   currentPeriodEnd: timestamp('current_period_end'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

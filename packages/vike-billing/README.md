@@ -24,9 +24,9 @@ export default {
 billing's schema is **computed** from that option. Instead of a static
 `schemas: [...]` array, billing contributes a *function* of the resolved config
 (wired as a pointer-import, see [`schemas.js`](./schemas.js)); vike-schema calls it
-with the merged config, so the FK follows `billingSubject`:
+with the merged config, so both billing tables' subject FK follows `billingSubject`:
 
-| `billingSubject` | `subscriptions` FK                     |
+| `billingSubject` | subject FK                              |
 |------------------|-----------------------------------------|
 | `'organization'` | `organization_id` → `organizations.id`  |
 | `'user'`         | `user_id` → `users.id`                  |
@@ -50,16 +50,61 @@ vike-schema  <-  vike-auth  <-  vike-teams  <-  vike-billing
 > pointer-import. The demo switches subject via `BILLING_SUBJECT` (mirroring
 > `VIKE_DATA_ORM`).
 
-## Table
+## Event-sourced shape
 
-`subscriptions`: id, `<subject>_id` (FK), plan, status, seats, stripe_customer_id,
-current_period_end, timestamps.
+billing is modelled the way the [vike-dashboard](https://github.com/vikejs/vike-dashboard)
+reference does it: an **append-only event log is the source of truth**, and the
+current state is a **rebuildable projection** over it.
 
-## Roadmap note
+| table | role | columns |
+|---|---|---|
+| `event__subscription_events` | append-only source of truth | id, `<subject>_id` (FK), type, plan, seats, **`stripe_event_id` (unique)**, occurred_at, created_at |
+| `computed__subscriptions` | projection (folded from events) | id, `<subject>_id` (**unique** FK → 1:1), plan, status, seats, stripe_customer_id, current_period_end, updated_at |
 
-This is a flat `subscriptions` table — the minimal shape. The vike-dashboard
-reference models billing as an **event-sourced** `event__*` (append-only) +
-`computed__*` (rebuildable projection) split, with an entitlements projection
-spanning all purchases. That is the natural next layer here, and it is also where
-vike-data's schema model would next be pressured (append-only event tables +
-derived projections as first-class shapes).
+The `event__` / `computed__` prefixes follow the dashboard's naming convention. An
+event row is an immutable fact (`created` / `renewed` / `plan_changed` / `canceled`
+/ `past_due`); `computed__subscriptions` is what you query, derived by folding the
+events for a subject. The projection's subject FK is **unique** (one current
+subscription per subject), which the relation graph reads as a one-to-one.
+
+### Design note — what the schema IR can and can't express
+
+Modelling this surfaced exactly where vike-data's neutral schema model is and isn't
+enough. It is the genuine **design question for the Vike collaboration**: should
+append-only + projection become first-class shapes in the IR?
+
+**The IR expresses today (convention carries the rest):**
+
+- **Idempotency** via `stripe_event_id` UNIQUE — replaying a Stripe webhook can't
+  double-insert. This is a real, enforced constraint, not a convention.
+- **Mutable flags** on a projection (e.g. `status`, `current_period_end`) — ordinary
+  columns with defaults.
+- **The 1:1 between a subject and its current projection** — a UNIQUE foreign key,
+  which `deriveRelations` already turns into a one-to-one.
+- **"This row is append-only" by omission** — the event table simply has no
+  `updated_at` (and deliberately doesn't use the `timestamps()` helper, which adds
+  one). That *documents* append-only; it doesn't *enforce* it.
+
+**The IR can NOT express (gaps = the design note):**
+
+1. **Append-only as a constraint.** Nothing stops an `UPDATE` / `DELETE` on
+   `event__*`. Enforcing it is a database concern (revoke `UPDATE`/`DELETE`, or a
+   trigger) that the IR has no vocabulary for. A first-class `defineEvent(...)` (or a
+   table-level `.appendOnly()`) could carry that intent into each compiler.
+2. **The projection → event derivation.** The IR has foreign keys, but no notion
+   that `computed__subscriptions` *is a projection of* `event__subscription_events`.
+   The relationship is naming-convention only; the fold/rebuild logic lives nowhere
+   in the schema. A `defineProjection('subscriptions', { of: 'subscription_events' })`
+   could at least record the dependency (and scaffold a rebuild).
+3. **Event ordering / versioning / replay** — `occurred_at` vs `created_at` is the
+   only ordering signal; there's no first-class sequence or aggregate version.
+4. **`timestamps()` assumes mutable rows.** It always adds `updated_at`, which is
+   wrong for an append-only table — a small ergonomics tell that the helper bakes in
+   a CRUD assumption the event model breaks.
+
+**Recommendation:** keep modelling event-sourcing with plain `defineSchema` + the
+`event__` / `computed__` convention for now (it compiles to every ORM and the FK
+checks hold). Treat append-only + projection as **candidate first-class shapes** to
+discuss with Vike before adding IR surface — they only pay off if a compiler or the
+runtime acts on them (enforce append-only; scaffold a projection rebuild). Adding
+vocabulary the compilers ignore would be cost without payoff.

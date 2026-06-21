@@ -120,9 +120,12 @@ native side by side.
   [README](packages/vike-auth/README.md#server-tier).
 - `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
   `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
-- `packages/vike-billing` - subscriptions, the third leg. A *configurable*
-  extension: the app sets `billingSubject`, and billing's schema is computed from
-  it (FK into `organizations` by default, or `users`). Self-installs vike-teams.
+- `packages/vike-billing` - subscriptions, the third leg, in an **event-sourced**
+  shape: `event__subscription_events` (append-only) + `computed__subscriptions`
+  (projection). A *configurable* extension: the app sets `billingSubject`, and both
+  tables' subject FK is computed from it (`organizations` by default, or `users`).
+  Self-installs vike-teams. See its
+  [design note](packages/vike-billing/README.md#design-note--what-the-schema-ir-can-and-cant-express).
 - `app` - installs `vike-auth` + `vike-teams` + `vike-billing` (the chain
   self-installs `vike-schema`); defines nothing itself.
 
@@ -137,11 +140,12 @@ then builds on top without vike-auth knowing it exists:
 - it **self-installs** vike-auth, which self-installs vike-schema, so the whole chain
   composes from one install: `vike-schema <- vike-auth <- vike-teams`.
 
-`vike-billing` is the third leg: a `subscriptions` table that composes on auth and
-teams. It also shows a **configurable** extension — the app sets `billingSubject`
-and billing's schema is *computed* from it, putting the FK into `organizations`
-(B2B, default) or `users` (per-seat). The demo picks the value via `BILLING_SUBJECT`
-(mirroring `VIKE_DATA_ORM`).
+`vike-billing` is the third leg, modelled **event-sourced**: an append-only
+`event__subscription_events` log + a `computed__subscriptions` projection that
+composes on auth and teams. It also shows a **configurable** extension — the app
+sets `billingSubject` and billing's schema is *computed* from it, putting the subject
+FK into `organizations` (B2B, default) or `users` (per-seat). The demo picks the
+value via `BILLING_SUBJECT` (mirroring `VIKE_DATA_ORM`).
 
 That composition is the Stem Vision in miniature: a foundational extension owns a
 table, and the higher-level extensions of a SaaS spine (teams, billing, audit logs)
@@ -281,6 +285,17 @@ beyond "FK column is `unique`".
   ourselves: emitting a unique `@relation` name per FK makes Prisma's hardest case
   (multiple / circular relations between two models) fall out for free, with no
   hand-authored names.
+- **Event-sourcing is where the model is pressured next.** vike-billing models an
+  append-only `event__subscription_events` log + a `computed__subscriptions`
+  projection. The IR *does* express the load-bearing parts — idempotency
+  (`stripe_event_id` UNIQUE), the subject→projection 1:1 (a UNIQUE FK) — but it has
+  no first-class notion of **append-only** (nothing blocks an `UPDATE`/`DELETE` on an
+  event table) or of **a projection being derived from an event log** (the
+  `event__`/`computed__` link is naming convention only). `timestamps()` also bakes
+  in a mutable-row assumption (it always adds `updated_at`). These are candidate
+  first-class shapes to weigh with Vike before adding IR surface — they only earn
+  their keep if a compiler or the runtime acts on them. Full design note in
+  [vike-billing](packages/vike-billing/README.md#design-note--what-the-schema-ir-can-and-cant-express).
 
 ## v1 scope / deferred (the interesting hard parts)
 
