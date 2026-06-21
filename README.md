@@ -98,9 +98,9 @@ native side by side.
   The composition base (see below).
 - `packages/vike-teams` - teams / multi-tenancy: creates `organizations` +
   `memberships`, references `users`, and adds a column to it. Self-installs vike-auth.
-- `packages/vike-billing` - subscriptions, the third leg. A *parameterized*
-  extension: bills per-organization (FK into teams) or per-user (FK into auth),
-  chosen via `billingFor(subject)`. Self-installs whichever base it needs.
+- `packages/vike-billing` - subscriptions, the third leg. A *configurable*
+  extension: the app sets `billingSubject`, and billing's schema is computed from
+  it (FK into `organizations` by default, or `users`). Self-installs vike-teams.
 - `app` - installs `vike-auth` + `vike-teams` + `vike-billing` (the chain
   self-installs `vike-schema`); defines nothing itself.
 
@@ -115,11 +115,11 @@ then builds on top without vike-auth knowing it exists:
 - it **self-installs** vike-auth, which self-installs vike-schema, so the whole chain
   composes from one install: `vike-schema <- vike-auth <- vike-teams`.
 
-`vike-billing` is the third leg: a `subscriptions` table that composes on auth
-and/or teams. It also shows a **parameterized** extension — `billingFor('user' |
-'organization')` changes both the FK (into `users` vs `organizations`) and what the
-extension self-installs (vike-auth vs vike-teams). The demo's codegen driver picks
-the subject via `BILLING_SUBJECT` (mirroring `VIKE_DATA_ORM`).
+`vike-billing` is the third leg: a `subscriptions` table that composes on auth and
+teams. It also shows a **configurable** extension — the app sets `billingSubject`
+and billing's schema is *computed* from it, putting the FK into `organizations`
+(B2B, default) or `users` (per-seat). The demo picks the value via `BILLING_SUBJECT`
+(mirroring `VIKE_DATA_ORM`).
 
 That composition is the Stem Vision in miniature: a foundational extension owns a
 table, and the higher-level extensions of a SaaS spine (teams, billing, audit logs)
@@ -127,15 +127,27 @@ layer on top of it additively. The same merged schema compiles to all three ORMs
 These are the framework-agnostic **core** tier; per-framework UI wrappers
 (`vike-react-auth`, etc.) would layer on top reusing the exact same schema.
 
-> **Two findings from the parameterized extension.** (1) It needs **no vike-data
-> core change** — a contributed schema is plain data, so an extension can compute
-> it (and its dependencies) from an option. (2) But **Vike's `extends` can't pass
-> options to an extension**: `extends: [billingFor('user')]` in a `+config.js`
-> fails, because Vike rewrites config-file imports to pointers, so the import isn't
-> callable there. So billing ships a sensible **default** config object (installed
-> like any extension) and exposes `billingFor` for the codegen path. Whether
-> install-time options to a Vike extension deserve a blessed pattern is a question
-> for Vike core.
+## Configurable extensions (computed schema)
+
+An extension can let the app shape the schema it contributes — **no vike-data core
+change, no special Vike feature**. It's the standard Vike options pattern plus a
+*computed* contribution (verified by spike):
+
+1. The extension declares a config key via `meta` (`billingSubject`) and a default.
+2. The app sets it as a sibling to `extends` — the same way vike-react takes `ssr` /
+   `prerender`. App config wins over the extension's default.
+3. The extension contributes its `schemas` as a **function of the resolved config**
+   instead of a static array. vike-schema calls it with the merged config, so the
+   schema depends on the option (`resolveSchemas()` normalizes static + computed
+   contributions).
+
+The one constraint: the computed contribution must be a **`+file` / pointer-import**,
+not an inline function — Vike serializes runtime (server-env) config values and
+rejects inline functions with a clear `runtime-in-config` error. So billing's
+function lives in `schemas.js`, wired in via `schemas: 'import:vike-billing/schemas:default'`.
+At consume time it arrives as a live, callable function that receives the resolved
+config. (This corrects an earlier note that `extends` "can't pass options" — options
+flow as app-set config keys, never as args to the extension import.)
 
 ## Relations (v2)
 

@@ -6,7 +6,7 @@
   "description": "Billing / subscriptions extension. A parameterized extension: bills per-organization (composes on vike-teams) or per-user (composes on vike-auth), chosen at install time.",
   "exports": {
     "./config": "./+config.js",
-    "./billing": "./billing.js"
+    "./schemas": "./schemas.js"
   },
   "dependencies": {
     "@vike-data/vike-schema": "workspace:*",

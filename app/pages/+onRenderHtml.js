@@ -8,7 +8,7 @@
 // 4. Compile each table to the ORM the app picked (VIKE_DATA_ORM), shown next to
 //    the other targets so the "define once, any ORM" point is visible.
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
-import { COMPILERS, mergeSchemas, deriveMigrations, deriveRelations } from '@vike-data/vike-schema/schema'
+import { COMPILERS, mergeSchemas, deriveMigrations, deriveRelations, resolveSchemas } from '@vike-data/vike-schema/schema'
 
 const ORMS = ['prisma', 'drizzle', 'native']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -16,7 +16,10 @@ const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace
 export default function onRenderHtml(pageContext) {
   const selected = (process.env.VIKE_DATA_ORM || 'drizzle').toLowerCase()
 
-  const fragments = (pageContext.config.schemas || []).flat()
+  // Resolve contributions against the merged config: static arrays pass through;
+  // computed (function) contributions — like billing's — are called with the
+  // resolved config, so billing's FK follows `billingSubject`.
+  const fragments = resolveSchemas(pageContext.config.schemas, pageContext.config)
   const { tables, conflicts } = mergeSchemas(fragments)
   const migrations = deriveMigrations(fragments)
   const rels = deriveRelations(tables)

@@ -10,22 +10,24 @@
 //   pnpm gen:prisma     # or gen:drizzle / gen:native
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { mergeSchemas, generateArtifacts } from '@vike-data/vike-schema/schema'
+import { mergeSchemas, generateArtifacts, resolveSchemas } from '@vike-data/vike-schema/schema'
 import vikeSchema from '@vike-data/vike-schema/config'
 import authExt from 'vike-auth/config'
 import teamsExt from 'vike-teams/config'
-import { billingFor } from 'vike-billing/billing'
+import billingSchemas from 'vike-billing/schemas'
 
-// vike-billing is parameterized: BILLING_SUBJECT picks what it bills against. The
-// codegen driver is plain JS, so unlike Vike's `extends` it CAN call the factory.
-const subject = process.env.BILLING_SUBJECT === 'user' ? 'user' : 'organization'
+// The resolved config the build hook would see. Here it's just the billing option
+// (BILLING_SUBJECT mirrors VIKE_DATA_ORM). A real vike-schema build hook reads this
+// from Vike's resolved config graph; the spike supplies it directly.
+const resolvedConfig = {
+  billingSubject: process.env.BILLING_SUBJECT === 'user' ? 'user' : 'organization',
+}
 
-// Contribution order: vike-schema's own `_migrations` first (each extension
-// self-installs it), then the feature extensions in dependency order (auth before
-// teams, since teams references + extends auth's `users`; billing references
-// whichever subject it bills against).
-const installed = [vikeSchema, authExt, teamsExt, billingFor(subject)]
-const fragments = installed.flatMap((c) => c.schemas || []).flat()
+// Collect the cumulative `schemas` contributions in order. Static arrays from
+// auth/teams; billing's is a function (computed from resolvedConfig) — exactly the
+// shape Vike delivers it as. resolveSchemas normalizes both into a fragment list.
+const contributions = [vikeSchema.schemas, authExt.schemas, teamsExt.schemas, billingSchemas]
+const fragments = resolveSchemas(contributions, resolvedConfig)
 const { tables, conflicts } = mergeSchemas(fragments)
 
 if (conflicts.length) {
