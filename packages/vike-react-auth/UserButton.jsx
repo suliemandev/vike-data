@@ -2,14 +2,16 @@
 // when logged out. Reads useUser() (pageContext.user from the server tier); logout
 // is a real POST to /auth/logout (the server tier destroys the session row).
 import { useUser } from './useUser.js'
+import { useTranslation } from 'vike-react-i18n'
 
 export function UserButton({ loginHref = '/login' }) {
   const user = useUser()
+  const { t } = useTranslation()
 
   if (!user) {
     return (
       <a href={loginHref} style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
-        Sign in
+        {t('auth.signInShort')}
       </a>
     )
   }
@@ -30,7 +32,7 @@ export function UserButton({ loginHref = '/login' }) {
             cursor: 'pointer',
           }}
         >
-          Log out
+          {t('auth.logout')}
         </button>
       </form>
     </div>

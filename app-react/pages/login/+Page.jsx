@@ -4,5 +4,5 @@
 import { SignInForm } from 'vike-react-auth'
 
 export default function LoginPage() {
-  return <SignInForm heading="Sign in to Acme" />
+  return <SignInForm appName="Acme" />
 }
