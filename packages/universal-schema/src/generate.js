@@ -11,8 +11,13 @@
 //   - The native engine is the exception: WE own migrations, so we emit one
 //     ordered migration file per contributed fragment (create / alter).
 //
-// Pure: returns [{ path, contents }] pairs. No filesystem access here — the
-// binding/CLI decides where to write them.
+// Pure: returns logical-file pairs. No filesystem access here — the binding/CLI
+// decides where to write them. There are two surfaces:
+//   - schemaArtifacts() returns header-LESS { path, comment, body } entries, the
+//     generator contract consumed by @vike-data/codegen (core stamps the header
+//     and enforces the `.generated.` convention — one place, not per-extension).
+//   - generateArtifacts() is the standalone form: it stamps the header itself and
+//     returns { path, contents }, for callers not going through the codegen core.
 
 import { toPrisma, toDrizzle, toNative } from './compilers.js'
 
@@ -29,26 +34,26 @@ const pad = (x) => String(x).padStart(3, '0')
 
 // ---------------------------------------------------------------- Prisma -----
 // One declarative schema.prisma: a datasource/generator preamble + every model.
-function prismaFile(tables) {
+function prismaBody(tables) {
   const preamble =
     'datasource db {\n  provider = "postgresql"\n  url      = env("DATABASE_URL")\n}\n\n' +
     'generator client {\n  provider = "prisma-client-js"\n}'
   const models = tables.map(toPrisma).join('\n\n')
-  return `${header('//')}\n${preamble}\n\n${models}\n`
+  return `${preamble}\n\n${models}\n`
 }
 
 // --------------------------------------------------------------- Drizzle -----
 // One declarative schema.ts. toDrizzle emits a per-table import line; assembling
 // a file means hoisting a SINGLE import (the union of column fns) and keeping
 // only the table exports.
-function drizzleFile(tables) {
+function drizzleBody(tables) {
   const fns = [...new Set(tables.flatMap((t) => t.columns.map((c) => DRIZZLE_FN[c.type] || 'text')))]
   const importLine = `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'`
   const bodies = tables.map((t) => {
     const out = toDrizzle(t)
     return out.slice(out.indexOf('export const')) // drop toDrizzle's own import line
   })
-  return `${header('//')}\n${importLine}\n\n${bodies.join('\n\n')}\n`
+  return `${importLine}\n\n${bodies.join('\n\n')}\n`
 }
 
 // ---------------------------------------------------------------- Native -----
@@ -69,7 +74,7 @@ function nativeAlter(frag) {
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.table('${frag.table}', (t) => {\n${body}\n    })\n  }\n}`
 }
 
-function nativeFiles(fragments) {
+function nativeBodies(fragments) {
   const seenCreate = new Set()
   const files = []
   for (const f of fragments) {
@@ -77,33 +82,41 @@ function nativeFiles(fragments) {
       if (seenCreate.has(f.table)) continue // dedupe a shared extension's repeated create
       seenCreate.add(f.table)
       const name = `${pad(files.length + 1)}_create_${f.table}_table`
-      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${toNative(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, comment: '//', body: `${toNative(f)}\n` })
     } else {
       const cols = f.columns.map((c) => c.name).join('_')
       const name = `${pad(files.length + 1)}_alter_${f.table}_add_${cols}`
-      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${nativeAlter(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, comment: '//', body: `${nativeAlter(f)}\n` })
     }
   }
   return files
 }
 
-// Output path per ORM. Every artifact carries the "generated, don't edit" header
-// AND a `.generated.` filename suffix, matching the Vike-wide convention (cf. Vike's
-// own `vike.generated.d.ts`, vikejs/vike#698) that brillout asked for: the header is
-// the portable signal, the suffix makes generated files obvious at a glance.
+// Header-LESS artifacts: the generator contract for @vike-data/codegen. Each entry
+// is { path, comment, body }; the codegen core stamps the "generated, don't edit"
+// header and enforces the `.generated.` suffix so that convention lives in ONE
+// place (cf. Vike's own `vike.generated.d.ts`, vikejs/vike#698) instead of being
+// duplicated by every extension that emits files.
 //
 // Note: `prisma/schema.generated.prisma` isn't Prisma's default path, so point Prisma
 // at it via package.json `"prisma": { "schema": "prisma/schema.generated.prisma" }`
 // (or `--schema`). Drizzle's schema path is configured in `drizzle.config.ts` anyway.
-export function generateArtifacts({ tables, fragments }, orm) {
+export function schemaArtifacts({ tables, fragments }, orm) {
   switch (orm) {
     case 'prisma':
-      return [{ path: 'prisma/schema.generated.prisma', contents: prismaFile(tables) }]
+      return [{ path: 'prisma/schema.generated.prisma', comment: '//', body: prismaBody(tables) }]
     case 'drizzle':
-      return [{ path: 'drizzle/schema.generated.ts', contents: drizzleFile(tables) }]
+      return [{ path: 'drizzle/schema.generated.ts', comment: '//', body: drizzleBody(tables) }]
     case 'native':
-      return nativeFiles(fragments)
+      return nativeBodies(fragments)
     default:
-      throw new Error(`generateArtifacts: unknown ORM "${orm}"`)
+      throw new Error(`schemaArtifacts: unknown ORM "${orm}"`)
   }
+}
+
+// Standalone form for callers NOT going through the codegen core: stamps the
+// header itself and returns { path, contents }. Kept so universal-schema is
+// usable without @vike-data/codegen.
+export function generateArtifacts(schema, orm) {
+  return schemaArtifacts(schema, orm).map((a) => ({ path: a.path, contents: `${header(a.comment)}\n${a.body}` }))
 }

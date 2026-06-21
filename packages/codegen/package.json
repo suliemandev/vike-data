@@ -1,0 +1,13 @@
+{
+  "name": "@vike-data/codegen",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Spike of a proposed Vike-core primitive: a generator registry + materializer for extensions that derive committed files into the user's repo",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ]
+}

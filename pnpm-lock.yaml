@@ -10,6 +10,9 @@ importers:
 
   app:
     dependencies:
+      '@vike-data/codegen':
+        specifier: workspace:*
+        version: link:../packages/codegen
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../packages/vike-schema
@@ -25,6 +28,8 @@ importers:
       vite:
         specifier: ^7.1.0
         version: 7.3.5
+
+  packages/codegen: {}
 
   packages/example-auth:
     dependencies:

@@ -13,10 +13,12 @@
     "gen:prisma": "VIKE_DATA_ORM=prisma node generate.mjs",
     "gen:drizzle": "VIKE_DATA_ORM=drizzle node generate.mjs",
     "gen:native": "VIKE_DATA_ORM=native node generate.mjs",
+    "gen:check": "node generate.mjs --check",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vike-data/codegen": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "example-auth": "workspace:*",
     "example-billing": "workspace:*",
