@@ -1,33 +1,29 @@
-// A theme package is data; pin that it ships valid, distinct presets and that its
-// +config registers them into the cumulative `themes` point for composition.
+// A theme package is data; pin that it ships one valid brand carrying both modes
+// and that its +config registers it into the cumulative `themes` point.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { themeToVars } from 'vike-themes'
-import emerald, { emeraldLight, emeraldDark } from '../index.js'
+import emerald from '../index.js'
 import config from '../+config.js'
 
-test('exports a light + dark preset pair keyed by name', () => {
-  assert.equal(emerald['emerald-light'], emeraldLight)
-  assert.equal(emerald['emerald-dark'], emeraldDark)
+test('exports one Emerald brand with light + dark color sets', () => {
+  assert.equal(emerald.name, 'emerald')
+  assert.deepEqual(Object.keys(emerald.light), Object.keys(emerald.dark)) // same surface
+  assert.notEqual(emerald.light.bg, emerald.dark.bg) // different palette per mode
 })
 
-test('presets share the token surface so a theme swap is total', () => {
-  assert.deepEqual(Object.keys(emeraldLight.colors), Object.keys(emeraldDark.colors))
+test('emits the standard CSS-variable names per mode (composition contract)', () => {
+  assert.equal(themeToVars(emerald, 'light')['--color-primary'], '#059669')
+  assert.equal(themeToVars(emerald, 'dark')['--color-primary'], '#10b981')
+  assert.equal(themeToVars(emerald, 'light')['--radius'], '16px')
 })
 
-test('emits the standard CSS-variable names (composition contract)', () => {
-  const vars = themeToVars(emeraldLight)
-  assert.ok('--color-primary' in vars)
-  assert.ok('--radius' in vars)
-  assert.equal(vars['--color-primary'], '#059669')
+test('is visibly distinct from the default brand (primary + radius)', () => {
+  assert.equal(themeToVars(emerald, 'light')['--radius'], '16px') // rounder than default 10px
+  assert.notEqual(themeToVars(emerald, 'light')['--color-primary'], '#4f46e5') // not default indigo
 })
 
-test('is visibly distinct from a plain palette (primary + radius)', () => {
-  assert.equal(themeToVars(emeraldLight)['--radius'], '16px')
-  assert.notEqual(themeToVars(emeraldLight)['--color-primary'], '#4f46e5')
-})
-
-test('+config registers both presets into the cumulative themes point and self-installs vike-themes', () => {
-  assert.deepEqual(config.themes, [emeraldLight, emeraldDark])
+test('+config registers the brand into the cumulative themes point and self-installs vike-themes', () => {
+  assert.deepEqual(config.themes, [emerald])
   assert.ok(config.extends.includes('import:vike-themes/config:default'))
 })
