@@ -1,3 +1,16 @@
+// Normalize the cumulative `schemas` contributions into a flat fragment list.
+// Each source contributes EITHER a static array of fragments OR a function of the
+// resolved config (a COMPUTED contribution: the schema an extension declares can
+// depend on a config the app set, e.g. billing keyed per-user vs per-org). Vike
+// delivers a computed contribution as a live function (defined via a pointer-import
+// / +file, since inline functions can't be serialized into a runtime config);
+// here we just call it with the resolved config.
+export function resolveSchemas(contributions, config) {
+  return (contributions || []).flatMap((entry) =>
+    typeof entry === 'function' ? entry(config) || [] : entry || [],
+  )
+}
+
 // Merge every contributed schema fragment into final tables, then derive the
 // migrations from the result. This is what a binding (e.g. vike-schema) does with
 // the contributions it collects through its cumulative config point.
