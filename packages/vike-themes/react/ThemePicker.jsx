@@ -1,7 +1,7 @@
 // The runtime switcher (fixed, bottom-right): two controls for the two axes —
 // Appearance (System / Light / Dark) and Theme (the registered brands, shown only
 // when there is more than one). Both switch live and persist via cookie.
-import { useTheme } from './ThemeProvider.jsx'
+import { useTheme } from './context.js'
 
 const prettyLabel = (name) =>
   String(name)
