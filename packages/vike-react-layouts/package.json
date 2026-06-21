@@ -5,12 +5,15 @@
   "type": "module",
   "description": "React shell components for vike-layouts: <CenteredShell> (public/auth), <TopbarShell>, <SidebarShell>, and a <Layout> dispatcher. Authored against vike-themes CSS variables. The per-framework UI half of the layout core.",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./ConfigLayout": "./ConfigLayout.jsx"
   },
   "dependencies": {
     "vike-layouts": "workspace:*"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=18",
+    "vike-react": ">=0.6"
   }
 }

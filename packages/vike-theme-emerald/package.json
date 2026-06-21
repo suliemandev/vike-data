@@ -1,0 +1,17 @@
+{
+  "name": "vike-theme-emerald",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Example theme package for vike-themes: an emerald (green, rounded) light/dark preset pair. Registers into the cumulative `themes` config — install it and the theme is selectable, no app wiring.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js"
+  },
+  "dependencies": {
+    "vike-themes": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

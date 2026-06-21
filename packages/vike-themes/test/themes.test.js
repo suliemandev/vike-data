@@ -4,6 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineTheme, themeToVars, themeToCss, presets, light, dark } from '../index.js'
+import config from '../+config.js'
 
 test('defineTheme normalizes a token object and keeps name', () => {
   const t = defineTheme({ name: 'brand', colors: { primary: '#f00' }, radius: '4px' })
@@ -61,4 +62,15 @@ test('light and dark share structure but differ in colors (composable base)', ()
   assert.deepEqual(Object.keys(light.colors), Object.keys(dark.colors)) // same token surface
   assert.equal(light.radius, dark.radius) // shared base
   assert.notEqual(light.colors.bg, dark.colors.bg) // different palette
+})
+
+test('+config declares the theme selection + cumulative themes registry', () => {
+  assert.equal(config.meta.theme.cumulative, undefined) // single selection
+  assert.equal(config.meta.themes.cumulative, true) // packages register presets
+  assert.equal(config.meta.themes.env.client, true) // available client-side for the picker
+})
+
+test('+config ships the built-in presets and a default selection', () => {
+  assert.deepEqual(config.themes, [light, dark])
+  assert.equal(config.theme, 'light')
 })

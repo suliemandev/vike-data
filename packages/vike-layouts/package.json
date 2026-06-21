@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Framework-agnostic layout core: the app-shell registry (centered/topbar/sidebar) + the selection and slot config (logo/nav/footer/user-menu, rtl/ltr). The per-framework shell components live in a wrapper (vike-react-layouts). Zero framework imports.",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./config": "./+config.js"
   },
   "scripts": {
     "test": "node --test"

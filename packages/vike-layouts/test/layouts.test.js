@@ -4,6 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { shells, registerShell, isAppShell, defineLayout } from '../index.js'
+import config from '../+config.js'
 
 test('ships the three preset shells with kinds', () => {
   const s = shells()
@@ -61,4 +62,10 @@ test('registerShell adds a 4th shell (open registry)', () => {
 test('registerShell validates its arguments', () => {
   assert.throws(() => registerShell('', { slots: [] }), /non-empty string/)
   assert.throws(() => registerShell('x', {}), /slots must be an array/)
+})
+
+test('+config declares the layout selection + slot config points', () => {
+  assert.equal(config.meta.layout.env.client, true) // shell selection, client-available
+  assert.equal(config.meta.nav.cumulative, true) // extensions can contribute nav links
+  assert.equal(config.layout, 'centered') // safe public default
 })
