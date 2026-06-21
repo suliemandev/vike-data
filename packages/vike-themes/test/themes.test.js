@@ -4,7 +4,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { defineTheme, themeToVars, themeToCss, themeToAppearanceCss, presets, defaultTheme, APPEARANCES } from '../index.js'
+import { defineTheme, themeToVars, themeToCss, themeToAppearanceCss, baseCss, presets, defaultTheme, APPEARANCES } from '../index.js'
 import config from '../+config.js'
 
 // ----------------------------------------------------------- defineTheme -----
@@ -88,6 +88,12 @@ test('presets ship a single `default` brand carrying both modes', () => {
 
 test('APPEARANCES lists the three modes', () => {
   assert.deepEqual(APPEARANCES, ['system', 'light', 'dark'])
+})
+
+test('baseCss resets the body margin + box-sizing and themes the body', () => {
+  assert.match(baseCss, /html, body \{ margin: 0;/) // no browser-default 8px gutter
+  assert.match(baseCss, /box-sizing: border-box/)
+  assert.match(baseCss, /background: var\(--color-bg\)/) // body picks up the theme
 })
 
 // --------------------------------------------------------------- +config ------

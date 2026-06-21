@@ -121,3 +121,17 @@ export const presets = { default: defaultTheme }
 
 /** The valid appearance modes. */
 export const APPEARANCES = ['system', 'light', 'dark']
+
+// A minimal base/reset, authored against the theme variables. Shipped with the
+// theme layer (always installed for any UI) so the page has a sane baseline: no
+// browser-default 8px body margin (which leaves an un-themed gutter and overflows
+// `min-height: 100vh`), border-box sizing, and a body that picks up the active
+// theme's bg/text/font so the background fills edge-to-edge under any shell.
+export const baseCss = `*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}`
