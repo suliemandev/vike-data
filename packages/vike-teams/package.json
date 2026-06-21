@@ -1,0 +1,14 @@
+{
+  "name": "vike-teams",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Teams / multi-tenancy extension. Composes on vike-auth: references its users table and adds a column to it.",
+  "exports": {
+    "./config": "./+config.js"
+  },
+  "dependencies": {
+    "@vike-data/vike-schema": "workspace:*",
+    "vike-auth": "workspace:*"
+  }
+}

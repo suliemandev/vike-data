@@ -1,0 +1,13 @@
+{
+  "name": "vike-auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Auth extension (core tier): owns the users + sessions tables, ORM-agnostic. The composition base other extensions build on.",
+  "exports": {
+    "./config": "./+config.js"
+  },
+  "dependencies": {
+    "@vike-data/vike-schema": "workspace:*"
+  }
+}

@@ -10,6 +10,8 @@ export default class extends Migration {
       t.uuid('id').primary()
       t.string('email').unique()
       t.string('name').nullable()
+      t.string('password_hash').nullable()
+      t.boolean('email_verified').default(false)
       t.boolean('active').default(true)
       t.timestamp('created_at').useCurrent()
       t.timestamp('updated_at').useCurrent()
