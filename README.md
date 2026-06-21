@@ -225,17 +225,20 @@ beyond "FK column is `unique`".
 
 **On the server tier (vike-auth's `middleware` + `onCreatePageContext`, added with the magic-link auth):**
 
-8. The built-in **`middleware` config is cumulative but not deduped by identity** —
-   the same finding as #6, one layer up. vike-auth is self-installed by the app,
-   teams, and billing, so its middleware runs several times per request; and a
-   universal middleware runs even after an earlier one returned a `Response` (a
-   `Response` only short-circuits route *handlers*). A body-reading middleware then
-   double-reads. vike-auth guards with a per-request `WeakSet`. Vike could dedupe
-   the `middleware` config by identity, exactly as the schema layer dedupes `_migrations`.
+8. The built-in **`middleware` config is cumulative and was included once per
+   install path** — the same finding as #6, one layer up. vike-auth is
+   self-installed by the app, teams, and billing, so its middleware ran three
+   times per request on the released `0.4.259`; and a universal middleware runs
+   even after an earlier one returned a `Response` (a `Response` only
+   short-circuits route *handlers*), so a body-reading middleware double-reads.
+   **Fixed upstream by the same #3355 as #6** (verified: once per request on
+   `0.4.259-commit-a91659b`). The per-request `WeakSet` guard in vike-auth stays
+   as back-compat for pre-#3355 releases.
 9. A **3xx redirect returned from a universal middleware crashes Vike's request
    logger**: it looks for a `Location` header with a capital `L`, but the Web
    `Headers` object lower-cases it (`assert(headerRedirect)` throws). Worked around
-   with `200` + meta-refresh; a case-insensitive lookup in `logHttpResponse` fixes it.
+   with `200` + meta-refresh. Filed as
+   [vikejs/vike#3357](https://github.com/vikejs/vike/issues/3357).
 10. A **middleware's returned context is not bridged into `pageContext`** (Vike
     invokes the chain with a fresh `{}` and renders from its own closure). So the
     current user is resolved in `onCreatePageContext`, not the middleware. Bridging
