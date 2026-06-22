@@ -12,6 +12,7 @@
 //              strings, AND the /login + /account pages (the extension owns them).
 import vikeReact from 'vike-react/config'
 import authExt from 'vike-auth/react'
+import adminExt from 'vike-admin/react'
 import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
@@ -50,8 +51,13 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr],
+  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr],
   title: 'vike-data React UI tier',
+
+  // admin: install vike-admin/react — one import brings the /admin/* pages and the
+  // cumulative `adminResources` seam. The app's `users` resource is contributed from the
+  // sibling +adminResources.js file (resources carry functions — canView/canEdit — so
+  // Vike pointer-imports the file rather than serializing them into the config).
 
   // two axes: which brand, and which mode (system follows the OS).
   appearance: 'system', // 'system' | 'light' | 'dark'
@@ -70,6 +76,7 @@ export default {
   logo: '◆ Acme',
   nav: [
     { label: 'Home', href: '/' },
+    { label: 'Admin', href: '/admin' },
     { label: 'Account', href: '/account' },
     { label: 'Login', href: '/login' },
   ],
