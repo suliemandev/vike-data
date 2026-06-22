@@ -1,0 +1,20 @@
+{
+  "name": "@universal-orm/memory",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "In-process memory adapter for @vike-data/universal-orm: executes the neutral repository calls against plain Maps. Zero database, zero ORM — for tests, demos, and the proof.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@vike-data/universal-orm": "workspace:*"
+  },
+  "devDependencies": {
+    "@vike-data/universal-schema": "workspace:*"
+  }
+}
