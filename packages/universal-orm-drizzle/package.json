@@ -1,0 +1,22 @@
+{
+  "name": "@universal-orm/drizzle",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Drizzle adapter for @universal-orm/core: translates the neutral insert/find/upsert/update/delete calls into Drizzle queries against the app-provided connection. The app installs this one adapter; extensions never import an ORM.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.30.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.3",
+    "@universal-orm/core": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  }
+}

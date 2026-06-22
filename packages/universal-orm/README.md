@@ -1,4 +1,4 @@
-# @vike-data/universal-orm
+# @universal-orm/core
 
 The **runtime** half of the data layer: how an extension reads and writes its data
 **without importing an ORM**. It is the runtime twin of
@@ -41,7 +41,7 @@ is not a query language (that is Kysely's job); it is the 90%-case repository.
 ## Using it
 
 ```js
-import { createRepository } from '@vike-data/universal-orm'
+import { createRepository } from '@universal-orm/core'
 import { defineSchema, mergeSchemas } from '@vike-data/universal-schema'
 
 const { tables } = mergeSchemas([
@@ -80,7 +80,7 @@ In-process adapters can reuse the shared filter matcher so every adapter agrees 
 what a filter means; SQL adapters translate the same shape into a `WHERE` clause:
 
 ```js
-import { matchesFilter } from '@vike-data/universal-orm'
+import { matchesFilter } from '@universal-orm/core'
 matchesFilter(row, { active: true })
 ```
 
