@@ -14,7 +14,7 @@
 // 'app' shells carry the signed-in chrome. slots: which slots the shell renders.
 const SHELLS = {
   // centered/blank — public + auth pages: a clean centered card, logo only. This
-  // is exactly what vike-react-auth's login page wants.
+  // is exactly what vike-auth/react's login page wants.
   centered: { kind: 'public', slots: ['logo'] },
   // topbar — app shell: horizontal nav across the top.
   topbar: { kind: 'app', slots: ['logo', 'nav', 'userMenu', 'footer'] },

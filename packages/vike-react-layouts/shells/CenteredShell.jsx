@@ -1,5 +1,5 @@
 // Centered / blank shell — the public + auth shell (#25): logo + a centered card,
-// no app nav. This is the bridge to vike-react-auth's login page. Authored
+// no app nav. This is the bridge to vike-auth/react's login page. Authored
 // entirely against the theme's CSS variables (vike-themes), so a theme swap
 // restyles it without this component knowing which theme is active.
 export function CenteredShell({ layout = { dir: 'ltr', slots: {} }, children }) {

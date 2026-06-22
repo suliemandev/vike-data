@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "French locale pack for vike-react-auth. Registers French translations of the auth.* keys into the cumulative messages config. Install it and the auth UI speaks French; the base vike-react-auth ships English only.",
+  "description": "French locale pack for vike-auth/react. Registers French translations of the auth.* keys into the cumulative messages config. Install it and the auth UI speaks French; the base vike-auth/react ships English only.",
   "exports": {
     ".": "./index.js",
     "./config": "./+config.js"

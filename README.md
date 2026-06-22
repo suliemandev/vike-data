@@ -63,15 +63,14 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `universal-schema` | The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. **Zero Vike imports.** |
 | `universal-orm` | The neutral, narrow repository (`db.<table>.insert/find/upsert/update/delete`) over the composed schema + the adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
-| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). |
+| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its own `/login` + `/account` pages ship as the `vike-auth/react` subpath. |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
 | `vike-stripe` | Stripe billing as subpath models: `b2c-subscription` (upsert) + `b2b-payment` (insert). Subject FK *computed* from `billingSubject`; server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
-| `vike-themes` / `vike-react-themes` | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
+| `vike-themes` (+ `vike-themes/react`) | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` / `vike-react-layouts` | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-react-auth` | Auth React components + `useUser()`. Ships English strings. |
-| `vike-react-auth-fr` | French locale pack for vike-react-auth. |
+| `vike-react-auth-fr` | French locale pack for `vike-auth/react`. |
 | `vike-i18n` / `vike-react-i18n` | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |

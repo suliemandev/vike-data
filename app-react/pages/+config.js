@@ -7,14 +7,15 @@
 //              active one with `theme`. The app's OWN brand theme is contributed
 //              through the same cumulative `themes` point (customization).
 //   - layout:  install vike-react-layouts; pick the shell with `layout`, fill the
-//              slots with `logo`/`nav`. Per-page override in pages/login/+config.js.
+//              slots with `logo`/`nav`. The auth /login page sets its own layout.
+//   - auth:    install vike-auth/react — one import brings the server tier, the auth
+//              strings, AND the /login + /account pages (the extension owns them).
 import vikeReact from 'vike-react/config'
-import authExt from 'vike-auth/config'
+import authExt from 'vike-auth/react'
 import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-react-layouts/config'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-react-i18n/config'
-import authUiExt from 'vike-react-auth/config'
 import authFrExt from 'vike-react-auth-fr/config'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
@@ -48,7 +49,7 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt, i18nExt, authUiExt, authFrExt],
+  extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFrExt],
   title: 'vike-data React UI tier',
 
   // two axes: which brand, and which mode (system follows the OS).
@@ -57,16 +58,17 @@ export default {
   themes: [acme], // the app contributes its own brand (built-ins + emerald compose in)
 
   // i18n: pick the default locale; the app + every extension compose their strings
-  // into the cumulative `messages` point. vike-react-auth ships English; French
+  // into the cumulative `messages` point. vike-auth/react ships English; French
   // comes from the installed locale PACK vike-react-auth-fr (extends above).
   locale: 'en',
   messages: [appMessages],
 
-  // layout: pick the app-shell + fill its slots. pages/login overrides to centered.
+  // layout: pick the app-shell + fill its slots. The auth /login page sets centered.
   layout: 'topbar',
   logo: '◆ Acme',
   nav: [
     { label: 'Home', href: '/' },
+    { label: 'Account', href: '/account' },
     { label: 'Login', href: '/login' },
   ],
 }

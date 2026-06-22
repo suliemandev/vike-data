@@ -13,3 +13,13 @@ onlyBuiltDependencies:
   - esbuild
 
 verifyDepsBeforeRun: false
+
+# Pin Vike to the commit build that contains config.pages (vike#3356, merged
+# 2026-06-21; merge commit f6ecfb2), so extensions can define pages programmatically
+# (vike-auth/react ships /login + /account). Drop back to a stable ^0.4 release once
+# one publishes with #3356.
+overrides:
+  vike: 0.4.259-commit-f6ecfb2
+
+minimumReleaseAgeExclude:
+  - vike@0.4.259-commit-f6ecfb2

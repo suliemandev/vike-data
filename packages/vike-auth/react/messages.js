@@ -1,4 +1,4 @@
-// vike-react-auth's strings — ENGLISH ONLY (the base + fallback locale). The
+// vike-auth/react's strings — ENGLISH ONLY (the base + fallback locale). The
 // extension owns its keys (under `auth.*`) and ships `en`; other languages are
 // separate, installable LOCALE PACKS that contribute their translations to the
 // cumulative `messages` config (e.g. vike-react-auth-fr), exactly the way theme
@@ -21,6 +21,10 @@ export const authMessages = defineMessages({
     'auth.footer': 'Served by the vike-auth extension.',
     'auth.signInShort': 'Sign in',
     'auth.logout': 'Log out',
+    'auth.accountTitle': 'Your account',
+    'auth.accountSignedInAs': 'Signed in as',
+    'auth.accountName': 'Name',
+    'auth.accountSignedOut': 'You are not signed in.',
   },
 })
 

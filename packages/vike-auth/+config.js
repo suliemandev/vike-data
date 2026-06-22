@@ -5,7 +5,7 @@
 // declaration compiles to Prisma, Drizzle, or the native engine.
 //
 // This is the framework-agnostic CORE tier (schema + server lifecycle, no UI).
-// UI wrappers (vike-react-auth / vike-vue-auth) would layer components on top;
+// UI wrappers (vike-auth/react / vike-vue-auth) would layer components on top;
 // they reuse this exact schema rather than redefining it.
 //
 // It self-installs vike-schema with Vike's pre-serialized pointer-import string,
@@ -29,7 +29,7 @@ export default {
   middleware: 'import:vike-auth/middleware:default',
   onCreatePageContext: 'import:vike-auth/onCreatePageContext:default',
   // onCreatePageContext sets a serializable `pageContext.user` ({id,email,name});
-  // expose it to the client so a UI hook (vike-react-auth's useUser) reads the same
+  // expose it to the client so a UI hook (vike-auth/react's useUser) reads the same
   // value after hydration instead of flipping to signed-out. Cumulative — merges
   // with the host's other passToClient keys.
   passToClient: ['user'],

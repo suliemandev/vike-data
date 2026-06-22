@@ -1,7 +1,7 @@
 // The render-side half of the server tier, referenced from +config.js via
 // `import:vike-auth/onCreatePageContext:default`. It resolves the session cookie
 // to the current user and puts it on pageContext, so any page (and a future
-// vike-react-auth UI) can read `pageContext.user` without knowing how auth works.
+// vike-auth/react UI) can read `pageContext.user` without knowing how auth works.
 //
 // Why this lives here and not in the middleware: Vike 0.4.259 does not bridge a
 // universal middleware's returned context into pageContext, so the middleware

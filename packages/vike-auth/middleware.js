@@ -1,7 +1,7 @@
 // The Vike binding's request handler: a universal middleware (server-agnostic,
 // runs on Hono / Express / Cloudflare / the Vike dev server alike). It owns the
 // auth ENDPOINTS and the session cookie; it does not render the login UI (that
-// is the app's, or a future vike-react-auth's, job).
+// is the app's, or a future vike-auth/react's, job).
 //
 // As a universal middleware it runs on every request inside Vike's onion. For
 // non-/auth/ paths it returns nothing and the request falls through to Vike's

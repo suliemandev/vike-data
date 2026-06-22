@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "React demo app: vike-react + vike-auth + the vike-react-* UI tier (themes, layouts, auth). Renders a themed login page inside a centered layout shell. Leaves the vanilla app/ untouched.",
+  "description": "React demo app: vike-react + vike-auth/react (auth UI + its /login + /account pages) + the UI tier (themes, layouts). Renders a themed, extension-owned login page inside a centered layout shell. Leaves the vanilla app/ untouched.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -16,7 +16,6 @@
     "vike-react": "^0.6.0",
     "vike-auth": "workspace:*",
     "vike-i18n": "workspace:*",
-    "vike-react-auth": "workspace:*",
     "vike-react-auth-fr": "workspace:*",
     "vike-react-i18n": "workspace:*",
     "vike-react-layouts": "workspace:*",
