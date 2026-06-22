@@ -1,15 +1,16 @@
-// The b2b-payment model's COMPUTED schema: a `payments` table, one row per charge.
+// The purchase model's COMPUTED schema: a `payments` table, one row per charge.
 // Unlike a subscription, a charge is immutable and there are MANY per subject, so the
 // subject FK is NOT unique (a one-to-many). `stripe_payment_intent_id` is unique —
-// the idempotency key, one row per Stripe charge.
+// the idempotency key, one row per Stripe charge. The subject FK follows `segment`
+// ('b2b' -> organizations, 'b2c' -> users).
 //
-// One-time charges are the b2b model; recurring subscriptions are b2c-subscription.
+// One-time charges are this model; recurring subscriptions are the `subscription` model.
 import { defineSchema } from '@vike-data/vike-schema/schema'
 
 export default function paymentSchemas(config) {
-  const subject = config?.billingSubject === 'user' ? 'user' : 'organization'
+  const segment = config?.segment === 'b2c' ? 'b2c' : 'b2b'
   const ref =
-    subject === 'user'
+    segment === 'b2c'
       ? { column: 'user_id', target: 'users.id' }
       : { column: 'organization_id', target: 'organizations.id' }
 

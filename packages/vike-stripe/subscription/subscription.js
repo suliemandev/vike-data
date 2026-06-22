@@ -1,4 +1,4 @@
-// The b2c-subscription CORE — framework- and ORM-agnostic. It takes a universal-orm
+// The subscription CORE — framework- and ORM-agnostic. It takes a universal-orm
 // repository (`db`) and upserts the single `subscriptions` row for a subject. No
 // Vike, no HTTP, no ORM: the write is just `db.subscriptions.upsert(...)`.
 //
@@ -6,14 +6,17 @@
 // repeated events (created -> renewed -> plan_changed -> canceled), each converging
 // the one row. Keyed by the unique subject FK, a replayed or out-of-order event
 // never doubles it. No transaction (a single upsert is atomic).
+//
+// `segment` selects WHO the subject is — 'b2b' (organization) or 'b2c' (user) — and
+// thus which FK column the row is keyed on.
 
-const SUBJECT_COLUMN = { organization: 'organization_id', user: 'user_id' }
+const SUBJECT_COLUMN = { b2b: 'organization_id', b2c: 'user_id' }
 
 const isoNow = () => new Date().toISOString()
 
-export function createSubscriptions({ db, subject = 'organization' } = {}) {
+export function createSubscriptions({ db, segment = 'b2b' } = {}) {
   if (!db) throw new Error('[vike-stripe] createSubscriptions requires a universal-orm { db }')
-  const subjectColumn = SUBJECT_COLUMN[subject] || SUBJECT_COLUMN.organization
+  const subjectColumn = SUBJECT_COLUMN[segment] || SUBJECT_COLUMN.b2b
 
   return {
     subjectColumn,

@@ -1,23 +1,23 @@
-// The b2b-payment server tier: a universal middleware owning the payment webhook. A
+// The purchase server tier: a universal middleware owning the purchase webhook. A
 // thin HTTP shell over the core; the write goes through universal-orm (no ORM
 // import). The event is parsed via the shared Stripe SDK (../stripe.js).
 //
-//   POST /stripe/payment/webhook   charge event -> db.payments.insert(...)
+//   POST /stripe/purchase/webhook   charge event -> db.payments.insert(...)
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { stripe } from '../stripe.js'
 
-export const PAYMENT_WEBHOOK_PATH = '/stripe/payment/webhook'
+export const PURCHASE_WEBHOOK_PATH = '/stripe/purchase/webhook'
 
 const json = (status, body) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 // Raw handler, exported for testing: `(request) => Response | undefined`.
-export function paymentWebhookHandler(payments, { provider = stripe } = {}) {
+export function purchaseWebhookHandler(payments, { provider = stripe } = {}) {
   const handled = new WeakSet()
 
-  return async function paymentMiddleware(request) {
+  return async function purchaseMiddleware(request) {
     const url = new URL(request.url)
-    if (url.pathname !== PAYMENT_WEBHOOK_PATH) return // fall through to Vike
+    if (url.pathname !== PURCHASE_WEBHOOK_PATH) return // fall through to Vike
     if (request.method !== 'POST') return json(405, { ok: false, error: 'method-not-allowed' })
     if (handled.has(request)) return
     handled.add(request)
@@ -34,9 +34,9 @@ export function paymentWebhookHandler(payments, { provider = stripe } = {}) {
   }
 }
 
-export function createPaymentWebhook(payments, opts) {
-  return enhance(paymentWebhookHandler(payments, opts), {
-    name: 'vike-stripe-b2b-payment',
+export function createPurchaseWebhook(payments, opts) {
+  return enhance(purchaseWebhookHandler(payments, opts), {
+    name: 'vike-stripe-purchase',
     order: MiddlewareOrder.AUTHENTICATION,
   })
 }

@@ -3,7 +3,7 @@
 // A Vite plugin contributed by vike-schema. It runs on `vike build` and on dev
 // server start, reads Vike's RESOLVED config graph via getVikeConfig() — the
 // merged cumulative `schemas` from every installed extension, plus the app's
-// own config (e.g. `billingSubject`) — and writes the per-ORM artifacts.
+// own config (e.g. `segment`) — and writes the per-ORM artifacts.
 //
 // The difference from the stand-in: the stand-in hard-coded the contribution
 // list (`[vikeSchema.schemas, authExt.schemas, ...]`) and re-read env. This
@@ -22,7 +22,7 @@ export function vikeSchema(options = {}) {
     // `schemas` is contributed at the global +config level, so it lands on every
     // page's resolved config (the same value the runtime consumer reads via
     // pageContext.config.schemas). Read it from the page config — that resolved
-    // config object also carries the app's options (e.g. billingSubject), which
+    // config object also carries the app's options (e.g. segment), which
     // computed (function) contributions need. Take the first page that has it;
     // a global cumulative config is identical across pages.
     const pageConfigs = Object.values(getVikeConfig().pages || {}).map((p) => p.config)

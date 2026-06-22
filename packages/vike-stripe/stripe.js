@@ -1,5 +1,5 @@
 // The shared Stripe SDK seam — the reason vike-stripe is ONE package: every billing
-// model (b2c-subscription, b2b-payment) talks to Stripe through this single place,
+// model (subscription, purchase) talks to Stripe through this single place,
 // rather than each subpath pulling its own copy.
 //
 // A real vike-stripe would import the official `stripe` package here and verify the

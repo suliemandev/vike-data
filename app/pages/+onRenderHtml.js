@@ -18,7 +18,7 @@ export default function onRenderHtml(pageContext) {
 
   // Resolve contributions against the merged config: static arrays pass through;
   // computed (function) contributions — like billing's — are called with the
-  // resolved config, so billing's FK follows `billingSubject`.
+  // resolved config, so billing's FK follows `segment`.
   const fragments = resolveSchemas(pageContext.config.schemas, pageContext.config)
   const { tables, conflicts } = mergeSchemas(fragments)
   const migrations = deriveMigrations(fragments)

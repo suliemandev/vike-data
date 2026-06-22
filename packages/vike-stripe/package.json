@@ -3,15 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Stripe billing extension: one package, multiple billing models as subpath implementations (b2c-subscription / b2b-payment). Each writes through universal-orm (no ORM import); the shared Stripe SDK lives at the root. Stripe is the baked-in default provider; other providers come later as their own package (vike-paddle).",
+  "description": "Stripe billing extension: one package, multiple billing models as subpath implementations (subscription / purchase). Each picks WHO you bill via the `segment` option ('b2b' | 'b2c') and writes through universal-orm (no ORM import); the shared Stripe SDK lives at the root. Stripe is the baked-in default provider; other providers come later as their own package (vike-paddle).",
   "exports": {
     "./stripe": "./stripe.js",
-    "./b2c-subscription": "./b2c-subscription/+config.js",
-    "./b2c-subscription/schemas": "./b2c-subscription/schemas.js",
-    "./b2c-subscription/middleware": "./b2c-subscription/vike-middleware.js",
-    "./b2b-payment": "./b2b-payment/+config.js",
-    "./b2b-payment/schemas": "./b2b-payment/schemas.js",
-    "./b2b-payment/middleware": "./b2b-payment/vike-middleware.js"
+    "./subscription": "./subscription/+config.js",
+    "./subscription/schemas": "./subscription/schemas.js",
+    "./subscription/middleware": "./subscription/vike-middleware.js",
+    "./purchase": "./purchase/+config.js",
+    "./purchase/schemas": "./purchase/schemas.js",
+    "./purchase/middleware": "./purchase/vike-middleware.js"
   },
   "scripts": {
     "test": "node --test"

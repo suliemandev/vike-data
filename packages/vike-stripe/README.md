@@ -12,21 +12,24 @@ no `/config`):
 
 ```js
 // pages/+config.js
-import subscriptions from 'vike-stripe/b2c-subscription' // recurring subscriptions
-import payments from 'vike-stripe/b2b-payment'          // one-time charges
+import subscription from 'vike-stripe/subscription' // recurring subscriptions
+import purchase from 'vike-stripe/purchase'         // one-time charges
 
 export default {
-  extends: [subscriptions /* and/or */, payments],
-  billingSubject: 'organization', // who is billed: 'organization' (default) or 'user'
+  extends: [subscription /* and/or */, purchase],
+  segment: 'b2b', // who is billed: 'b2b' (organization, default) or 'b2c' (user)
 }
 ```
 
+The subpath picks the **model** (recurring vs one-time); `segment` picks **who** you
+bill. The two axes are orthogonal, so model x segment covers all four combinations.
+
 | subpath | model | table | the write |
 |---|---|---|---|
-| `vike-stripe/b2c-subscription` | recurring subscription, one row per subject | `subscriptions` (unique subject FK) | **upsert** keyed by subject |
-| `vike-stripe/b2b-payment` | one-time charges, many per subject | `payments` (non-unique subject FK) | **insert**, idempotent per payment-intent |
+| `vike-stripe/subscription` | recurring subscription, one row per subject | `subscriptions` (unique subject FK) | **upsert** keyed by subject |
+| `vike-stripe/purchase` | one-time charges, many per subject | `payments` (non-unique subject FK) | **insert**, idempotent per payment-intent |
 
-Both follow `billingSubject` (the FK targets `organizations` or `users`), self-install
+Both follow `segment` (`b2b` targets the `organizations` FK, `b2c` the `users` FK), self-install
 vike-teams (so `users` + `organizations` exist), and contribute a server tier whose
 webhook does the write through universal-orm. They are independent Lego pieces:
 install either, or both.
@@ -41,7 +44,7 @@ install either, or both.
 
 ```
 POST /stripe/subscription/webhook  -> db.subscriptions.upsert(row, { onConflict })
-POST /stripe/payment/webhook       -> db.payments.insert(row)   (idempotent per intent)
+POST /stripe/purchase/webhook      -> db.payments.insert(row)   (idempotent per intent)
 ```
 
 The webhook parses the event via the shared Stripe SDK, then calls a framework- and
@@ -50,9 +53,9 @@ call. The default wiring runs on the **memory adapter** (no database, for the pr
 and the demo); a real app passes a `db` built from `@universal-orm/drizzle` and its
 merged schema, and the core is unchanged.
 
-- **b2c-subscription** is the canonical **upsert**: the same subject emits repeated
+- **subscription** is the canonical **upsert**: the same subject emits repeated
   events (`created → renewed → canceled`), each converging the one row.
-- **b2b-payment** is the narrowest **insert**: a charge is immutable, so there is
+- **purchase** is the narrowest **insert**: a charge is immutable, so there is
   nothing to upsert; idempotency is a `findOne` on the Stripe payment-intent id before
   the insert.
 
@@ -64,8 +67,8 @@ No transactions yet (each write is a single atomic statement).
 
 ## Parameterized, the idiomatic way
 
-Each model declares `billingSubject` and **computes** its schema from it (a function
-wired as a pointer-import, since a runtime config value can't be an inline function),
-so the subject FK lands in `organizations` (default) or `users`. That needs no
-vike-data core change — it is the normal Vike options pattern plus a computed schema
-contribution. `BILLING_SUBJECT` switches it in the demo.
+Each model declares `segment` and **computes** its schema from it (a function wired as
+a pointer-import, since a runtime config value can't be an inline function), so the
+subject FK lands in `organizations` (`b2b`) or `users` (`b2c`). That needs no vike-data
+core change — it is the normal Vike options pattern plus a computed schema
+contribution. `BILLING_SEGMENT` switches it in the demo.
