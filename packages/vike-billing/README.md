@@ -3,7 +3,9 @@
 Billing / subscriptions extension, and the **third leg** of the
 [vike-data](../../README.md) composition proof: it composes on top of
 [vike-auth](../vike-auth/README.md) and/or [vike-teams](../vike-teams/README.md),
-proving the schema layer holds up as the SaaS spine grows past two extensions.
+proving the schema layer holds up as the SaaS spine grows past two extensions. It
+is also the **universal-orm proof**: its server tier writes for real, ORM-agnostic
+(see [Server tier](#server-tier-the-universal-orm-proof)).
 
 ## A configurable extension (the idiomatic way)
 
@@ -24,7 +26,7 @@ export default {
 billing's schema is **computed** from that option. Instead of a static
 `schemas: [...]` array, billing contributes a *function* of the resolved config
 (wired as a pointer-import, see [`schemas.js`](./schemas.js)); vike-schema calls it
-with the merged config, so both billing tables' subject FK follows `billingSubject`:
+with the merged config, so the subscription's subject FK follows `billingSubject`:
 
 | `billingSubject` | subject FK                              |
 |------------------|-----------------------------------------|
@@ -50,61 +52,60 @@ vike-schema  <-  vike-auth  <-  vike-teams  <-  vike-billing
 > pointer-import. The demo switches subject via `BILLING_SUBJECT` (mirroring
 > `VIKE_DATA_ORM`).
 
-## Event-sourced shape
+## Plain mutable shape
 
-billing is modelled the way the [vike-dashboard](https://github.com/vikejs/vike-dashboard)
-reference does it: an **append-only event log is the source of truth**, and the
-current state is a **rebuildable projection** over it.
+billing is one ordinary, mutable row per subject:
 
-| table | role | columns |
-|---|---|---|
-| `event__subscription_events` | append-only source of truth | id, `<subject>_id` (FK), type, plan, seats, **`stripe_event_id` (unique)**, occurred_at, created_at |
-| `computed__subscriptions` | projection (folded from events) | id, `<subject>_id` (**unique** FK → 1:1), plan, status, seats, stripe_customer_id, current_period_end, updated_at |
+| table | columns |
+|---|---|
+| `subscriptions` | id, `<subject>_id` (**unique** FK → 1:1), plan, status, seats, stripe_customer_id, stripe_subscription_id (unique), current_period_end, created_at, updated_at |
 
-The `event__` / `computed__` prefixes follow the dashboard's naming convention. An
-event row is an immutable fact (`created` / `renewed` / `plan_changed` / `canceled`
-/ `past_due`); `computed__subscriptions` is what you query, derived by folding the
-events for a subject. The projection's subject FK is **unique** (one current
-subscription per subject), which the relation graph reads as a one-to-one.
+The subject FK is **unique** — one current subscription per subject, which the
+relation graph reads as a one-to-one and which is exactly the upsert conflict key.
 
-### Design note — what the schema IR can and can't express
+> **Design note — why not event-sourced?** An earlier cut modelled billing the way
+> the [vike-dashboard](https://github.com/vikejs/vike-dashboard) reference does: an
+> append-only `event__subscription_events` log as the source of truth, with a
+> rebuildable `computed__subscriptions` projection folded over it. brillout's steer
+> in the universal-orm thread was to **drop it**: most apps don't model billing as
+> an immutable event stream, and it is odd if only the extension does. So billing is
+> now a plain table you upsert — the shape a real app would actually reach for.
+> Event-sourcing parks as a *candidate* first-class IR shape to discuss with Vike
+> (append-only constraints, projection derivation) rather than something baked into
+> every extension now; see the schema-IR question (#26). The schema IR is unchanged
+> by this — it was always just `defineSchema`; only the chosen shape is simpler.
 
-Modelling this surfaced exactly where vike-data's neutral schema model is and isn't
-enough. It is the genuine **design question for the Vike collaboration**: should
-append-only + projection become first-class shapes in the IR?
+## Server tier (the universal-orm proof)
 
-**The IR expresses today (convention carries the rest):**
+This is the live answer to *"how does an extension INSERT?"*. billing owns a webhook
+endpoint and writes through [universal-orm](../universal-orm/README.md) — **no ORM
+import anywhere in the extension**:
 
-- **Idempotency** via `stripe_event_id` UNIQUE — replaying a Stripe webhook can't
-  double-insert. This is a real, enforced constraint, not a convention.
-- **Mutable flags** on a projection (e.g. `status`, `current_period_end`) — ordinary
-  columns with defaults.
-- **The 1:1 between a subject and its current projection** — a UNIQUE foreign key,
-  which `deriveRelations` already turns into a one-to-one.
-- **"This row is append-only" by omission** — the event table simply has no
-  `updated_at` (and deliberately doesn't use the `timestamps()` helper, which adds
-  one). That *documents* append-only; it doesn't *enforce* it.
+```
+POST /stripe/webhook   { subject, plan, status, seats, ... }
+  -> db.subscriptions.upsert(row, { onConflict: '<subject>_id' })
+```
 
-**The IR can NOT express (gaps = the design note):**
+A Stripe subscription webhook is the canonical upsert case: the same subject emits
+repeated events over time (`created` → `renewed` → `plan_changed` → `canceled`), and
+each must converge the one subscription row. Keyed by the unique subject FK, that is
+a single `upsert` — insert the first time, update in place after — so a replayed or
+out-of-order webhook never doubles the row. No transaction needed (one upsert is
+atomic on its own).
 
-1. **Append-only as a constraint.** Nothing stops an `UPDATE` / `DELETE` on
-   `event__*`. Enforcing it is a database concern (revoke `UPDATE`/`DELETE`, or a
-   trigger) that the IR has no vocabulary for. A first-class `defineEvent(...)` (or a
-   table-level `.appendOnly()`) could carry that intent into each compiler.
-2. **The projection → event derivation.** The IR has foreign keys, but no notion
-   that `computed__subscriptions` *is a projection of* `event__subscription_events`.
-   The relationship is naming-convention only; the fold/rebuild logic lives nowhere
-   in the schema. A `defineProjection('subscriptions', { of: 'subscription_events' })`
-   could at least record the dependency (and scaffold a rebuild).
-3. **Event ordering / versioning / replay** — `occurred_at` vs `created_at` is the
-   only ordering signal; there's no first-class sequence or aggregate version.
-4. **`timestamps()` assumes mutable rows.** It always adds `updated_at`, which is
-   wrong for an append-only table — a small ergonomics tell that the helper bakes in
-   a CRUD assumption the event model breaks.
+The pieces mirror vike-auth's server tier:
 
-**Recommendation:** keep modelling event-sourcing with plain `defineSchema` + the
-`event__` / `computed__` convention for now (it compiles to every ORM and the FK
-checks hold). Treat append-only + projection as **candidate first-class shapes** to
-discuss with Vike before adding IR surface — they only pay off if a compiler or the
-runtime acts on them (enforce append-only; scaffold a projection rebuild). Adding
-vocabulary the compilers ignore would be cost without payoff.
+| file | role |
+|---|---|
+| [`billing.js`](./billing.js) | framework- and ORM-agnostic core: takes a universal-orm `db`, does `applySubscriptionEvent(event)` → `db.subscriptions.upsert(...)` |
+| [`middleware.js`](./middleware.js) | universal middleware owning `POST /stripe/webhook`; a thin HTTP shell over the core |
+| [`instance.js`](./instance.js) | the default wiring: a `db` over the **memory adapter** + the billing core, cached on `globalThis` |
+
+The default instance runs on `@universal-orm/memory` (no database, for the proof and
+the demo). A real app swaps in a `db` built from `@universal-orm/drizzle` and its
+merged schema; the billing core does not change. That is the whole point — the
+extension's write path is identical on any adapter.
+
+> In the proof the "webhook" is a plain JSON POST — no Stripe signature
+> verification, which is a provider concern for a real `vike-stripe`. The point is to
+> watch an extension INSERT/upsert for real, ORM-agnostically.

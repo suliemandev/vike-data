@@ -3,15 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Billing / subscriptions extension. A parameterized extension: bills per-organization (composes on vike-teams) or per-user (composes on vike-auth), chosen at install time.",
+  "description": "Billing / subscriptions extension. A parameterized extension: bills per-organization (composes on vike-teams) or per-user (composes on vike-auth), chosen at install time. Server tier upserts the subscriptions row through universal-orm (no ORM import).",
   "exports": {
     "./config": "./+config.js",
-    "./schemas": "./schemas.js"
+    "./schemas": "./schemas.js",
+    "./middleware": "./vike-middleware.js"
   },
   "scripts": {
     "test": "node --test"
   },
   "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
+    "@universal-orm/memory": "workspace:*",
+    "@vike-data/universal-orm": "workspace:*",
+    "@vike-data/universal-schema": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*",
     "vike-teams": "workspace:*"

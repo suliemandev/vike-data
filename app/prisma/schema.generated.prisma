@@ -74,8 +74,7 @@ model Organizations {
   owner Users @relation("organizations_owner_id", fields: [owner_id], references: [id], onDelete: Restrict)
   users_current_organization_id Users[] @relation("users_current_organization_id")
   memberships_organization_id Memberships[] @relation("memberships_organization_id")
-  event__subscription_events_organization_id Event_SubscriptionEvents[] @relation("event__subscription_events_organization_id")
-  computed__subscriptions_organization_id Computed_Subscriptions? @relation("computed__subscriptions_organization_id")
+  subscriptions_organization_id Subscriptions? @relation("subscriptions_organization_id")
 
   @@map("organizations")
 }
@@ -94,32 +93,19 @@ model Memberships {
   @@map("memberships")
 }
 
-model Event_SubscriptionEvents {
-  id String @id @default(uuid())
-  organization_id String
-  type String
-  plan String
-  seats Int @default(1)
-  stripe_event_id String @unique
-  occurred_at DateTime
-  created_at DateTime @default(now())
-
-  organization Organizations @relation("event__subscription_events_organization_id", fields: [organization_id], references: [id], onDelete: Cascade)
-
-  @@map("event__subscription_events")
-}
-
-model Computed_Subscriptions {
+model Subscriptions {
   id String @id @default(uuid())
   organization_id String @unique
   plan String
   status String @default("active")
   seats Int @default(1)
   stripe_customer_id String?
+  stripe_subscription_id String? @unique
   current_period_end DateTime?
+  created_at DateTime @default(now())
   updated_at DateTime @default(now())
 
-  organization Organizations @relation("computed__subscriptions_organization_id", fields: [organization_id], references: [id], onDelete: Cascade)
+  organization Organizations @relation("subscriptions_organization_id", fields: [organization_id], references: [id], onDelete: Cascade)
 
-  @@map("computed__subscriptions")
+  @@map("subscriptions")
 }
