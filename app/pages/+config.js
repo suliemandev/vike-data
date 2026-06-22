@@ -13,6 +13,11 @@ import authExt from 'vike-auth/config'
 import teamsExt from 'vike-teams/config'
 import subscriptionExt from 'vike-stripe/subscription'
 
+// Opt-in real DB via Drizzle is wired in +onCreateGlobalContext.js (the once-per-
+// server hook), where the app builds its connection at runtime and registers it as
+// the universal-orm adapter with vike-drizzle's registerDrizzle(). A live connection
+// can't travel through Vike config, so it lives in the runtime hook, not here.
+// Default (no env) stays on the memory adapter, no DB needed.
 export default {
   name: 'example-app',
   extends: [authExt, teamsExt, subscriptionExt],

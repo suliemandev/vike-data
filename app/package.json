@@ -18,8 +18,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.3",
     "@vike-data/vike-schema": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "vike-auth": "workspace:*",
+    "vike-drizzle": "workspace:*",
     "vike-teams": "workspace:*",
     "vike-stripe": "workspace:*",
     "vike": "^0.4.0",

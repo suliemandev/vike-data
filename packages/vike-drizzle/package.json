@@ -1,0 +1,25 @@
+{
+  "name": "vike-drizzle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Drizzle binding for vike-data: install it and your Drizzle connection becomes the universal-orm adapter, so every extension writes to your database with no manual setAdapter wiring. The app provides one connection + the generated Drizzle schema; vike-drizzle registers the adapter once in Vike's onCreateGlobalContext.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/drizzle": "workspace:*"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.30.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.3",
+    "drizzle-orm": "^0.45.2",
+    "vike-stripe": "workspace:*"
+  }
+}
