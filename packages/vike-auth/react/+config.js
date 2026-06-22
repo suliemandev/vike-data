@@ -18,10 +18,24 @@
 export default {
   name: 'vike-auth-react',
   extends: ['import:vike-auth/config:default'],
+  // `loginRedirect`: where a signed-in visitor to /login is sent. The app owns
+  // its post-login home — `loginRedirect: '/admin'` — defaulting to '/'. Single
+  // value (last wins), available on pageContext.config in every environment so
+  // the guard can read it server- and client-side.
+  meta: {
+    loginRedirect: { env: { config: true, server: true, client: true } },
+  },
+  loginRedirect: '/',
   pages: [
     // The extension owns these routes. layout 'centered' gives /login the public
-    // shell; /account inherits the app's default shell.
-    { route: '/login', Page: 'import:vike-auth/react/LoginPage:default', layout: 'centered' },
+    // shell; /account inherits the app's default shell. The /login guard bounces
+    // an already-signed-in visitor to `loginRedirect`.
+    {
+      route: '/login',
+      Page: 'import:vike-auth/react/LoginPage:default',
+      guard: 'import:vike-auth/react/loginGuard:guard',
+      layout: 'centered',
+    },
     { route: '/account', Page: 'import:vike-auth/react/AccountPage:default' },
   ],
 }
