@@ -16,12 +16,49 @@ import {
   findResource,
   tableNamed,
   resourceLabel,
+  recordTitleColumn,
   canView,
   canEdit,
   buildDb,
   viewColumns,
   viewFields,
 } from './resolve.js'
+
+// Fill the `options` of every foreign-key field by reading the referenced table: each
+// row becomes `{ value: <ref column>, label: <recordTitle of the target> }`. The target's
+// label column comes from its resource's `recordTitle` (else a schema default), so a
+// `user_id` field shows users by email instead of by uuid. Plain + serializable.
+async function loadFkOptions(fields, { db, config, tables }) {
+  return Promise.all(
+    fields.map(async (f) => {
+      if (!f.fk) return f
+      const targetTable = tableNamed(tables, f.fk.table)
+      if (!targetTable) return f
+      const titleCol = recordTitleColumn(findResource(config, f.fk.table), targetTable)
+      const rows = await db[f.fk.table].find({})
+      const options = rows.map((r) => ({ value: r[f.fk.column], label: String(r[titleCol] ?? r[f.fk.column]) }))
+      return { ...f, options }
+    }),
+  )
+}
+
+// For the list: a per-column map of FK value -> human title, so a FK cell shows the
+// referenced row's title instead of the raw key. Only the list's foreign-key columns get
+// an entry; everything else renders as-is.
+async function fkLabelsFor(columns, schemaTable, { db, config, tables }) {
+  const byName = new Map(schemaTable.columns.map((c) => [c.name, c]))
+  const labels = {}
+  for (const col of columns) {
+    const ref = byName.get(col.name)?.references
+    if (!ref) continue
+    const targetTable = tableNamed(tables, ref.table)
+    if (!targetTable) continue
+    const titleCol = recordTitleColumn(findResource(config, ref.table), targetTable)
+    const rows = await db[ref.table].find({})
+    labels[col.name] = Object.fromEntries(rows.map((r) => [r[ref.column], String(r[titleCol] ?? r[ref.column])]))
+  }
+  return labels
+}
 
 // Build a row from submitted form data, coercing each field by its type. An unchecked
 // checkbox sends no value, so a boolean field reads as false on absence; an empty string
@@ -74,12 +111,14 @@ export async function listData(pageContext) {
   const columns = viewColumns(resource, schemaTable)
   const db = buildDb(tables)
   const rows = await db[table].find({})
+  const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })
 
   return {
     table,
     label: resourceLabel(resource),
     columns,
     rows,
+    fkLabels, // { column -> { value -> title } } so FK cells show the referenced row's title
     pk: primaryKeyOf(schemaTable), // the row identity the Edit links key on
     canEdit: canEdit(resource, pageContext.user),
   }
@@ -100,6 +139,7 @@ export async function newData(pageContext) {
   if (!schemaTable) throw redirect('/admin')
 
   const fields = viewFields(resource, schemaTable)
+  const db = buildDb(tables)
   const req = readFormRequest(pageContext)
 
   if (req.method === 'POST') {
@@ -112,12 +152,11 @@ export async function newData(pageContext) {
       row[pk.name] = randomUUID()
     }
 
-    const db = buildDb(tables)
     await db[table].insert(row)
     throw redirect(`/admin/${table}`)
   }
 
-  return { table, label: resourceLabel(resource), fields }
+  return { table, label: resourceLabel(resource), fields: await loadFkOptions(fields, { db, config: pageContext.config, tables }) }
 }
 
 // /admin/:table/:id — the detail/edit page. GET loads the row by its primary key and
@@ -152,5 +191,6 @@ export async function editData(pageContext) {
   const values = await db[table].findOne({ [pk]: id })
   if (!values) throw redirect(`/admin/${table}`) // deleted or never existed
 
-  return { table, label: resourceLabel(resource), fields, values, id, pk }
+  const withOptions = await loadFkOptions(fields, { db, config: pageContext.config, tables })
+  return { table, label: resourceLabel(resource), fields: withOptions, values, id, pk }
 }
