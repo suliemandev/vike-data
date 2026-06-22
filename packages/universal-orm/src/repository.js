@@ -25,7 +25,7 @@
 //   delete(table, filter)                -> number of rows deleted
 //
 // `findOne` is NOT an adapter op — the core derives it from `find`.
-const ADAPTER_OPS = ['insert', 'find', 'upsert', 'update', 'delete']
+export const ADAPTER_OPS = ['insert', 'find', 'upsert', 'update', 'delete']
 
 // Property names that must NOT be treated as table lookups, so the returned `db`
 // behaves like a normal (non-thenable) object: `await db`, structured-clone and

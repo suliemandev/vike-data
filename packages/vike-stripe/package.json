@@ -24,5 +24,10 @@
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*",
     "vike-teams": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.3",
+    "@universal-orm/drizzle": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   }
 }

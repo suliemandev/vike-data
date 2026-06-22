@@ -89,4 +89,29 @@ The shippable adapters — an in-memory one for tests/demos and
 [#46](https://github.com/suliemandev/vike-data/issues/46). No transactions yet: the
 common operation is a single (atomic) upsert.
 
+## The adapter registry: one adapter, every extension
+
+So the **app picks the backend once** and every extension routes through it, the
+core holds a tiny runtime registry. The app calls `setAdapter(...)` at server start;
+each extension reads the same adapter via `getAdapter()` and builds its repository
+over its own schema. No extension hardcodes a backend, and none imports an ORM.
+
+```js
+// the app, once at server start:
+import { setAdapter } from '@universal-orm/core'
+import { createDrizzleAdapter } from '@universal-orm/drizzle'
+setAdapter(createDrizzleAdapter(drizzle(pool), schema)) // or createMemoryAdapter()
+
+// an extension, anywhere:
+import { getAdapter, createRepository } from '@universal-orm/core'
+import { createMemoryAdapter } from '@universal-orm/memory'
+const adapter = getAdapter() ?? createMemoryAdapter() // app's choice, else zero-config memory
+const db = createRepository({ tables }, adapter)
+```
+
+`getAdapter()` returns `null` until the app sets one, so an extension falls back to
+the memory adapter for zero-config dev/demo/proof. `setAdapter` validates the five-op
+contract up front, and the registry is cached on `globalThis` so pointer-import / HMR
+double-eval can't fork it. `clearAdapter()` resets it (tests).
+
 > **Zero Vike, zero ORM imports.** Usable standalone by any framework or ORM.
