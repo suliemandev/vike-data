@@ -23,6 +23,32 @@ import {
   viewFields,
 } from './resolve.js'
 
+// Build a row from submitted form data, coercing each field by its type. An unchecked
+// checkbox sends no value, so a boolean field reads as false on absence; an empty string
+// becomes null; an integer field is numeric. Shared by create and edit so both coerce
+// identically. universal-orm rejects unknown columns, so only declared fields are read.
+function rowFromForm(fields, form) {
+  const row = {}
+  for (const f of fields) {
+    if (f.type === 'boolean') {
+      row[f.name] = form.get(f.name) === 'on' || form.get(f.name) === 'true'
+      continue
+    }
+    if (!form.has(f.name)) continue
+    let value = form.get(f.name)
+    if (value === '') value = null
+    else if (f.type === 'integer') value = Number(value)
+    row[f.name] = value
+  }
+  return row
+}
+
+// The resource's single primary-key column (the row identity the edit/delete routes key
+// on). Composite keys are out of scope for the MVP; falls back to `id` by convention.
+function primaryKeyOf(schemaTable) {
+  return schemaTable.columns.find((c) => c.primary)?.name ?? 'id'
+}
+
 // /admin — the dashboard: the resources this install composed, filtered to what the
 // signed-in user may view. Each card links to its list.
 export function dashboardData(pageContext) {
@@ -54,7 +80,8 @@ export async function listData(pageContext) {
     label: resourceLabel(resource),
     columns,
     rows,
-    canCreate: canEdit(resource, pageContext.user),
+    pk: primaryKeyOf(schemaTable), // the row identity the Edit links key on
+    canEdit: canEdit(resource, pageContext.user),
   }
 }
 
@@ -76,20 +103,7 @@ export async function newData(pageContext) {
   const req = readFormRequest(pageContext)
 
   if (req.method === 'POST') {
-    const form = await req.formData()
-    const row = {}
-    for (const f of fields) {
-      if (f.type === 'boolean') {
-        // An unchecked checkbox sends no value; treat absence as false.
-        row[f.name] = form.get(f.name) === 'on' || form.get(f.name) === 'true'
-        continue
-      }
-      if (!form.has(f.name)) continue
-      let value = form.get(f.name)
-      if (value === '') value = null
-      else if (f.type === 'integer') value = Number(value)
-      row[f.name] = value
-    }
+    const row = rowFromForm(fields, await req.formData())
 
     // Fill a client-generatable primary key (uuid/string) the form doesn't carry, so a
     // minimal resource still inserts. Integer/auto keys are left to the database.
@@ -104,4 +118,39 @@ export async function newData(pageContext) {
   }
 
   return { table, label: resourceLabel(resource), fields }
+}
+
+// /admin/:table/:id — the detail/edit page. GET loads the row by its primary key and
+// pre-fills the form; POST either UPDATES it (default) or DELETES it (an `_action=delete`
+// field, from the Delete control), then redirects to the list. Gated by `canEdit`; an
+// unknown id bounces back to the list. The static `/new` route keeps precedence over this
+// `@id` param, so creating never collides with editing.
+export async function editData(pageContext) {
+  const { table, id } = pageContext.routeParams
+  const resource = findResource(pageContext.config, table)
+  if (!resource || !canEdit(resource, pageContext.user)) throw redirect('/admin')
+
+  const tables = resolveAdminTables(pageContext.config)
+  const schemaTable = tableNamed(tables, table)
+  if (!schemaTable) throw redirect('/admin')
+
+  const fields = viewFields(resource, schemaTable)
+  const pk = primaryKeyOf(schemaTable)
+  const db = buildDb(tables)
+  const req = readFormRequest(pageContext)
+
+  if (req.method === 'POST') {
+    const form = await req.formData()
+    if (form.get('_action') === 'delete') {
+      await db[table].delete({ [pk]: id })
+    } else {
+      await db[table].update({ [pk]: id }, rowFromForm(fields, form))
+    }
+    throw redirect(`/admin/${table}`)
+  }
+
+  const values = await db[table].findOne({ [pk]: id })
+  if (!values) throw redirect(`/admin/${table}`) // deleted or never existed
+
+  return { table, label: resourceLabel(resource), fields, values, id, pk }
 }

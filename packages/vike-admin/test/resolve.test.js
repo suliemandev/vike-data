@@ -112,3 +112,28 @@ test('buildDb rejects an unknown column (the schema is the source of truth)', as
   const db = buildDb(resolveAdminTables(config([])))
   await assert.rejects(async () => db.users.insert({ id: 'u2', emial: 'typo@example.com' }), /unknown column "emial"/)
 })
+
+test('edit round-trip: update by primary key patches the row', async () => {
+  const db = buildDb(resolveAdminTables(config([])))
+  await db.users.insert({ id: 'u1', email: 'ada@example.com', name: 'Ada', active: true })
+
+  await db.users.update({ id: 'u1' }, { name: 'Ada Lovelace', active: false })
+  const row = await db.users.findOne({ id: 'u1' })
+  assert.equal(row.name, 'Ada Lovelace')
+  assert.equal(row.active, false)
+  assert.equal(row.email, 'ada@example.com') // untouched
+})
+
+test('delete round-trip: delete by primary key removes the row', async () => {
+  const db = buildDb(resolveAdminTables(config([])))
+  await db.users.insert({ id: 'u1', email: 'ada@example.com' })
+  await db.users.insert({ id: 'u2', email: 'alan@example.com' })
+
+  const removed = await db.users.delete({ id: 'u1' })
+  assert.equal(removed, 1)
+  const rows = await db.users.find({})
+  assert.deepEqual(
+    rows.map((r) => r.id),
+    ['u2'],
+  )
+})
