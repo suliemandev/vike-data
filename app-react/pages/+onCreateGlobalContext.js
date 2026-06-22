@@ -1,0 +1,21 @@
+// Vike's once-per-server hook — where this demo opts into a universal-orm adapter. With
+// no real database wired, it registers the in-process MEMORY adapter (a first-class
+// adapter: tests, the proof and other extensions run on it) so the admin's reads/writes
+// persist for the life of the dev server, and seeds a couple of users so /admin/users has
+// rows to show on first load. A real app swaps this one line for vike-drizzle +
+// registerDrizzle(...) pointed at a migrated database; the admin code does not change.
+import { setAdapter, getAdapter } from '@universal-orm/core'
+import { createMemoryAdapter } from '@universal-orm/memory'
+
+const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString()
+
+export default function onCreateGlobalContext() {
+  if (getAdapter()) return // idempotent across dev HMR / double-eval
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+
+  // Seed directly through the adapter (schema-less: it just stores rows), so the list has
+  // content before anyone creates a row. The admin form INSERTs add to these.
+  adapter.insert('users', { id: 'u-ada', email: 'ada@example.com', name: 'Ada Lovelace', active: true, created_at: daysAgo(40), updated_at: daysAgo(2) })
+  adapter.insert('users', { id: 'u-alan', email: 'alan@example.com', name: 'Alan Turing', active: true, created_at: daysAgo(12), updated_at: daysAgo(1) })
+}

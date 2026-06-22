@@ -1,0 +1,31 @@
+{
+  "name": "vike-admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "vike-admin: a working admin panel on install. Ships /admin/* pages that list and create the rows of every table your extensions composed, gated by auth, themed, localized. Writes no ORM code: the composed schema is the intent, the admin UI is derived, the resource is the refinement.",
+  "exports": {
+    "./config": "./+config.js",
+    "./define": "./define.js",
+    "./resolve": "./resolve.js",
+    "./data": "./data.js",
+    "./guard": "./guard.js",
+    "./react": "./react/+config.js",
+    "./react/DashboardPage": "./react/DashboardPage.jsx",
+    "./react/ListPage": "./react/ListPage.jsx",
+    "./react/NewPage": "./react/NewPage.jsx"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike": "*",
+    "vike-react": ">=0.6"
+  }
+}

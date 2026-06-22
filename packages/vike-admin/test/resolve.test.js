@@ -1,0 +1,114 @@
+// The core of vike-admin, exercised without Vike or React: schema-default derivation,
+// the auto-hide convention, resource refinements, and the insert round-trip through
+// universal-orm on the memory adapter (the same adapter the demo and every other
+// extension test run on).
+import { test, beforeEach } from 'node:test'
+import assert from 'node:assert/strict'
+import { defineSchema } from '@vike-data/vike-schema/schema'
+import { setAdapter, clearAdapter } from '@universal-orm/core'
+import { createMemoryAdapter } from '@universal-orm/memory'
+import { defineResource, column, field } from '../define.js'
+import { resolveAdminTables, viewColumns, viewFields, buildDb, getResources } from '../resolve.js'
+
+const usersSchema = defineSchema('users', (t) => {
+  t.uuid('id').primary()
+  t.string('email').unique()
+  t.string('name').nullable()
+  t.string('password_hash').nullable()
+  t.boolean('active').default(true)
+  t.timestamps()
+})
+
+const config = (resources) => ({ schemas: [usersSchema], adminResources: resources })
+const usersTable = () => resolveAdminTables(config([]))[0]
+
+beforeEach(() => {
+  clearAdapter()
+  setAdapter(createMemoryAdapter())
+})
+
+test('resolveAdminTables merges the cumulative schemas into tables', () => {
+  const table = usersTable()
+  assert.equal(table.table, 'users')
+  assert.deepEqual(
+    table.columns.map((c) => c.name),
+    ['id', 'email', 'name', 'password_hash', 'active', 'created_at', 'updated_at'],
+  )
+})
+
+test('viewColumns defaults from the schema and auto-hides id / *_hash / timestamps', () => {
+  const cols = viewColumns(defineResource({ table: 'users' }), usersTable())
+  assert.deepEqual(
+    cols.map((c) => c.name),
+    ['email', 'name', 'active'],
+  )
+  // labels are title-cased, types come from the schema
+  assert.equal(cols[0].label, 'Email')
+  assert.equal(cols.find((c) => c.name === 'active').type, 'boolean')
+})
+
+test('viewColumns honors an explicit list and resolves type/format from the schema', () => {
+  const resource = defineResource({
+    table: 'users',
+    list: [column('email').sortable().searchable(), column('created_at').format('since').label('Joined')],
+  })
+  const cols = viewColumns(resource, usersTable())
+  assert.deepEqual(
+    cols.map((c) => c.name),
+    ['email', 'created_at'],
+  )
+  assert.equal(cols[0].sortable, true)
+  assert.equal(cols[0].searchable, true)
+  assert.equal(cols[1].label, 'Joined')
+  assert.equal(cols[1].format, 'since')
+  assert.equal(cols[1].type, 'timestamp')
+})
+
+test('viewFields defaults from the schema, auto-hides, and infers required from non-null/no-default', () => {
+  const fields = viewFields(defineResource({ table: 'users' }), usersTable())
+  assert.deepEqual(
+    fields.map((f) => f.name),
+    ['email', 'name', 'active'],
+  )
+  const byName = Object.fromEntries(fields.map((f) => [f.name, f]))
+  assert.equal(byName.email.required, true) // non-null, no default
+  assert.equal(byName.name.required, false) // nullable
+  assert.equal(byName.active.required, false) // has a default
+  assert.equal(byName.active.type, 'boolean')
+})
+
+test('viewFields honors an explicit form and lets a field override the inferred type', () => {
+  const resource = defineResource({
+    table: 'users',
+    form: [field('email').type('email').required(), field('name')],
+  })
+  const fields = viewFields(resource, usersTable())
+  assert.equal(fields[0].type, 'email')
+  assert.equal(fields[0].required, true)
+  assert.equal(fields[1].name, 'name')
+  assert.equal(fields[1].required, false)
+})
+
+test('getResources returns the contributed resources whole (functions intact)', () => {
+  const resource = defineResource({ table: 'users', canEdit: (u) => u?.role === 'admin' })
+  const resources = getResources(config([resource]))
+  assert.equal(resources.length, 1)
+  assert.equal(resources[0].canEdit({ role: 'admin' }), true)
+  assert.equal(resources[0].canEdit({ role: 'user' }), false)
+})
+
+test('insert round-trip: buildDb inserts a row and find returns it', async () => {
+  const tables = resolveAdminTables(config([]))
+  const db = buildDb(tables)
+  assert.deepEqual(await db.users.find({}), [])
+
+  await db.users.insert({ id: 'u1', email: 'ada@example.com', name: 'Ada', active: true })
+  const rows = await db.users.find({})
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].email, 'ada@example.com')
+})
+
+test('buildDb rejects an unknown column (the schema is the source of truth)', async () => {
+  const db = buildDb(resolveAdminTables(config([])))
+  await assert.rejects(async () => db.users.insert({ id: 'u2', emial: 'typo@example.com' }), /unknown column "emial"/)
+})

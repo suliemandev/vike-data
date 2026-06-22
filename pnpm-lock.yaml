@@ -43,6 +43,12 @@ importers:
 
   app-react:
     dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../packages/universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../packages/universal-orm-memory
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -52,6 +58,9 @@ importers:
       vike:
         specifier: 0.4.259-commit-f6ecfb2
         version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5)
+      vike-admin:
+        specifier: workspace:*
+        version: link:../packages/vike-admin
       vike-auth:
         specifier: workspace:*
         version: link:../packages/vike-auth
@@ -103,6 +112,27 @@ importers:
         version: link:../universal-schema
 
   packages/universal-schema: {}
+
+  packages/vike-admin:
+    dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+      react:
+        specifier: '>=18'
+        version: 18.3.1
+      vike:
+        specifier: 0.4.259-commit-f6ecfb2
+        version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5)
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
 
   packages/vike-auth:
     dependencies:
