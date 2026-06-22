@@ -26,7 +26,7 @@ export function dedupeFragments(fragments) {
   const seen = new Set()
   const out = []
   for (const f of fragments) {
-    const key = `${f.mode}:${f.table}:${JSON.stringify(f.columns)}`
+    const key = `${f.mode}:${f.table}:${JSON.stringify(f.columns)}:${JSON.stringify(f.primaryKey ?? null)}`
     if (seen.has(key)) continue
     seen.add(key)
     out.push(f)
@@ -98,7 +98,7 @@ export function mergeSchemas(fragments) {
       conflicts.push({ kind: 'duplicate-table', table: f.table })
       continue
     }
-    tables.set(f.table, { table: f.table, columns: f.columns.map((c) => ({ ...c })) })
+    tables.set(f.table, { table: f.table, columns: f.columns.map((c) => ({ ...c })), ...(f.primaryKey ? { primaryKey: f.primaryKey } : {}) })
   }
 
   // extends next: a 3rd-party extension ADDS columns to an existing table

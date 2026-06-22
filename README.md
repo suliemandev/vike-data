@@ -77,7 +77,8 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home. |
 
 The split is consistent: every core is framework-agnostic and Vike-agnostic where it
-can be; every Vike-/React-specific concern lives in a `vike-*` / `vike-react-*` binding.
+can be; the Vike-/React-specific concern lives in a `vike-*/react` subpath of the same
+package (one package per concern, the framework as a subpath).
 
 ---
 
@@ -129,9 +130,10 @@ Per-package design notes live in each package's README (see
 Highlights and open ends:
 
 - **Relations** — single-column FKs with `onDelete`, cross-extension validation,
-  self-referential FKs, and overridable Prisma relation-field names all work; deriving
+  self-referential FKs, overridable Prisma relation-field names, composite primary
+  keys, and many-to-many through-table sugar (`defineJoinTable`) all work; deriving
   the relation graph lets Prisma's multiple/circular-relation case fall out for free.
-  Deferred: composite keys, many-to-many through-table sugar.
+  Deferred: composite (multi-column) FKs, one-to-one inference beyond a `unique` FK.
 - **Runtime data access** — extensions read/write through `universal-orm` (a narrow
   `db.<table>.upsert/find/...` over the composed schema) on a swappable adapter
   (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.
