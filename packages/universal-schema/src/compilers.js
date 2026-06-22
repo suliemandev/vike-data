@@ -48,6 +48,11 @@ function drizzleCol(c) {
   let s
   switch (c.type) {
     case 'string': s = `varchar('${c.name}', { length: 255 })`; break
+    // mode: 'string' — universal-orm speaks ISO strings (its isoNow()), the same the
+    // memory adapter stores, so the Drizzle column must accept/return strings too.
+    // Without it Drizzle defaults to mode: 'date' and calls value.toISOString() on
+    // write, throwing for the string values universal-orm passes.
+    case 'timestamp': s = `timestamp('${c.name}', { mode: 'string' })`; break
     default: s = `${DRIZZLE_FN[c.type] || 'text'}('${c.name}')`
   }
   if (c.primary) s += '.primaryKey()'
