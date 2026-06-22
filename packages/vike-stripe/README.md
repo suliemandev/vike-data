@@ -49,9 +49,12 @@ POST /stripe/purchase/webhook      -> db.payments.insert(row)   (idempotent per 
 
 The webhook parses the event via the shared Stripe SDK, then calls a framework- and
 ORM-agnostic core (`subscription.js` / `payment.js`) that does a single universal-orm
-call. The default wiring runs on the **memory adapter** (no database, for the proof
-and the demo); a real app passes a `db` built from `@universal-orm/drizzle` and its
-merged schema, and the core is unchanged.
+call. The write routes through **the adapter the app registered** (`setAdapter` in
+`@universal-orm/core`): a real app installs `@universal-orm/drizzle` once at server
+start and the webhook writes to Postgres for real; with nothing registered it falls
+back to the in-process **memory adapter** (the zero-config proof and demo). The core
+is unchanged either way — that round trip is proven on Postgres (PGlite) in
+`test/drizzle-integration.test.js`.
 
 - **subscription** is the canonical **upsert**: the same subject emits repeated
   events (`created → renewed → canceled`), each converging the one row.

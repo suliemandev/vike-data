@@ -172,6 +172,16 @@ importers:
       vike-teams:
         specifier: workspace:*
         version: link:../vike-teams
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.3
+        version: 0.5.3
+      '@universal-orm/drizzle':
+        specifier: workspace:*
+        version: link:../universal-orm-drizzle
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@electric-sql/pglite@0.5.3)
 
   packages/vike-teams:
     dependencies:
