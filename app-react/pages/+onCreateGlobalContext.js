@@ -18,4 +18,8 @@ export default function onCreateGlobalContext() {
   // content before anyone creates a row. The admin form INSERTs add to these.
   adapter.insert('users', { id: 'u-ada', email: 'ada@example.com', name: 'Ada Lovelace', active: true, created_at: daysAgo(40), updated_at: daysAgo(2) })
   adapter.insert('users', { id: 'u-alan', email: 'alan@example.com', name: 'Alan Turing', active: true, created_at: daysAgo(12), updated_at: daysAgo(1) })
+
+  // A session whose user_id references a seeded user, so /admin/sessions shows the FK
+  // resolved to the user's email (not a raw uuid) and the create form offers a user picker.
+  adapter.insert('sessions', { id: 's-1', user_id: 'u-ada', token: 'sess_demo_ada', created_at: daysAgo(1), updated_at: daysAgo(1) })
 }

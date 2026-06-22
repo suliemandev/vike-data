@@ -3,6 +3,6 @@
 // FUNCTIONS — canView / canEdit predicates, the column/field builders — which Vike cannot
 // serialize into the page config; a dedicated file is pointer-imported instead. Same seam
 // as `themes` / `messages`, just runtime values rather than plain data.
-import { usersResource } from '../admin-resources.js'
+import { usersResource, sessionsResource } from '../admin-resources.js'
 
-export default [usersResource]
+export default [usersResource, sessionsResource]

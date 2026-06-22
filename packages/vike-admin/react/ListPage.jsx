@@ -35,7 +35,7 @@ function relativeTime(value) {
 }
 
 export default function ListPage() {
-  const { table, label, columns, rows, pk, canEdit } = useData()
+  const { table, label, columns, rows, fkLabels, pk, canEdit } = useData()
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -94,7 +94,8 @@ export default function ListPage() {
                 <tr key={row[pk] ?? i}>
                   {columns.map((c) => (
                     <td key={c.name} style={cell}>
-                      {formatValue(row[c.name], c.format)}
+                      {/* a FK cell shows the referenced row's title (from fkLabels), else the raw value */}
+                      {fkLabels?.[c.name]?.[row[c.name]] ?? formatValue(row[c.name], c.format)}
                     </td>
                   ))}
                   {canEdit && (

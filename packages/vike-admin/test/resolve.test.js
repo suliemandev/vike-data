@@ -8,7 +8,7 @@ import { defineSchema } from '@vike-data/vike-schema/schema'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { defineResource, column, field } from '../define.js'
-import { resolveAdminTables, viewColumns, viewFields, buildDb, getResources } from '../resolve.js'
+import { resolveAdminTables, viewColumns, viewFields, buildDb, getResources, recordTitleColumn, tableNamed } from '../resolve.js'
 
 const usersSchema = defineSchema('users', (t) => {
   t.uuid('id').primary()
@@ -136,4 +136,31 @@ test('delete round-trip: delete by primary key removes the row', async () => {
     rows.map((r) => r.id),
     ['u2'],
   )
+})
+
+// --- foreign-key fields -----------------------------------------------------------------
+
+const sessionsSchema = defineSchema('sessions', (t) => {
+  t.uuid('id').primary()
+  t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
+  t.string('token')
+  t.timestamps()
+})
+const fkConfig = (resources) => ({ schemas: [usersSchema, sessionsSchema], adminResources: resources })
+const sessionsTable = () => tableNamed(resolveAdminTables(fkConfig([])), 'sessions')
+
+test('viewFields marks a foreign-key column as a select carrying its fk target', () => {
+  const fields = viewFields(defineResource({ table: 'sessions' }), sessionsTable())
+  const userId = fields.find((f) => f.name === 'user_id')
+  assert.equal(userId.type, 'select')
+  assert.deepEqual(userId.fk, { table: 'users', column: 'id' })
+  // a non-FK column stays a plain input
+  assert.equal(fields.find((f) => f.name === 'token').fk, undefined)
+})
+
+test('recordTitleColumn honors a resource recordTitle, else falls back to a string column', () => {
+  const usersTbl = resolveAdminTables(fkConfig([]))[0]
+  assert.equal(recordTitleColumn(defineResource({ table: 'users', recordTitle: 'email' }), usersTbl), 'email')
+  // no resource / no recordTitle -> first non-hidden string column
+  assert.equal(recordTitleColumn(null, usersTbl), 'email')
 })

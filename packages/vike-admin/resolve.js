@@ -107,22 +107,39 @@ export function viewColumns(resource, table) {
 export function viewFields(resource, table) {
   const byName = new Map(table.columns.map((c) => [c.name, c]))
   const requiredBySchema = (col) => !!col && col.nullable === false && col.default === undefined && !col.primary
+  // A column with a foreign key becomes a select; the data hook fills its `options` from
+  // the referenced table. `fk` carries where to read them from.
+  const fkOf = (col) => (col?.references ? { table: col.references.table, column: col.references.column } : null)
 
   if (resource.form?.length) {
     return resource.form.map((entry) => {
       const spec = entry.build ? entry.build() : entry
       const schemaCol = byName.get(spec.name)
+      const fk = fkOf(schemaCol)
       return {
         name: spec.name,
         label: spec.label ?? titleCase(spec.name),
-        type: spec.type ?? inputType(schemaCol?.type),
+        type: spec.type ?? (fk ? 'select' : inputType(schemaCol?.type)),
         required: spec.required ?? requiredBySchema(schemaCol),
+        ...(fk ? { fk } : {}),
       }
     })
   }
   return table.columns
     .filter((c) => !isHiddenColumn(c.name))
-    .map((c) => ({ name: c.name, label: titleCase(c.name), type: inputType(c.type), required: requiredBySchema(c) }))
+    .map((c) => {
+      const fk = fkOf(c)
+      return { name: c.name, label: titleCase(c.name), type: fk ? 'select' : inputType(c.type), required: requiredBySchema(c), ...(fk ? { fk } : {}) }
+    })
+}
+
+// The column a table's rows are labeled by in selects and FK cells. A resource may
+// declare `recordTitle`; otherwise the first non-hidden string column, else the primary
+// key (so even a bare table gets a sensible label).
+export function recordTitleColumn(resource, table) {
+  if (resource?.recordTitle) return resource.recordTitle
+  const firstString = table.columns.find((c) => c.type === 'string' && !isHiddenColumn(c.name))
+  return firstString?.name ?? table.columns.find((c) => c.primary)?.name ?? 'id'
 }
 
 // Map a schema column type to a flat input type token the React form renders. Kept

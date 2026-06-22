@@ -4,20 +4,7 @@
 // (a separate form posting `_action=delete`) DELETEs, both redirecting to the list. No
 // client JS, no fetch; plain form posts, SSR all the way.
 import { useData } from 'vike-react/useData'
-
-const label = { display: 'block', color: 'var(--color-muted)', fontSize: 13, marginBottom: 4 }
-const input = {
-  width: '100%',
-  padding: '0.5rem 0.6rem',
-  border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius, 8px)',
-  background: 'var(--color-bg, #fff)',
-  color: 'var(--color-text)',
-  fontSize: 14,
-  boxSizing: 'border-box',
-}
-
-const htmlType = (type) => (type === 'integer' ? 'number' : type === 'email' ? 'email' : 'text')
+import { FormFields } from './FormFields.jsx'
 
 export default function EditPage() {
   const { table, label: title, fields, values, id } = useData()
@@ -44,29 +31,7 @@ export default function EditPage() {
           gap: 'var(--space-md, 1rem)',
         }}
       >
-        {fields.map((f) =>
-          f.type === 'boolean' ? (
-            <label key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-              <input type="checkbox" name={f.name} defaultChecked={!!values[f.name]} />
-              {f.label}
-            </label>
-          ) : (
-            <div key={f.name}>
-              <label style={label} htmlFor={f.name}>
-                {f.label}
-                {f.required ? ' *' : ''}
-              </label>
-              <input
-                id={f.name}
-                name={f.name}
-                type={htmlType(f.type)}
-                required={f.required}
-                defaultValue={values[f.name] ?? ''}
-                style={input}
-              />
-            </div>
-          ),
-        )}
+        <FormFields fields={fields} values={values} />
         <div>
           <button
             type="submit"
