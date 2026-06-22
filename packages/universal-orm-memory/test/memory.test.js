@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineSchema, mergeSchemas } from '@vike-data/universal-schema'
-import { createRepository } from '@vike-data/universal-orm'
+import { createRepository } from '@universal-orm/core'
 import { createMemoryAdapter } from '../src/index.js'
 
 function makeDb() {

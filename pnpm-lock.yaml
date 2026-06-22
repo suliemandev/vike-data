@@ -82,7 +82,7 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.5.3
         version: 0.5.3
-      '@vike-data/universal-orm':
+      '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm
       drizzle-orm:
@@ -91,7 +91,7 @@ importers:
 
   packages/universal-orm-memory:
     dependencies:
-      '@vike-data/universal-orm':
+      '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm
     devDependencies:
