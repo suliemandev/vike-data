@@ -2,7 +2,7 @@
 // everything auth needs, starting with its database tables. It declares `users`
 // and `sessions` ONCE through the neutral schema DSL and contributes them via
 // vike-schema's cumulative `schemas` point. It is ORM-unaware: the same
-// declaration compiles to Prisma, Drizzle, or the native engine.
+// declaration compiles to Prisma, Drizzle, or the Rudder engine.
 //
 // This is the framework-agnostic CORE tier (schema + server lifecycle, no UI).
 // UI wrappers (vike-auth/react / vike-vue-auth) would layer components on top;

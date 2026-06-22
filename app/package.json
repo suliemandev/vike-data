@@ -8,11 +8,11 @@
     "dev": "vite",
     "dev:prisma": "VIKE_DATA_ORM=prisma vite",
     "dev:drizzle": "VIKE_DATA_ORM=drizzle vite",
-    "dev:native": "VIKE_DATA_ORM=native vite",
+    "dev:rudder": "VIKE_DATA_ORM=rudder vite",
     "gen": "vite build",
     "gen:prisma": "VIKE_DATA_ORM=prisma vite build",
     "gen:drizzle": "VIKE_DATA_ORM=drizzle vite build",
-    "gen:native": "VIKE_DATA_ORM=native vite build",
+    "gen:rudder": "VIKE_DATA_ORM=rudder vite build",
     "gen:check": "VIKE_DATA_GEN=check vite build",
     "build": "vite build",
     "preview": "vite preview"

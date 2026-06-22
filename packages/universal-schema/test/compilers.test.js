@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineSchema } from '../src/define.js'
 import { mergeSchemas, deriveRelations } from '../src/merge.js'
-import { toPrisma, toDrizzle, toNative, COMPILERS } from '../src/compilers.js'
+import { toPrisma, toDrizzle, toRudder, COMPILERS } from '../src/compilers.js'
 
 const ir = (build) => mergeSchemas([defineSchema('users', build)]).tables[0]
 
@@ -80,18 +80,18 @@ test('toDrizzle renders a column FK as a lazy .references thunk with onDelete', 
   assert.match(out, /authorId: uuid\('author_id'\)\.notNull\(\)\.references\(\(\) => users\.id, \{ onDelete: 'cascade' \}\)/)
 })
 
-// ------------------------------------------------------------------ Native ----
+// ----------------------------------------------------------------- Rudder ----
 
-test('toNative emits a Schema.create migration class', () => {
-  const out = toNative(ir((t) => t.uuid('id').primary()))
+test('toRudder emits a Schema.create migration class', () => {
+  const out = toRudder(ir((t) => t.uuid('id').primary()))
   assert.match(out, /import \{ Migration, Schema \} from '@rudderjs\/database'/)
   assert.match(out, /await Schema\.create\('users', \(t\) => \{/)
   assert.match(out, /t\.uuid\('id'\)\.primary\(\)/)
 })
 
-test('toNative renders an inline FK constraint with onDelete', () => {
+test('toRudder renders an inline FK constraint with onDelete', () => {
   const posts = defineSchema('posts', (t) => t.uuid('author_id').references('users.id', { onDelete: 'restrict' }))
-  const out = toNative(mergeSchemas([defineSchema('users', (t) => t.uuid('id').primary()), posts]).tables.find((t) => t.table === 'posts'))
+  const out = toRudder(mergeSchemas([defineSchema('users', (t) => t.uuid('id').primary()), posts]).tables.find((t) => t.table === 'posts'))
   assert.match(out, /t\.uuid\('author_id'\)\.references\('id'\)\.on\('users'\)\.onDelete\('restrict'\)/)
 })
 
@@ -100,5 +100,5 @@ test('toNative renders an inline FK constraint with onDelete', () => {
 test('COMPILERS exposes all three compilers by ORM key', () => {
   assert.equal(COMPILERS.prisma, toPrisma)
   assert.equal(COMPILERS.drizzle, toDrizzle)
-  assert.equal(COMPILERS.native, toNative)
+  assert.equal(COMPILERS.rudder, toRudder)
 })

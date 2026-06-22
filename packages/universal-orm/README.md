@@ -8,7 +8,7 @@ missing member of the `universal-*` family:
 | Universal layer | One ... | runs on any ... |
 |---|---|---|
 | `universal-middleware` | request handler | server (Hono / Express / CF) |
-| `universal-schema` | schema (DDL — the shape) | ORM (Prisma / Drizzle / native) |
+| `universal-schema` | schema (DDL — the shape) | ORM (Prisma / Drizzle / Rudder) |
 | **`universal-orm`** | repository call (DML — the data) | ORM |
 
 An extension declares its tables once with the schema DSL, then talks to a neutral

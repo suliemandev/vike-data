@@ -32,7 +32,7 @@ Two consequences run through everything here:
 Extensions declare tables with `defineSchema('users', t => ...)` (or `extendSchema`
 to add columns to a table another extension created). `vike-schema` collects every
 contribution through one cumulative `schemas` config point, merges them, **derives**
-the migration list, and **compiles** the result to **Prisma, Drizzle, or a native
+the migration list, and **compiles** the result to **Prisma, Drizzle, or the Rudder
 engine** — the same schema, three targets. Foreign keys validate *across* extensions;
 billing's schema is even *computed* from an app option.
 
@@ -89,8 +89,8 @@ pnpm install
 
 # Data-layer demo — schema merged + compiled to an ORM (default drizzle)
 cd app && pnpm dev            # http://localhost:4000
-pnpm dev:prisma               # or dev:drizzle / dev:native
-pnpm gen:prisma               # write the per-ORM artifacts (gen:drizzle / gen:native)
+pnpm dev:prisma               # or dev:drizzle / dev:rudder
+pnpm gen:prisma               # write the per-ORM artifacts (gen:drizzle / gen:rudder)
 pnpm gen:check                # CI drift gate: fail if committed artifacts are stale
 
 # UI-tier demo — themed + localized login

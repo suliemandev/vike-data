@@ -39,7 +39,7 @@ export function dedupeFragments(fragments) {
 // order, which is NOT dependency-aware — so e.g. billing's `subscriptions`
 // (FK -> organizations) can arrive before teams' `organizations`. That is
 // harmless for the declarative ORMs (Prisma/Drizzle desired-state), but a broken
-// order for native migrations (a create referencing a not-yet-created table).
+// order for Rudder migrations (a create referencing a not-yet-created table).
 //
 // This is a stable topological sort: creates come out in dependency order
 // (FK target before dependant), alters come after their own table's create, and

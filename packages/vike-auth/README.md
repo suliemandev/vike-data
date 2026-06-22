@@ -6,7 +6,7 @@ extension that **owns everything auth needs**, starting with its database tables
 It declares `users` and `sessions` once through the neutral schema DSL and
 contributes them through vike-schema's cumulative `schemas` config point. It does
 not know which ORM the app uses, and it authors no migrations — the schema is the
-source of truth, and per-ORM artifacts (Prisma / Drizzle / native) are derived
+source of truth, and per-ORM artifacts (Prisma / Drizzle / Rudder) are derived
 from it.
 
 ## Tier
@@ -126,6 +126,6 @@ See [vike-teams](../vike-teams/README.md) for the composition proof.
 
 > Cross-table references are real foreign keys: `sessions.user_id` is declared
 > `t.uuid('user_id').references('users.id', { onDelete: 'cascade' })`, and it
-> compiles to a Prisma relation, a Drizzle `.references()`, and a native FK
+> compiles to a Prisma relation, a Drizzle `.references()`, and a Rudder FK
 > constraint. See the [relations section](../../README.md#relations-v2) of the
 > root README.

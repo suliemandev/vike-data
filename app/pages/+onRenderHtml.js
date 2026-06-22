@@ -10,7 +10,7 @@
 import { escapeInject, dangerouslySkipEscape } from 'vike/server'
 import { COMPILERS, mergeSchemas, deriveMigrations, deriveRelations, resolveSchemas } from '@vike-data/vike-schema/schema'
 
-const ORMS = ['prisma', 'drizzle', 'native']
+const ORMS = ['prisma', 'drizzle', 'rudder']
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export default function onRenderHtml(pageContext) {
@@ -95,7 +95,7 @@ export default function onRenderHtml(pageContext) {
     ${conflictBlock}
 
     <h2 style="margin-top:1.5rem;">Merged tables &rarr; selected ORM: <strong>${escapeHtml(selected)}</strong></h2>
-    <p style="color:#666;">Each table defined once; compiled to all three (set VIKE_DATA_ORM / run pnpm dev:prisma|drizzle|native). Note <code>users</code> gets <code>current_organization_id</code> added by the teams extension, and foreign keys (&rarr;) flow into every ORM.</p>
+    <p style="color:#666;">Each table defined once; compiled to all three (set VIKE_DATA_ORM / run pnpm dev:prisma|drizzle|rudder). Note <code>users</code> gets <code>current_organization_id</code> added by the teams extension, and foreign keys (&rarr;) flow into every ORM.</p>
     ${tableBlocks}
   </body>
 </html>`
