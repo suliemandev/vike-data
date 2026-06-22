@@ -8,7 +8,7 @@
 // the table name first) and reuses universal-orm's shared `matchesFilter`, so its
 // notion of a filter is identical to every other in-process adapter.
 
-import { matchesFilter } from '@vike-data/universal-orm'
+import { matchesFilter } from '@universal-orm/core'
 
 export function createMemoryAdapter() {
   const store = new Map() // table name -> row[]

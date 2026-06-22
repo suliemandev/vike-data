@@ -1,11 +1,11 @@
 # @universal-orm/memory
 
-The in-process adapter for [`@vike-data/universal-orm`](../universal-orm). It runs
+The in-process adapter for [`@universal-orm/core`](../universal-orm). It runs
 the neutral repository calls against plain in-memory `Map`s — no database, no ORM.
 It is the adapter the tests, the demo app, and the proof run on.
 
 ```js
-import { createRepository } from '@vike-data/universal-orm'
+import { createRepository } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 
 const db = createRepository({ tables }, createMemoryAdapter())

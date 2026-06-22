@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
 import { pgTable, uuid, varchar, boolean } from 'drizzle-orm/pg-core'
-import { createRepository } from '@vike-data/universal-orm'
+import { createRepository } from '@universal-orm/core'
 import { createDrizzleAdapter } from '../src/index.js'
 
 // camelCase property keys, snake_case DB columns — the real generated-schema shape.
