@@ -1,7 +1,7 @@
 // vike-auth/react's strings — ENGLISH ONLY (the base + fallback locale). The
 // extension owns its keys (under `auth.*`) and ships `en`; other languages are
 // separate, installable LOCALE PACKS that contribute their translations to the
-// cumulative `messages` config (e.g. vike-react-auth-fr), exactly the way theme
+// cumulative `messages` config (e.g. vike-auth-fr), exactly the way theme
 // packages compose. So an app bundles only the languages it installs, and a
 // missing key in a pack falls back to this English (see vike-i18n mergeMessages).
 import { defineMessages } from 'vike-i18n'

@@ -4,7 +4,7 @@
 import { authMessagesFr } from './index.js'
 
 export default {
-  name: 'vike-react-auth-fr',
+  name: 'vike-auth-fr',
   extends: ['import:vike-i18n/config:default'],
   messages: [authMessagesFr],
 }

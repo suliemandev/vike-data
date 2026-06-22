@@ -1,0 +1,17 @@
+{
+  "name": "vike-auth-fr",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "French locale pack for vike-auth. Framework-agnostic message data (serves vike-auth/react and a future vike-auth/vue): registers French translations of the auth.* keys into the cumulative messages config. Install it and the auth UI speaks French; the base vike-auth ships English only.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js"
+  },
+  "dependencies": {
+    "vike-i18n": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
