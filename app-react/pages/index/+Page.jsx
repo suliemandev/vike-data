@@ -1,9 +1,9 @@
 // Home: just content. The topbar shell (logo + nav) comes from the app's `layout`
 // config via vike-layouts/react; the theme from vike-themes/react; the strings from
-// vike-react-i18n (app keys here, auth keys from the extension). All composed.
+// vike-i18n/react (app keys here, auth keys from the extension). All composed.
 import { UserButton } from 'vike-auth/react/UserButton'
 import { useUser } from 'vike-auth/react/hooks'
-import { useTranslation } from 'vike-react-i18n'
+import { useTranslation } from 'vike-i18n/react/hooks'
 
 export default function HomePage() {
   const user = useUser()

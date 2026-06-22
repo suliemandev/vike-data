@@ -8,8 +8,8 @@
 //                  strings (like `schemas` compose) and the app composes/overrides.
 //
 // The React rendering (the t() hook, the locale picker) is the binding's job
-// (vike-react-i18n) — same core/UI split as the rest. Here we declare the seam and
-// read the locale cookie.
+// (the vike-i18n/react subpath) — same core/UI split as the rest. Here we declare
+// the seam and read the locale cookie.
 export default {
   name: 'vike-i18n',
   meta: {

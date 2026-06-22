@@ -4,7 +4,7 @@
 // sessions/tokens.
 import { useUser } from './useUser.js'
 import { UserButton } from './UserButton.jsx'
-import { useTranslation } from 'vike-react-i18n'
+import { useTranslation } from 'vike-i18n/react/hooks'
 
 const card = {
   border: '1px solid var(--color-border)',

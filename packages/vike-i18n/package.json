@@ -3,11 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Framework-agnostic localization core: a cumulative `messages` contribution point so extensions ship translations that compose, merged per active locale. Sits on top of Vike's locale routing (pageContext.locale). Zero framework imports.",
+  "description": "Localization extension: a framework-agnostic core (a cumulative `messages` contribution point + `locale`, on top of Vike's locale routing) plus per-framework bindings as subpaths (vike-i18n/react, and vue/solid later). One package, install and import the subpath for your framework.",
   "exports": {
     ".": "./index.js",
     "./config": "./+config.js",
-    "./oncreate": "./oncreate.js"
+    "./oncreate": "./oncreate.js",
+    "./react": "./react/+config.js",
+    "./react/hooks": "./react/context.js",
+    "./react/LocaleWrapper": "./react/LocaleWrapper.jsx"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true }
   },
   "scripts": {
     "test": "node --test"

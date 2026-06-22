@@ -18,7 +18,6 @@
     "vike-i18n": "workspace:*",
     "vike-layouts": "workspace:*",
     "vike-react-auth-fr": "workspace:*",
-    "vike-react-i18n": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",
     "vite": "^7.1.0"
