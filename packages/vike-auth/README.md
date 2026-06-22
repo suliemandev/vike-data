@@ -19,6 +19,17 @@ exact schema and server tier. The core-vs-UI split moved from a package boundary
 module boundary, mirroring `universal-middleware` and the single-package decision in
 #51. `vike-auth/react` also **ships its own `/login` + `/account` pages** via
 `config.pages`: install it and the routes appear, with no page file in the app.
+A guard on `/login` bounces an already-signed-in visitor to the app's post-login
+home — set it with the **`loginRedirect`** config key (default `/`):
+
+```js
+// pages/+config.js
+import authExt from 'vike-auth/react'
+export default {
+  extends: [authExt],
+  loginRedirect: '/admin', // signed-in users hitting /login land here
+}
+```
 
 ## Tables
 
