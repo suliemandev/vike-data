@@ -13,15 +13,24 @@ importers:
 
   app:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.3
+        version: 0.5.3
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../packages/vike-schema
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@electric-sql/pglite@0.5.3)
       vike:
         specifier: 0.4.259-commit-f6ecfb2
         version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5)
       vike-auth:
         specifier: workspace:*
         version: link:../packages/vike-auth
+      vike-drizzle:
+        specifier: workspace:*
+        version: link:../packages/vike-drizzle
       vike-stripe:
         specifier: workspace:*
         version: link:../packages/vike-stripe
@@ -121,6 +130,25 @@ importers:
       vike-i18n:
         specifier: workspace:*
         version: link:../vike-i18n
+
+  packages/vike-drizzle:
+    dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/drizzle':
+        specifier: workspace:*
+        version: link:../universal-orm-drizzle
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.3
+        version: 0.5.3
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@electric-sql/pglite@0.5.3)
+      vike-stripe:
+        specifier: workspace:*
+        version: link:../vike-stripe
 
   packages/vike-i18n:
     dependencies:
