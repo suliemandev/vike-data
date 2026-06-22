@@ -112,6 +112,18 @@ importers:
 
   packages/vike-billing:
     dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+      '@vike-data/universal-schema':
+        specifier: workspace:*
+        version: link:../universal-schema
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema

@@ -65,7 +65,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike-billing` | Event-sourced subscriptions; subject FK *computed* from `billingSubject`. Self-installs vike-teams. |
+| `vike-billing` | Plain `subscriptions` table; subject FK *computed* from `billingSubject`. Server tier upserts via universal-orm on `POST /stripe/webhook`. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
 | `vike-themes` / `vike-react-themes` | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
@@ -133,8 +133,13 @@ Highlights and open ends:
   self-referential FKs, and overridable Prisma relation-field names all work; deriving
   the relation graph lets Prisma's multiple/circular-relation case fall out for free.
   Deferred: composite keys, many-to-many through-table sugar.
-- **Event-sourcing** pressures the IR: it expresses idempotency and the 1:1 projection,
-  but has no first-class *append-only* or *projection-of* notion (convention only).
+- **Runtime data access** — extensions read/write through `universal-orm` (a narrow
+  `db.<table>.upsert/find/...` over the composed schema) on a swappable adapter
+  (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.
+  vike-billing's `POST /stripe/webhook` is the live INSERT/upsert proof.
+- **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
+  table is the shape real apps use. It pressured the IR (no first-class *append-only*
+  or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.
 - **i18n** builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`);
   it adds the message-*composition* layer Vike leaves to userland. RTL (`dir` from
   locale) and a `vike-react-auth-ar` pack are the next step.

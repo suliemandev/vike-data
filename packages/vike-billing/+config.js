@@ -28,4 +28,7 @@ export default {
   billingSubject: 'organization',
   // Computed schema: a function of the resolved config, wired as a pointer-import.
   schemas: 'import:vike-billing/schemas:default',
+  // The server tier: a universal middleware owning POST /stripe/webhook, which
+  // upserts the subscriptions row through universal-orm (no ORM import).
+  middleware: 'import:vike-billing/middleware:default',
 }
