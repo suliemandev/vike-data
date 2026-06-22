@@ -3,10 +3,11 @@
 // is a real POST to /auth/logout (the server tier destroys the session row).
 import { useUser } from './useUser.js'
 import { useTranslation } from 'vike-i18n/react/hooks'
+import { authMessages } from './messages.js'
 
 export function UserButton({ loginHref = '/login' }) {
   const user = useUser()
-  const { t } = useTranslation()
+  const { t } = useTranslation(authMessages.en)
 
   if (!user) {
     return (

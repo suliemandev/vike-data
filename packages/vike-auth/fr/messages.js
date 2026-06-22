@@ -1,13 +1,7 @@
-// vike-auth-fr — a LOCALE PACK for vike-auth. It ships nothing but the French
-// translations of vike-auth's `auth.*` keys and registers them into the
-// cumulative `messages` config (see +config.js). Install it and the auth UI speaks
-// French; don't, and it stays English. Framework-agnostic message data (no React),
-// so it serves vike-auth/react and a future vike-auth/vue alike. This is the
-// translation mirror of a theme package: opt-in, composable, independently
-// publishable (a native speaker can own it without touching the core auth package).
-//
-// Keys must match vike-auth/react's; any it omits fall back to English via
-// vike-i18n's mergeMessages, so a pack can lag a new string without breaking.
+// French catalog for vike-auth's `auth.*` keys. Framework-agnostic message DATA
+// (no React), so it serves vike-auth/react and a future vike-auth/vue alike. Keys
+// it omits (e.g. the account.* set) fall back to the English shipped INLINE by the
+// components, via vike-i18n's mergeMessages + the useTranslation fallback.
 import { defineMessages } from 'vike-i18n'
 
 export const authMessagesFr = defineMessages({

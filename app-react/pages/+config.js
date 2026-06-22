@@ -16,7 +16,8 @@ import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
-import authFrExt from 'vike-auth-fr/config'
+import authFr from 'vike-auth/fr'
+import authAr from 'vike-auth/ar'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 
@@ -49,7 +50,7 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFrExt],
+  extends: [vikeReact, authExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr],
   title: 'vike-data React UI tier',
 
   // two axes: which brand, and which mode (system follows the OS).
@@ -58,8 +59,9 @@ export default {
   themes: [acme], // the app contributes its own brand (built-ins + emerald compose in)
 
   // i18n: pick the default locale; the app + every extension compose their strings
-  // into the cumulative `messages` point. vike-auth/react ships English; French
-  // comes from the installed locale PACK vike-auth-fr (extends above).
+  // into the cumulative `messages` point. vike-auth/react ships English INLINE (the
+  // fallback, no contribution here); French and Arabic come from the language
+  // SUBPATHS vike-auth/fr + vike-auth/ar (extends above), the same axis as /react.
   locale: 'en',
   messages: [appMessages],
 
