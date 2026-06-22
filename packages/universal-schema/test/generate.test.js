@@ -1,5 +1,5 @@
 // File generation: merged schema -> committable [{ path, contents }] artifacts.
-// Pure (no fs). Declarative ORMs emit ONE file; native emits one per fragment.
+// Pure (no fs). Declarative ORMs emit ONE file; Rudder emits one per fragment.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -40,8 +40,8 @@ test('drizzle generates one schema.generated.ts with a single hoisted import', (
   assert.match(art.contents, /export const posts = pgTable/)
 })
 
-test('native generates one ordered migration file per fragment', () => {
-  const files = generateArtifacts(sample(), 'native')
+test('Rudder generates one ordered migration file per fragment', () => {
+  const files = generateArtifacts(sample(), 'rudder')
   assert.deepEqual(files.map((f) => f.path), [
     'database/migrations/001_create_users_table.generated.ts',
     'database/migrations/002_create_posts_table.generated.ts',
@@ -50,19 +50,19 @@ test('native generates one ordered migration file per fragment', () => {
   assert.ok(files.every((f) => GENERATED.test(f.contents)))
 })
 
-test('native create uses Schema.create, alter uses Schema.table', () => {
-  const files = generateArtifacts(sample(), 'native')
+test('Rudder create uses Schema.create, alter uses Schema.table', () => {
+  const files = generateArtifacts(sample(), 'rudder')
   assert.match(files[0].contents, /Schema\.create\('users'/)
   assert.match(files[2].contents, /Schema\.table\('users'/)
   assert.match(files[2].contents, /t\.string\('nickname'\)/)
 })
 
-test('native dedupes a repeated create of a shared extension table', () => {
+test('Rudder dedupes a repeated create of a shared extension table', () => {
   const dup = [
     defineSchema('users', (t) => t.uuid('id').primary()),
     defineSchema('users', (t) => t.uuid('id').primary()),
   ]
-  const files = generateArtifacts({ tables: mergeSchemas(dup).tables, fragments: dup }, 'native')
+  const files = generateArtifacts({ tables: mergeSchemas(dup).tables, fragments: dup }, 'rudder')
   assert.equal(files.length, 1)
 })
 

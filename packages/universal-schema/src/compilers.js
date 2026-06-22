@@ -84,15 +84,16 @@ export function toDrizzle(ir) {
   return `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'\n\nexport const ${camel(ir.table)} = pgTable('${ir.table}', {\n${body}\n}${extra})`
 }
 
-// ---------------------------------------------------------------- Native -----
-function nativeCol(c) {
+// ----------------------------------------------------------------- Rudder ----
+// Targets the Rudder database engine (@rudderjs/database); WE own its migrations.
+function rudderCol(c) {
   let s = `t.${c.type}('${c.name}')`
   if (c.primary) s += '.primary()'
   if (c.unique) s += '.unique()'
   if (c.nullable) s += '.nullable()'
   if (c.default === 'now') s += '.useCurrent()'
   else if (c.default !== undefined) s += `.default(${JSON.stringify(c.default)})`
-  // Column-level FK constraint (Laravel/Rudder style): WE own native migrations,
+  // Column-level FK constraint (Laravel/Rudder style): WE own these migrations,
   // so the constraint is emitted inline on the column.
   if (c.references) {
     s += `.references('${c.references.column}').on('${c.references.table}')`
@@ -100,12 +101,12 @@ function nativeCol(c) {
   }
   return `      ${s}`
 }
-export function toNative(ir) {
-  const cols = ir.columns.map(nativeCol)
+export function toRudder(ir) {
+  const cols = ir.columns.map(rudderCol)
   // Composite PK as a table-level constraint (single-column PKs use `.primary()` inline).
   if (ir.primaryKey) cols.push(`      t.primary([${ir.primaryKey.map((n) => `'${n}'`).join(', ')}])`)
   const body = cols.join('\n')
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.create('${ir.table}', (t) => {\n${body}\n    })\n  }\n}`
 }
 
-export const COMPILERS = { prisma: toPrisma, drizzle: toDrizzle, native: toNative }
+export const COMPILERS = { prisma: toPrisma, drizzle: toDrizzle, rudder: toRudder }

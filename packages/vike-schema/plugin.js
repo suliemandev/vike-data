@@ -36,7 +36,7 @@ export function vikeSchema(options = {}) {
     // fail if anything is stale or missing — never write.
     const mode = options.mode || (process.env.VIKE_DATA_GEN === 'check' ? 'check' : 'write')
 
-    // Resolve + dedupe, then order by FK dependency so native migrations are
+    // Resolve + dedupe, then order by FK dependency so Rudder migrations are
     // emitted in a runnable order regardless of Vike's (non-dependency-aware)
     // contribution order.
     const fragments = orderFragments(resolveSchemas(config.schemas, config))

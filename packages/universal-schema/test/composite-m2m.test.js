@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineSchema, defineJoinTable } from '../src/define.js'
 import { mergeSchemas, deriveRelations } from '../src/merge.js'
-import { toPrisma, toDrizzle, toNative } from '../src/compilers.js'
+import { toPrisma, toDrizzle, toRudder } from '../src/compilers.js'
 import { generateArtifacts } from '../src/generate.js'
 
 // ----------------------------------------------------- composite PK: DSL ------
@@ -131,10 +131,10 @@ test('Drizzle renders a composite PK as the table-extra primaryKey() + imports i
   assert.match(out, /import \{ pgTable, .*primaryKey.* \} from 'drizzle-orm\/pg-core'/)
 })
 
-test('native renders a composite PK as a table-level t.primary([...])', () => {
+test('Rudder renders a composite PK as a table-level t.primary([...])', () => {
   const { tables } = m2m()
   const join = tables.find((t) => t.table === 'roles_users')
-  const out = toNative(join)
+  const out = toRudder(join)
   assert.match(out, /t\.primary\(\['user_id', 'role_id'\]\)/)
 })
 
@@ -145,7 +145,7 @@ test('single-PK tables are unchanged: no @@id / table-extra / t.primary([...])',
   // the column-level `.primaryKey()` is expected; the composite table-extra is not
   assert.ok(!toDrizzle(users).includes('primaryKey({'))
   assert.ok(!/import \{ pgTable,[^}]*\bprimaryKey\b/.test(toDrizzle(users))) // not imported
-  assert.ok(!toNative(users).includes('t.primary(['))
+  assert.ok(!toRudder(users).includes('t.primary(['))
 })
 
 // -------------------------------------------------------------- generate ------
@@ -159,13 +159,13 @@ test('the generated Drizzle file hoists the primaryKey import when a join exists
   assert.equal((contents.match(/^import .*\bprimaryKey\b/gm) || []).length, 1)
 })
 
-test('the generated native migration for the join carries the composite PK', () => {
+test('the generated Rudder migration for the join carries the composite PK', () => {
   const fragments = [
     defineSchema('users', (t) => t.uuid('id').primary()),
     defineSchema('roles', (t) => t.uuid('id').primary()),
     defineJoinTable('users', 'roles'),
   ]
-  const files = generateArtifacts({ fragments }, 'native')
+  const files = generateArtifacts({ fragments }, 'rudder')
   const join = files.find((f) => f.path.includes('roles_users'))
   assert.match(join.contents, /t\.primary\(\['user_id', 'role_id'\]\)/)
 })

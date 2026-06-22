@@ -25,7 +25,7 @@ function buildColumns(build) {
       // 'table.column'. The reference is plain data: merge.js validates the
       // target exists (even when another extension owns the table), and each ORM
       // compiler renders it natively (Prisma relations / Drizzle .references /
-      // a native FK constraint). `onDelete` is the referential action.
+      // a Rudder FK constraint). `onDelete` is the referential action.
       //
       // Relation-field naming (Prisma navigation fields): by default the forward
       // field strips a trailing `_id` (`user_id` -> `user`, else `<col>_ref`) and
@@ -59,7 +59,7 @@ function buildColumns(build) {
     },
     // TABLE-LEVEL composite primary key over >=2 columns (e.g. a join table keyed
     // on both its FKs). Single-column PKs stay column-level (`t.uuid('id').primary()`);
-    // this is the multi-column case Prisma/Drizzle/native each spell differently
+    // this is the multi-column case Prisma/Drizzle/Rudder each spell differently
     // (@@id / primaryKey() / t.primary([...])). The named columns must exist.
     primaryKey(...names) {
       meta.primaryKey = names

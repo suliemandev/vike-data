@@ -34,4 +34,4 @@ jobs:
         run: |
           VIKE_DATA_ORM=drizzle pnpm gen:check
           VIKE_DATA_ORM=prisma pnpm gen:check
-          VIKE_DATA_ORM=native pnpm gen:check
+          VIKE_DATA_ORM=rudder pnpm gen:check

@@ -13,7 +13,7 @@ ORM imports - usable standalone by any framework or ORM.
 
 You describe your tables **once** as plain, declarative data; this package merges
 contributions from independent sources, derives the migration order, and compiles
-the result to Prisma, Drizzle, or a native-engine artifact.
+the result to Prisma, Drizzle, or a Rudder-engine artifact.
 
 ```bash
 pnpm add @vike-data/universal-schema
@@ -31,7 +31,7 @@ pnpm add @vike-data/universal-schema
   navigation (Prisma relation fields, Drizzle `relations()`) get them. Self-references,
   per-FK relation-field naming (`as` / `inverseAs`), composite primary keys
   (`t.primaryKey(a, b)`), and many-to-many via `defineJoinTable(a, b)` are all supported.
-- **Per-ORM compilers** - `toPrisma`, `toDrizzle`, `toNative` (and the `COMPILERS`
+- **Per-ORM compilers** - `toPrisma`, `toDrizzle`, `toRudder` (and the `COMPILERS`
   map) turn one merged table into that ORM's schema.
 - **File generation** - `generateArtifacts({ tables, fragments }, orm)` returns
   `[{ path, contents }]` ready to write to disk, each with a "generated, don't
@@ -83,7 +83,7 @@ const files = generateArtifacts({ tables, fragments }, 'prisma')
 ## Design
 
 - **Declarative (desired-state) is the right shape.** Prisma and Drizzle diff state,
-  and a native engine generates an ordered migration from it, so authoring desired
+  and the Rudder engine generates an ordered migration from it, so authoring desired
   state and deriving everything downstream fits all three.
 - **Migrations are an output, not authored by hand.** Schema is the single source of
   truth; the ORM schema becomes generated output (the usual model, inverted).

@@ -8,13 +8,13 @@
 // Division of labour matches each ORM's model:
 //   - Prisma / Drizzle are DECLARATIVE: we emit ONE schema file (desired state);
 //     their own tooling (prisma migrate / drizzle-kit) derives the migrations.
-//   - The native engine is the exception: WE own migrations, so we emit one
+//   - The Rudder engine is the exception: WE own migrations, so we emit one
 //     ordered migration file per contributed fragment (create / alter).
 //
 // Pure: returns [{ path, contents }] pairs. No filesystem access here — the
 // binding/CLI decides where to write them.
 
-import { toPrisma, toDrizzle, toNative } from './compilers.js'
+import { toPrisma, toDrizzle, toRudder } from './compilers.js'
 import { deriveRelations } from './merge.js'
 
 const DONT_EDIT = [
@@ -54,11 +54,11 @@ function drizzleFile(tables) {
   return `${header('//')}\n${importLine}\n\n${bodies.join('\n\n')}\n`
 }
 
-// ---------------------------------------------------------------- Native -----
+// ----------------------------------------------------------------- Rudder ----
 // We own migrations here, so emit one ordered file per fragment. Creates fold in
 // only their own columns; a later `extend` becomes its own alter migration, so
 // the ordered ledger mirrors how the columns were actually contributed.
-function nativeAlter(frag) {
+function rudderAlter(frag) {
   const body = frag.columns
     .map((c) => {
       let s = `t.${c.type}('${c.name}')`
@@ -76,7 +76,7 @@ function nativeAlter(frag) {
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.table('${frag.table}', (t) => {\n${body}\n    })\n  }\n}`
 }
 
-function nativeFiles(fragments) {
+function rudderFiles(fragments) {
   const seenCreate = new Set()
   const files = []
   for (const f of fragments) {
@@ -84,11 +84,11 @@ function nativeFiles(fragments) {
       if (seenCreate.has(f.table)) continue // dedupe a shared extension's repeated create
       seenCreate.add(f.table)
       const name = `${pad(files.length + 1)}_create_${f.table}_table`
-      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${toNative(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${toRudder(f)}\n` })
     } else {
       const cols = f.columns.map((c) => c.name).join('_')
       const name = `${pad(files.length + 1)}_alter_${f.table}_add_${cols}`
-      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${nativeAlter(f)}\n` })
+      files.push({ path: `database/migrations/${name}.generated.ts`, contents: `${header('//')}\n${rudderAlter(f)}\n` })
     }
   }
   return files
@@ -108,8 +108,8 @@ export function generateArtifacts({ tables, fragments }, orm) {
       return [{ path: 'prisma/schema.generated.prisma', contents: prismaFile(tables) }]
     case 'drizzle':
       return [{ path: 'drizzle/schema.generated.ts', contents: drizzleFile(tables) }]
-    case 'native':
-      return nativeFiles(fragments)
+    case 'rudder':
+      return rudderFiles(fragments)
     default:
       throw new Error(`generateArtifacts: unknown ORM "${orm}"`)
   }
