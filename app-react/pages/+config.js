@@ -19,6 +19,7 @@ import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
 import authFr from 'vike-auth/fr'
 import authAr from 'vike-auth/ar'
+import spikeLang from 'spike-lang/config' // SPIKE #79
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 
@@ -51,8 +52,12 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr],
+  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr, spikeLang],
   title: 'vike-data React UI tier',
+
+  // SPIKE #79: declare languages once; the spike's effect() should auto-extend the matching
+  // packs. Expect langMarker to gain 'ar' (not 'fr') downstream.
+  lang: ['ar'],
 
   // admin: install vike-admin/react — one import brings the /admin/* pages and the
   // cumulative `adminResources` seam. The app's `users` resource is contributed from the

@@ -1,0 +1,13 @@
+{
+  "name": "spike-lang",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY spike (#79): can a custom config's effect() conditionally `extends` a language pack based on a `lang: [...]` value? If yes, zero-config auto-include works on top of subpath packaging.",
+  "exports": {
+    "./config": "./+config.js",
+    "./pack-ar": "./pack-ar.js",
+    "./pack-fr": "./pack-fr.js",
+    "./probe": "./probe.js"
+  }
+}
