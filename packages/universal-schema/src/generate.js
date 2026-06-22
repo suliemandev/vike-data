@@ -45,6 +45,7 @@ function prismaFile(tables) {
 // only the table exports.
 function drizzleFile(tables) {
   const fns = [...new Set(tables.flatMap((t) => t.columns.map((c) => DRIZZLE_FN[c.type] || 'text')))]
+  if (tables.some((t) => t.primaryKey)) fns.push('primaryKey') // composite-PK helper
   const importLine = `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'`
   const bodies = tables.map((t) => {
     const out = toDrizzle(t)

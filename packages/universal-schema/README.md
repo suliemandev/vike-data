@@ -26,6 +26,11 @@ pnpm add @vike-data/universal-schema
 - **Merge + derive** - `mergeSchemas` folds creates and 3rd-party column adds into
   final tables (and flags column-edit conflicts); `deriveMigrations` produces the
   ordered migration names from the contributions.
+- **Relations / foreign keys** - declare an FK with `.references('table.column', { onDelete })`;
+  `deriveRelations` computes both ends (forward + inverse) so the ORMs that model
+  navigation (Prisma relation fields, Drizzle `relations()`) get them. Self-references,
+  per-FK relation-field naming (`as` / `inverseAs`), composite primary keys
+  (`t.primaryKey(a, b)`), and many-to-many via `defineJoinTable(a, b)` are all supported.
 - **Per-ORM compilers** - `toPrisma`, `toDrizzle`, `toNative` (and the `COMPILERS`
   map) turn one merged table into that ORM's schema.
 - **File generation** - `generateArtifacts({ tables, fragments }, orm)` returns
@@ -38,6 +43,7 @@ pnpm add @vike-data/universal-schema
 import {
   defineSchema,
   extendSchema,
+  defineJoinTable,
   mergeSchemas,
   deriveMigrations,
   generateArtifacts,
@@ -50,19 +56,28 @@ const auth = defineSchema('users', (t) => {
   t.timestamps()
 })
 
+const roles = defineSchema('roles', (t) => {
+  t.uuid('id').primary()
+  t.string('name').unique()
+})
+
 // 2. A different source can ADD columns to a table it didn't create.
 const billing = extendSchema('users', (t) => {
   t.string('stripe_customer_id').nullable()
 })
 
-// 3. Merge + derive.
-const fragments = [auth, billing]
+// 3. Many-to-many is the join table that links two tables (two FKs + composite PK).
+const userRoles = defineJoinTable('users', 'roles')
+//   -> `roles_users` { user_id -> users.id, role_id -> roles.id, primaryKey(both) }
+
+// 4. Merge + derive.
+const fragments = [auth, roles, billing, userRoles]
 const { tables, conflicts } = mergeSchemas(fragments)
 const migrations = deriveMigrations(fragments)
 
-// 4. Generate committable artifacts for the ORM of your choice.
+// 5. Generate committable artifacts for the ORM of your choice.
 const files = generateArtifacts({ tables, fragments }, 'prisma')
-//   -> [{ path: 'prisma/schema.prisma', contents: '// GENERATED ...' }]
+//   -> [{ path: 'prisma/schema.generated.prisma', contents: '// GENERATED ...' }]
 ```
 
 ## Design
@@ -78,8 +93,11 @@ const files = generateArtifacts({ tables, fragments }, 'prisma')
 ## Scope / deferred (the interesting hard parts)
 
 - Types: `uuid` / `string` / `text` / `integer` / `boolean` / `timestamp` plus
-  `nullable` / `unique` / `primary` / `default`.
-- **Relations / foreign keys** - deferred; the genuinely hard bit.
+  `nullable` / `unique` / `primary` / `default` / `timestamps()`.
+- **Relations / foreign keys** - single-column FKs, `onDelete`, cross-extension
+  reference validation, self-references, relation-field naming, composite primary
+  keys, and many-to-many sugar all ship (see above). Still deferred: composite
+  (multi-column) foreign keys, and one-to-one inference beyond a `unique` FK.
 - **Type escape hatches** - DB-specific types (pg arrays, enums, JSON) want a
   per-adapter override so the neutral layer isn't lowest-common-denominator.
 - **Declarative -> ordered migration reconciliation** - real diffing/ordering.

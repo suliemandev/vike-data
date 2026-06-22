@@ -39,7 +39,9 @@ export function toPrisma(ir, rel = { forward: [], inverse: [] }) {
     relRows.push(`  ${r.inverseFieldName ?? r.name} ${pascal(r.owner)}${r.toOne ? '?' : '[]'} @relation("${r.name}")`)
   }
   const body = relRows.length ? `${rows.join('\n')}\n\n${relRows.join('\n')}` : rows.join('\n')
-  return `model ${pascal(ir.table)} {\n${body}\n\n  @@map("${ir.table}")\n}`
+  // Composite PK is a block-level @@id (single-column PKs use a field-level @id above).
+  const blockAttrs = ir.primaryKey ? `\n\n  @@id([${ir.primaryKey.join(', ')}])` : ''
+  return `model ${pascal(ir.table)} {\n${body}${blockAttrs}\n\n  @@map("${ir.table}")\n}`
 }
 
 // --------------------------------------------------------------- Drizzle -----
@@ -72,8 +74,14 @@ function drizzleCol(c) {
 }
 export function toDrizzle(ir) {
   const fns = [...new Set(ir.columns.map((c) => DRIZZLE_FN[c.type] || 'text'))]
+  // Composite PK is Drizzle's table-extra config (a third pgTable arg) and needs
+  // the `primaryKey` helper imported alongside the column fns.
+  if (ir.primaryKey) fns.push('primaryKey')
   const body = ir.columns.map(drizzleCol).join('\n')
-  return `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'\n\nexport const ${camel(ir.table)} = pgTable('${ir.table}', {\n${body}\n})`
+  const extra = ir.primaryKey
+    ? `, (table) => ({\n  pk: primaryKey({ columns: [${ir.primaryKey.map((n) => `table.${camel(n)}`).join(', ')}] }),\n})`
+    : ''
+  return `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'\n\nexport const ${camel(ir.table)} = pgTable('${ir.table}', {\n${body}\n}${extra})`
 }
 
 // ---------------------------------------------------------------- Native -----
@@ -93,7 +101,10 @@ function nativeCol(c) {
   return `      ${s}`
 }
 export function toNative(ir) {
-  const body = ir.columns.map(nativeCol).join('\n')
+  const cols = ir.columns.map(nativeCol)
+  // Composite PK as a table-level constraint (single-column PKs use `.primary()` inline).
+  if (ir.primaryKey) cols.push(`      t.primary([${ir.primaryKey.map((n) => `'${n}'`).join(', ')}])`)
+  const body = cols.join('\n')
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.create('${ir.table}', (t) => {\n${body}\n    })\n  }\n}`
 }
 

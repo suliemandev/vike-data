@@ -12,6 +12,7 @@
 
 function buildColumns(build) {
   const columns = []
+  const meta = {} // table-level: { primaryKey?: string[] }
   const col = (name, type) => {
     const c = { name, type, nullable: false, unique: false, primary: false, default: undefined }
     columns.push(c)
@@ -56,15 +57,68 @@ function buildColumns(build) {
       col('created_at', 'timestamp').default('now')
       col('updated_at', 'timestamp').default('now')
     },
+    // TABLE-LEVEL composite primary key over >=2 columns (e.g. a join table keyed
+    // on both its FKs). Single-column PKs stay column-level (`t.uuid('id').primary()`);
+    // this is the multi-column case Prisma/Drizzle/native each spell differently
+    // (@@id / primaryKey() / t.primary([...])). The named columns must exist.
+    primaryKey(...names) {
+      meta.primaryKey = names
+    },
   }
   build(t)
-  return columns
+  if (meta.primaryKey) {
+    for (const name of meta.primaryKey) {
+      if (!columns.some((c) => c.name === name)) {
+        throw new Error(`primaryKey references unknown column "${name}"`)
+      }
+    }
+  }
+  return { columns, meta }
 }
 
 export function defineSchema(table, build) {
-  return { table, mode: 'create', columns: buildColumns(build) }
+  const { columns, meta } = buildColumns(build)
+  return { table, mode: 'create', columns, ...(meta.primaryKey ? { primaryKey: meta.primaryKey } : {}) }
 }
 
 export function extendSchema(table, build) {
-  return { table, mode: 'extend', columns: buildColumns(build) }
+  const { columns } = buildColumns(build)
+  return { table, mode: 'extend', columns }
+}
+
+// Many-to-many sugar: derive the join table that links two existing tables.
+// m2m has no first-class column model — it IS a join table with two FKs and a
+// composite PK over them. This helper emits exactly that as a normal `create`
+// fragment, so it flows through merge/relations/codegen like any other table
+// (deriveRelations sees two non-unique FKs -> two one-to-many legs = the m2m).
+//
+//   defineJoinTable('users', 'roles')
+//     -> table `roles_users` { user_id -> users.id, role_id -> roles.id, PK(both) }
+//
+// Options: `table` overrides the derived name; `columns` overrides a derived FK
+// column name ({ users: 'member_id' }); `type` sets the FK column type (default
+// 'uuid', matching the repo's `t.uuid('id').primary()` convention); `onDelete`
+// sets the referential action on both FKs (default 'cascade' — drop the link row
+// when either side is deleted, the usual join-table semantics).
+export function defineJoinTable(tableA, tableB, opts = {}) {
+  const name = opts.table || [tableA, tableB].slice().sort().join('_')
+  const type = opts.type || 'uuid'
+  const onDelete = opts.onDelete || 'cascade'
+  const fk = (t) => opts.columns?.[t] || `${singularize(t)}_id`
+  const [colA, colB] = [fk(tableA), fk(tableB)]
+  return defineSchema(name, (t) => {
+    t[type](colA).references(`${tableA}.id`, { onDelete })
+    t[type](colB).references(`${tableB}.id`, { onDelete })
+    t.primaryKey(colA, colB)
+  })
+}
+
+// Minimal English singularization for FK naming (users -> user, companies ->
+// company). Good enough for the convention here; pass `columns` to override when
+// a table name pluralizes irregularly.
+function singularize(word) {
+  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`
+  if (word.endsWith('ses') || word.endsWith('xes') || word.endsWith('zes')) return word.slice(0, -2)
+  if (word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1)
+  return word
 }
