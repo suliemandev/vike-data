@@ -13,7 +13,8 @@
     "./react": "./react/+config.js",
     "./react/DashboardPage": "./react/DashboardPage.jsx",
     "./react/ListPage": "./react/ListPage.jsx",
-    "./react/NewPage": "./react/NewPage.jsx"
+    "./react/NewPage": "./react/NewPage.jsx",
+    "./react/EditPage": "./react/EditPage.jsx"
   },
   "scripts": {
     "test": "node --test"

@@ -35,7 +35,7 @@ function relativeTime(value) {
 }
 
 export default function ListPage() {
-  const { table, label, columns, rows, canCreate } = useData()
+  const { table, label, columns, rows, pk, canEdit } = useData()
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -44,7 +44,7 @@ export default function ListPage() {
           <a href="/admin" style={{ color: 'var(--color-muted)', fontSize: 14 }}>
             &larr; Admin
           </a>
-          {canCreate && (
+          {canEdit && (
             <a
               href={`/admin/${table}/new`}
               style={{
@@ -79,23 +79,31 @@ export default function ListPage() {
                   {c.label}
                 </th>
               ))}
+              {canEdit && <th style={{ ...th, width: 1 }} />}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td style={{ ...cell, color: 'var(--color-muted)' }} colSpan={columns.length || 1}>
+                <td style={{ ...cell, color: 'var(--color-muted)' }} colSpan={columns.length + (canEdit ? 1 : 0) || 1}>
                   No rows yet.
                 </td>
               </tr>
             ) : (
               rows.map((row, i) => (
-                <tr key={row.id ?? i}>
+                <tr key={row[pk] ?? i}>
                   {columns.map((c) => (
                     <td key={c.name} style={cell}>
                       {formatValue(row[c.name], c.format)}
                     </td>
                   ))}
+                  {canEdit && (
+                    <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <a href={`/admin/${table}/${row[pk]}`} style={{ color: 'var(--color-primary)', fontSize: 14 }}>
+                        Edit
+                      </a>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
