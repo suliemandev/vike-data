@@ -1,5 +1,5 @@
 // A locale pack is data; pin that it ships French for the auth keys and registers
-// into the cumulative messages config. The key list mirrors vike-react-auth's en
+// into the cumulative messages config. The key list mirrors vike-auth/react's en
 // surface (kept in sync here so a forgotten key is caught; any genuinely missing
 // one would fall back to English at runtime, not break).
 import { test } from 'node:test'

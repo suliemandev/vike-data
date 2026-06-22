@@ -11,11 +11,14 @@ from it.
 
 ## Tier
 
-This is the framework-agnostic **core** tier: schema **and** a working server-side
-session lifecycle, with no UI. Per-framework UI wrappers — `vike-react-auth`,
-`vike-vue-auth`, `vike-solid-auth` — would layer components and hooks on top while
-reusing this exact schema and server tier, mirroring the core-vs-UI split of
-`universal-middleware` and the Vercel AI SDK.
+The framework-agnostic **core** tier (schema **and** a working server-side session
+lifecycle, no UI) lives at the package root. Per-framework UI ships as **subpaths of
+this one package** — `vike-auth/react` today, `vike-auth/vue` / `vike-auth/solid`
+later — each layering components, hooks, and its own pages on top while reusing this
+exact schema and server tier. The core-vs-UI split moved from a package boundary to a
+module boundary, mirroring `universal-middleware` and the single-package decision in
+#51. `vike-auth/react` also **ships its own `/login` + `/account` pages** via
+`config.pages`: install it and the routes appear, with no page file in the app.
 
 ## Tables
 
@@ -42,7 +45,7 @@ contributed from `+config.js`:
   | `/auth/logout`   | POST | destroy the session server-side and clear the cookie |
 
 - **`onCreatePageContext`** — resolves the session cookie to `pageContext.user`,
-  so any page (and a future `vike-react-auth`) reads one field and knows who is
+  so any page (and `vike-auth/react`'s `useUser()`) reads one field and knows who is
   signed in, without knowing how auth works.
 
 The lifecycle itself lives in a framework-agnostic core (`auth.js`) over a
