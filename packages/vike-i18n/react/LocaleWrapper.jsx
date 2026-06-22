@@ -1,10 +1,10 @@
-// The vike-react Wrapper contributed by vike-react-i18n/config. Turns the
-// declarative messages config into a running LocaleProvider: the composed
-// `messages` (cumulative, from every extension + the app) are the dictionary, and
-// the active locale is pageContext.locale (Vike's locale routing) -> the
-// vike_locale cookie -> the configured `locale` default.
+// The vike-react Wrapper contributed by vike-i18n/react. Turns the declarative
+// messages config into a running LocaleProvider: the composed `messages`
+// (cumulative, from every extension + the app) are the dictionary, and the active
+// locale is pageContext.locale (Vike's locale routing) -> the vike_locale cookie
+// -> the configured `locale` default.
 import { usePageContext } from 'vike-react/usePageContext'
-import { availableLocales } from 'vike-i18n'
+import { availableLocales } from '../index.js'
 import { LocaleProvider } from './LocaleProvider.jsx'
 import { LocalePicker } from './LocalePicker.jsx'
 

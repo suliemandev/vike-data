@@ -71,7 +71,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
 | `vike-react-auth-fr` | French locale pack for `vike-auth/react`. |
-| `vike-i18n` / `vike-react-i18n` | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
+| `vike-i18n` (+ `vike-i18n/react`) | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
 | `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home. |

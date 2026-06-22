@@ -1,7 +1,7 @@
 // The runtime locale switcher (fixed, bottom-left so it clears the theme picker
 // on the right). Lists every locale any installed extension provides; switching
 // re-renders all t() strings live and persists via cookie.
-import { useTranslation } from './LocaleProvider.jsx'
+import { useTranslation } from './context.js'
 
 const LABELS = { en: 'English', fr: 'Français', ar: 'العربية', es: 'Español', de: 'Deutsch' }
 

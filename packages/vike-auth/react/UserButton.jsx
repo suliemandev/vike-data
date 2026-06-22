@@ -2,7 +2,7 @@
 // when logged out. Reads useUser() (pageContext.user from the server tier); logout
 // is a real POST to /auth/logout (the server tier destroys the session row).
 import { useUser } from './useUser.js'
-import { useTranslation } from 'vike-react-i18n'
+import { useTranslation } from 'vike-i18n/react/hooks'
 
 export function UserButton({ loginHref = '/login' }) {
   const user = useUser()
