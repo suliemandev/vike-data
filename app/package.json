@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example app: installs the vike-auth + vike-teams + vike-stripe/b2c-subscription extensions (the composition proof), picks an ORM via VIKE_DATA_ORM and a billing subject via BILLING_SUBJECT",
+  "description": "Example app: installs the vike-auth + vike-teams + vike-stripe/subscription extensions (the composition proof), picks an ORM via VIKE_DATA_ORM and a billing segment via BILLING_SEGMENT",
   "scripts": {
     "dev": "vite",
     "dev:prisma": "VIKE_DATA_ORM=prisma vite",

@@ -1,4 +1,4 @@
-// b2c-subscription: the computed schema, the core upsert proof, and the webhook over
+// subscription: the computed schema, the core upsert proof, and the webhook over
 // a real Request/Response.
 
 import { test } from 'node:test'
@@ -7,17 +7,17 @@ import { defineSchema, mergeSchemas, deriveRelations } from '@vike-data/vike-sch
 import { mergeSchemas as merge } from '@vike-data/universal-schema'
 import { createRepository } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
-import subscriptionSchemas from '../b2c-subscription/schemas.js'
-import { createSubscriptions } from '../b2c-subscription/subscription.js'
-import { subscriptionWebhookHandler, SUBSCRIPTION_WEBHOOK_PATH } from '../b2c-subscription/middleware.js'
+import subscriptionSchemas from '../subscription/schemas.js'
+import { createSubscriptions } from '../subscription/subscription.js'
+import { subscriptionWebhookHandler, SUBSCRIPTION_WEBHOOK_PATH } from '../subscription/middleware.js'
 
 const tableOf = (frags, name) => frags.find((f) => f.table === name)
 const colOf = (frag, name) => frag.columns.find((c) => c.name === name)
 
-function makeSubscriptions(subject = 'organization') {
-  const { tables } = merge(subscriptionSchemas({ billingSubject: subject }))
+function makeSubscriptions(segment = 'b2b') {
+  const { tables } = merge(subscriptionSchemas({ segment }))
   const db = createRepository({ tables }, createMemoryAdapter())
-  return { subscriptions: createSubscriptions({ db, subject }), db }
+  return { subscriptions: createSubscriptions({ db, segment }), db }
 }
 
 // --------------------------------------------------------------------- schema
@@ -28,12 +28,12 @@ test('contributes exactly one plain subscriptions table', () => {
   )
 })
 
-test('billingSubject re-points the unique subject FK', () => {
+test('segment re-points the unique subject FK (b2b -> organizations, b2c -> users)', () => {
   assert.deepEqual(colOf(tableOf(subscriptionSchemas({}), 'subscriptions'), 'organization_id').references, {
     table: 'organizations',
     column: 'id',
   })
-  const u = tableOf(subscriptionSchemas({ billingSubject: 'user' }), 'subscriptions')
+  const u = tableOf(subscriptionSchemas({ segment: 'b2c' }), 'subscriptions')
   assert.deepEqual(colOf(u, 'user_id').references, { table: 'users', column: 'id' })
   assert.equal(colOf(u, 'organization_id'), undefined)
 })
@@ -82,6 +82,12 @@ test('webhook upserts and responds 200', async () => {
   assert.equal(res.status, 200)
   assert.equal((await res.json()).subscription.plan, 'pro')
   assert.equal((await db.subscriptions.findOne({ organization_id: 'org1' })).plan, 'pro')
+})
+
+test('b2c segment keys the row on user_id', async () => {
+  const { subscriptions, db } = makeSubscriptions('b2c')
+  await subscriptions.applySubscriptionEvent({ subject: 'user1', plan: 'pro' })
+  assert.equal((await db.subscriptions.findOne({ user_id: 'user1' })).plan, 'pro')
 })
 
 test('webhook falls through on other paths, 405 on non-POST', async () => {

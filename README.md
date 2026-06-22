@@ -20,7 +20,7 @@ Two consequences run through everything here:
   per-ORM files are *generated* from it. The same idea applies up the stack: themes
   are derived to CSS variables, the active translation is merged per locale.
 - **Compose, don't wire.** An app installs an extension with `extends: [ext]` and
-  configures it with a sibling key (`theme`, `layout`, `locale`, `billingSubject`),
+  configures it with a sibling key (`theme`, `layout`, `locale`, `segment`),
   exactly like `vike-react`'s `ssr`. No bespoke wiring per extension.
 
 ---
@@ -65,7 +65,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its own `/login` + `/account` pages ship as the `vike-auth/react` subpath. |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike-stripe` | Stripe billing as subpath models: `b2c-subscription` (upsert) + `b2b-payment` (insert). Subject FK *computed* from `billingSubject`; server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
+| `vike-stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert). Subject FK *computed* from `segment` (`b2b`/`b2c`); server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
 | `vike-themes` (+ `vike-themes/react`) | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
@@ -135,7 +135,7 @@ Highlights and open ends:
 - **Runtime data access** — extensions read/write through `universal-orm` (a narrow
   `db.<table>.upsert/find/...` over the composed schema) on a swappable adapter
   (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.
-  vike-stripe's webhooks are the live proof: `b2c-subscription` upserts, `b2b-payment` inserts.
+  vike-stripe's webhooks are the live proof: `subscription` upserts, `purchase` inserts.
 - **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
   table is the shape real apps use. It pressured the IR (no first-class *append-only*
   or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.

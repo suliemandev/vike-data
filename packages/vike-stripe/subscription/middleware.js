@@ -1,4 +1,4 @@
-// The b2c-subscription server tier: a universal middleware owning the subscription
+// The subscription server tier: a universal middleware owning the subscription
 // webhook. A thin HTTP shell over the core; the write goes through universal-orm, so
 // no ORM is imported here or anywhere in the extension. The event is parsed via the
 // shared Stripe SDK (../stripe.js), the single place a real `stripe` package lives.
@@ -38,7 +38,7 @@ export function subscriptionWebhookHandler(subscriptions, { provider = stripe } 
 
 export function createSubscriptionWebhook(subscriptions, opts) {
   return enhance(subscriptionWebhookHandler(subscriptions, opts), {
-    name: 'vike-stripe-b2c-subscription',
+    name: 'vike-stripe-subscription',
     order: MiddlewareOrder.AUTHENTICATION,
   })
 }

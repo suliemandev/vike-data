@@ -1,4 +1,4 @@
-// b2b-payment: the computed schema, the core INSERT proof (idempotent on the Stripe
+// purchase: the computed schema, the core INSERT proof (idempotent on the Stripe
 // payment-intent id), and the webhook over a real Request/Response.
 
 import { test } from 'node:test'
@@ -7,17 +7,17 @@ import { defineSchema, mergeSchemas, deriveRelations } from '@vike-data/vike-sch
 import { mergeSchemas as merge } from '@vike-data/universal-schema'
 import { createRepository } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
-import paymentSchemas from '../b2b-payment/schemas.js'
-import { createPayments } from '../b2b-payment/payment.js'
-import { paymentWebhookHandler, PAYMENT_WEBHOOK_PATH } from '../b2b-payment/middleware.js'
+import paymentSchemas from '../purchase/schemas.js'
+import { createPayments } from '../purchase/payment.js'
+import { purchaseWebhookHandler, PURCHASE_WEBHOOK_PATH } from '../purchase/middleware.js'
 
 const tableOf = (frags, name) => frags.find((f) => f.table === name)
 const colOf = (frag, name) => frag.columns.find((c) => c.name === name)
 
-function makePayments(subject = 'organization') {
-  const { tables } = merge(paymentSchemas({ billingSubject: subject }))
+function makePayments(segment = 'b2b') {
+  const { tables } = merge(paymentSchemas({ segment }))
   const db = createRepository({ tables }, createMemoryAdapter())
-  return { payments: createPayments({ db, subject }), db }
+  return { payments: createPayments({ db, segment }), db }
 }
 
 // --------------------------------------------------------------------- schema
@@ -39,6 +39,12 @@ test('the subject FK is NOT unique (many payments per subject) => one-to-many', 
   assert.deepEqual(conflicts, [])
   const fwd = deriveRelations(tables).get('payments').forward.find((r) => r.target === 'organizations')
   assert.equal(fwd.toOne, false)
+})
+
+test('segment re-points the subject FK (b2c -> users)', () => {
+  const u = tableOf(paymentSchemas({ segment: 'b2c' }), 'payments')
+  assert.deepEqual(colOf(u, 'user_id').references, { table: 'users', column: 'id' })
+  assert.equal(colOf(u, 'organization_id'), undefined)
 })
 
 test('stripe_payment_intent_id is unique (the idempotency key)', () => {
@@ -87,8 +93,8 @@ const post = (path, body) =>
 
 test('webhook inserts and responds 200', async () => {
   const { payments, db } = makePayments()
-  const handle = paymentWebhookHandler(payments)
-  const res = await handle(post(PAYMENT_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_9' }))
+  const handle = purchaseWebhookHandler(payments)
+  const res = await handle(post(PURCHASE_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_9' }))
   assert.equal(res.status, 200)
   assert.equal((await res.json()).payment.amount, 4200)
   assert.equal((await db.payments.find()).length, 1)
@@ -96,7 +102,7 @@ test('webhook inserts and responds 200', async () => {
 
 test('invalid JSON is a 400, nothing written', async () => {
   const { payments, db } = makePayments()
-  const res = await paymentWebhookHandler(payments)(post(PAYMENT_WEBHOOK_PATH, '{bad'))
+  const res = await purchaseWebhookHandler(payments)(post(PURCHASE_WEBHOOK_PATH, '{bad'))
   assert.equal(res.status, 400)
   assert.equal((await db.payments.find()).length, 0)
 })

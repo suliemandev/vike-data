@@ -1,4 +1,4 @@
-// The b2b-payment CORE — framework- and ORM-agnostic. Recording a one-time charge is
+// The purchase CORE — framework- and ORM-agnostic. Recording a one-time charge is
 // a single `db.payments.insert(...)`: a payment is immutable, so unlike a
 // subscription there is nothing to upsert. This is the narrowest universal-orm proof
 // — a pure INSERT.
@@ -6,14 +6,17 @@
 // Idempotent on the Stripe payment-intent id: a replayed webhook finds the existing
 // row and returns it instead of inserting a duplicate (find + insert, the narrow
 // surface; no transaction needed).
+//
+// `segment` selects WHO the subject is — 'b2b' (organization) or 'b2c' (user) — and
+// thus which FK column the row is keyed on.
 
-const SUBJECT_COLUMN = { organization: 'organization_id', user: 'user_id' }
+const SUBJECT_COLUMN = { b2b: 'organization_id', b2c: 'user_id' }
 
 const isoNow = () => new Date().toISOString()
 
-export function createPayments({ db, subject = 'organization' } = {}) {
+export function createPayments({ db, segment = 'b2b' } = {}) {
   if (!db) throw new Error('[vike-stripe] createPayments requires a universal-orm { db }')
-  const subjectColumn = SUBJECT_COLUMN[subject] || SUBJECT_COLUMN.organization
+  const subjectColumn = SUBJECT_COLUMN[segment] || SUBJECT_COLUMN.b2b
 
   return {
     subjectColumn,

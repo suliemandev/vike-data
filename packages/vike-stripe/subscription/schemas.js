@@ -1,15 +1,15 @@
-// The b2c-subscription model's COMPUTED schema: a plain, mutable `subscriptions`
-// table (one row per subject), the shape the webhook upserts. The subject FK
-// follows `billingSubject` (organizations for B2B-style billing, users per-seat)
-// and is UNIQUE — one current subscription per subject, the upsert conflict key.
+// The subscription model's COMPUTED schema: a plain, mutable `subscriptions` table
+// (one row per subject), the shape the webhook upserts. The subject FK follows
+// `segment` — 'b2b' points at `organizations`, 'b2c' points at `users` — and is
+// UNIQUE: one current subscription per subject, the upsert conflict key.
 //
-// Recurring subscriptions are the b2c model; one-time charges are b2b-payment.
+// Recurring subscriptions are this model; one-time charges are the `purchase` model.
 import { defineSchema } from '@vike-data/vike-schema/schema'
 
 export default function subscriptionSchemas(config) {
-  const subject = config?.billingSubject === 'user' ? 'user' : 'organization'
+  const segment = config?.segment === 'b2c' ? 'b2c' : 'b2b'
   const ref =
-    subject === 'user'
+    segment === 'b2c'
       ? { column: 'user_id', target: 'users.id' }
       : { column: 'organization_id', target: 'organizations.id' }
 
