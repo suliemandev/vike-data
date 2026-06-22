@@ -1,5 +1,5 @@
 // The config SEAM — themes are installed + selected exactly like every other
-// extension (vike-auth, vike-billing): the app `extends` the theme extension and
+// extension (vike-auth, vike-stripe): the app `extends` the theme extension and
 // sets a sibling config key. No hand-wiring in the app.
 //
 // vike-themes declares the contribution points (framework-agnostic — this file

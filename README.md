@@ -65,7 +65,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike-billing` | Plain `subscriptions` table; subject FK *computed* from `billingSubject`. Server tier upserts via universal-orm on `POST /stripe/webhook`. Self-installs vike-teams. |
+| `vike-stripe` | Stripe billing as subpath models: `b2c-subscription` (upsert) + `b2b-payment` (insert). Subject FK *computed* from `billingSubject`; server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
 | `vike-themes` / `vike-react-themes` | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
@@ -126,7 +126,7 @@ rejects inline functions.
 ## Notes & deferred
 
 Per-package design notes live in each package's README (see
-[vike-auth](packages/vike-auth/README.md), [vike-billing](packages/vike-billing/README.md)).
+[vike-auth](packages/vike-auth/README.md), [vike-stripe](packages/vike-stripe/README.md)).
 Highlights and open ends:
 
 - **Relations** — single-column FKs with `onDelete`, cross-extension validation,
@@ -136,7 +136,7 @@ Highlights and open ends:
 - **Runtime data access** — extensions read/write through `universal-orm` (a narrow
   `db.<table>.upsert/find/...` over the composed schema) on a swappable adapter
   (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.
-  vike-billing's `POST /stripe/webhook` is the live INSERT/upsert proof.
+  vike-stripe's webhooks are the live proof: `b2c-subscription` upserts, `b2b-payment` inserts.
 - **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
   table is the shape real apps use. It pressured the IR (no first-class *append-only*
   or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.

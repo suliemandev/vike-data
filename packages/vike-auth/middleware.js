@@ -53,7 +53,7 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
     serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure: !dev })
 
   // Idempotency guard. An extension that is self-installed by several others
-  // (vike-auth is pulled in by the app AND by vike-teams AND by vike-billing)
+  // (vike-auth is pulled in by the app AND by vike-teams AND by vike-stripe)
   // has its `middleware` collected once per install path, and universal
   // middlewares all run even after one returns a Response (a Response only
   // short-circuits route HANDLERS, not middlewares). Without this guard the

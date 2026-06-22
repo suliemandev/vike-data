@@ -19,9 +19,9 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../packages/vike-auth
-      vike-billing:
+      vike-stripe:
         specifier: workspace:*
-        version: link:../packages/vike-billing
+        version: link:../packages/vike-stripe
       vike-teams:
         specifier: workspace:*
         version: link:../packages/vike-teams
@@ -110,30 +110,6 @@ importers:
         specifier: workspace:*
         version: link:../vike-schema
 
-  packages/vike-billing:
-    dependencies:
-      '@universal-middleware/core':
-        specifier: ^0.4.18
-        version: 0.4.18(srvx@0.11.17)
-      '@universal-orm/core':
-        specifier: workspace:*
-        version: link:../universal-orm
-      '@universal-orm/memory':
-        specifier: workspace:*
-        version: link:../universal-orm-memory
-      '@vike-data/universal-schema':
-        specifier: workspace:*
-        version: link:../universal-schema
-      '@vike-data/vike-schema':
-        specifier: workspace:*
-        version: link:../vike-schema
-      vike-auth:
-        specifier: workspace:*
-        version: link:../vike-auth
-      vike-teams:
-        specifier: workspace:*
-        version: link:../vike-teams
-
   packages/vike-i18n: {}
 
   packages/vike-layouts: {}
@@ -194,6 +170,30 @@ importers:
       vike:
         specifier: ^0.4.0
         version: 0.4.259(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5)
+
+  packages/vike-stripe:
+    dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+      '@vike-data/universal-schema':
+        specifier: workspace:*
+        version: link:../universal-schema
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+      vike-auth:
+        specifier: workspace:*
+        version: link:../vike-auth
+      vike-teams:
+        specifier: workspace:*
+        version: link:../vike-teams
 
   packages/vike-teams:
     dependencies:
