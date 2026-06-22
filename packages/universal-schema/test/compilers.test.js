@@ -62,6 +62,18 @@ test('toDrizzle builds a pgTable with camelCased columns and modifiers', () => {
   assert.match(out, /displayName: varchar\('display_name', \{ length: 255 \}\)/)
 })
 
+test("toDrizzle renders timestamp columns with mode: 'string' (universal-orm speaks ISO strings)", () => {
+  const out = toDrizzle(
+    ir((t) => {
+      t.uuid('id').primary()
+      t.timestamp('created_at').default('now')
+      t.timestamp('expires_at')
+    }),
+  )
+  assert.match(out, /createdAt: timestamp\('created_at', \{ mode: 'string' \}\)\.notNull\(\)\.defaultNow\(\)/)
+  assert.match(out, /expiresAt: timestamp\('expires_at', \{ mode: 'string' \}\)\.notNull\(\)/)
+})
+
 test('toDrizzle renders a column FK as a lazy .references thunk with onDelete', () => {
   const posts = defineSchema('posts', (t) => t.uuid('author_id').references('users.id', { onDelete: 'cascade' }))
   const out = toDrizzle(mergeSchemas([defineSchema('users', (t) => t.uuid('id').primary()), posts]).tables.find((t) => t.table === 'posts'))
