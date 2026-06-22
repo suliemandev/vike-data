@@ -16,7 +16,7 @@ import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
-import authFrExt from 'vike-react-auth-fr/config'
+import authFrExt from 'vike-auth-fr/config'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 
@@ -59,7 +59,7 @@ export default {
 
   // i18n: pick the default locale; the app + every extension compose their strings
   // into the cumulative `messages` point. vike-auth/react ships English; French
-  // comes from the installed locale PACK vike-react-auth-fr (extends above).
+  // comes from the installed locale PACK vike-auth-fr (extends above).
   locale: 'en',
   messages: [appMessages],
 

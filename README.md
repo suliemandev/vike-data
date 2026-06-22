@@ -50,7 +50,7 @@ installs each and sets a sibling config key:
   base ships English; other languages are separate, installable **locale packs**.
 
 Themes and translations **compose like packages**: install `vike-theme-emerald` and a
-new theme appears in the picker; install `vike-react-auth-fr` and the auth UI speaks
+new theme appears in the picker; install `vike-auth-fr` and the auth UI speaks
 French. Neither the app nor the extension being styled/translated knows the other exists.
 
 ---
@@ -70,7 +70,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | `vike-themes` (+ `vike-themes/react`) | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-react-auth-fr` | French locale pack for `vike-auth/react`. |
+| `vike-auth-fr` | French locale pack for `vike-auth` (framework-agnostic message data). |
 | `vike-i18n` (+ `vike-i18n/react`) | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
