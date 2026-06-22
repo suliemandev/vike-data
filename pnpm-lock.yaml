@@ -71,6 +71,12 @@ importers:
         specifier: ^7.1.0
         version: 7.3.5
 
+  packages/universal-orm:
+    devDependencies:
+      '@vike-data/universal-schema':
+        specifier: workspace:*
+        version: link:../universal-schema
+
   packages/universal-schema: {}
 
   packages/vike-auth:

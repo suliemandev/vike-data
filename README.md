@@ -61,6 +61,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 |---|---|
 | **Data layer** | |
 | `universal-schema` | The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. **Zero Vike imports.** |
+| `universal-orm` | The neutral, narrow repository (`db.<table>.insert/find/upsert/update/delete`) over the composed schema + the adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |

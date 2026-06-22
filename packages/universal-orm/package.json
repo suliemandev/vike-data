@@ -1,0 +1,17 @@
+{
+  "name": "@vike-data/universal-orm",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Framework-agnostic runtime data access: the neutral, narrow repository (db.<table>.insert/find/upsert/update/delete) over a composed schema, plus the adapter contract a per-ORM adapter implements. Zero Vike and zero ORM imports; the runtime twin of universal-schema.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@vike-data/universal-schema": "workspace:*"
+  }
+}
