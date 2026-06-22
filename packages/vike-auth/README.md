@@ -74,7 +74,7 @@ await auth.destroySession(session.token) // real logout
   1. On a Vike **without [#3355](https://github.com/vikejs/vike/pull/3355)**, the
      built-in `middleware` cumulative config is included once per install path.
      vike-auth is self-installed by the app *and* by vike-teams *and* by
-     vike-billing, so its middleware ran three times per request on the released
+     vike-stripe, so its middleware ran three times per request on the released
      `0.4.259` — and a universal middleware runs even after an earlier one
      returned a `Response` (a `Response` only short-circuits route *handlers*), so
      a body-reading middleware double-reads (`Body already read`). **Fixed
