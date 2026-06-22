@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mergeSchemas } from '@vike-data/universal-schema'
-import { createRepository } from '@vike-data/universal-orm'
+import { createRepository } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { createBilling } from '../billing.js'
 import billingSchemas from '../schemas.js'

@@ -15,7 +15,7 @@
   "dependencies": {
     "@universal-middleware/core": "^0.4.18",
     "@universal-orm/memory": "workspace:*",
-    "@vike-data/universal-orm": "workspace:*",
+    "@universal-orm/core": "workspace:*",
     "@vike-data/universal-schema": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*",
