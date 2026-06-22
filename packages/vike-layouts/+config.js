@@ -1,6 +1,6 @@
 // The config SEAM for layouts — same as themes/billing: install the extension,
 // set a sibling config key. vike-layouts declares the contribution points
-// (framework-agnostic, no UI here); the React shells are vike-react-layouts.
+// (framework-agnostic, no UI here); the React shells are the vike-layouts/react subpath.
 //
 //   - `layout` : the app-shell to render, by name (centered/topbar/sidebar, or a
 //                registered 4th). A single selection, so the app sets a default

@@ -3,10 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Framework-agnostic layout core: the app-shell registry (centered/topbar/sidebar) + the selection and slot config (logo/nav/footer/user-menu, rtl/ltr). The per-framework shell components live in a wrapper (vike-react-layouts). Zero framework imports.",
+  "description": "Layout extension: a framework-agnostic core (the app-shell registry centered/topbar/sidebar + selection and slot config: logo/nav/footer/user-menu, rtl/ltr) plus per-framework shell components as subpaths (vike-layouts/react, and vue/solid later). One package, install and import the subpath for your framework.",
   "exports": {
     ".": "./index.js",
-    "./config": "./+config.js"
+    "./config": "./+config.js",
+    "./react": "./react/+config.js",
+    "./react/ConfigLayout": "./react/ConfigLayout.jsx",
+    "./react/Layout": "./react/Layout.jsx"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true }
   },
   "scripts": {
     "test": "node --test"

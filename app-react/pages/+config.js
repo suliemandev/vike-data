@@ -6,14 +6,14 @@
 //   - themes:  install vike-themes/react + the emerald theme PACKAGE; pick the
 //              active one with `theme`. The app's OWN brand theme is contributed
 //              through the same cumulative `themes` point (customization).
-//   - layout:  install vike-react-layouts; pick the shell with `layout`, fill the
+//   - layout:  install vike-layouts/react; pick the shell with `layout`, fill the
 //              slots with `logo`/`nav`. The auth /login page sets its own layout.
 //   - auth:    install vike-auth/react — one import brings the server tier, the auth
 //              strings, AND the /login + /account pages (the extension owns them).
 import vikeReact from 'vike-react/config'
 import authExt from 'vike-auth/react'
 import themesExt from 'vike-themes/react'
-import layoutsExt from 'vike-react-layouts/config'
+import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-react-i18n/config'
 import authFrExt from 'vike-react-auth-fr/config'

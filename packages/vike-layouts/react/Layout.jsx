@@ -4,7 +4,7 @@
 //
 // The component map mirrors vike-layouts' open registry: pass `shells` to add a
 // component for a shell a third-party registered via registerShell().
-import { defineLayout } from 'vike-layouts'
+import { defineLayout } from '../index.js'
 import { CenteredShell } from './shells/CenteredShell.jsx'
 import { TopbarShell } from './shells/TopbarShell.jsx'
 import { SidebarShell } from './shells/SidebarShell.jsx'

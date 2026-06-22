@@ -16,9 +16,9 @@
     "vike-react": "^0.6.0",
     "vike-auth": "workspace:*",
     "vike-i18n": "workspace:*",
+    "vike-layouts": "workspace:*",
     "vike-react-auth-fr": "workspace:*",
     "vike-react-i18n": "workspace:*",
-    "vike-react-layouts": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",
     "vite": "^7.1.0"
