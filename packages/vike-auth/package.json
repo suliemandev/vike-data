@@ -15,7 +15,9 @@
     "./react/UserButton": "./react/UserButton.jsx",
     "./react/LoginPage": "./react/LoginPage.jsx",
     "./react/AccountPage": "./react/AccountPage.jsx",
-    "./react/messages": "./react/messages.js"
+    "./react/messages": "./react/messages.js",
+    "./fr": "./fr/+config.js",
+    "./ar": "./ar/+config.js"
   },
   "scripts": {
     "test": "node --test"

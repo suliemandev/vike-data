@@ -1,10 +1,12 @@
 // <SignInForm> — posts an email to the vike-auth server tier's /auth/request
 // endpoint and shows the "check your inbox" state. Styled with the theme's CSS
-// variables (vike-themes) and localized via vike-i18n/react: every string is a
-// t() lookup keyed under `auth.*`, and vike-auth/react ships the translations
-// (see ./messages.js + +config.js), so the login UI follows the active locale.
+// variables (vike-themes). Strings are t() lookups keyed under `auth.*`, with the
+// English catalog passed INLINE (authMessages.en): the form renders standalone in
+// English with no i18n runtime, and follows the active locale when a language
+// subpath (vike-auth/fr, /ar) + the vike-i18n provider are installed.
 import { useState } from 'react'
 import { useTranslation } from 'vike-i18n/react/hooks'
+import { authMessages } from './messages.js'
 
 const field = {
   width: '100%',
@@ -32,7 +34,7 @@ const primaryBtn = {
 }
 
 export function SignInForm({ action = '/auth/request', appName = 'Acme' }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(authMessages.en)
   const [email, setEmail] = useState('')
   const [state, setState] = useState('idle') // idle | sending | sent | error
 

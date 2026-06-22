@@ -5,6 +5,7 @@
 import { useUser } from './useUser.js'
 import { UserButton } from './UserButton.jsx'
 import { useTranslation } from 'vike-i18n/react/hooks'
+import { authMessages } from './messages.js'
 
 const card = {
   border: '1px solid var(--color-border)',
@@ -18,7 +19,7 @@ const label = { color: 'var(--color-muted)', minWidth: 110 }
 
 export default function AccountPage() {
   const user = useUser()
-  const { t } = useTranslation()
+  const { t } = useTranslation(authMessages.en)
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>

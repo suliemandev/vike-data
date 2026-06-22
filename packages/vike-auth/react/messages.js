@@ -1,9 +1,11 @@
-// vike-auth/react's strings — ENGLISH ONLY (the base + fallback locale). The
-// extension owns its keys (under `auth.*`) and ships `en`; other languages are
-// separate, installable LOCALE PACKS that contribute their translations to the
-// cumulative `messages` config (e.g. vike-auth-fr), exactly the way theme
-// packages compose. So an app bundles only the languages it installs, and a
-// missing key in a pack falls back to this English (see vike-i18n mergeMessages).
+// vike-auth/react's strings — ENGLISH ONLY (the inline default + universal
+// fallback). The extension owns its keys (under `auth.*`). This catalog is passed
+// INLINE to useTranslation (not contributed to the cumulative `messages`), so the
+// UI renders standalone English with no i18n runtime. Other languages are SUBPATHS
+// of this package (vike-auth/fr, vike-auth/ar) that DO contribute to `messages`;
+// any key a language omits falls back to this English (see vike-i18n's translate +
+// the useTranslation fallback). Languages are the translation mirror of the
+// framework axis (vike-auth/react), composed the same way.
 import { defineMessages } from 'vike-i18n'
 
 export const authMessages = defineMessages({

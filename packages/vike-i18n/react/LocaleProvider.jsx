@@ -29,6 +29,9 @@ export function LocaleProvider({ messages = [], locale: initialLocale = 'en', lo
     [locales],
   )
 
-  const value = useMemo(() => ({ locale, locales, setLocale, t }), [locale, locales, setLocale, t])
+  // Expose the merged `dict` too, so useTranslation can layer a component's inline
+  // English UNDER it (the optional-runtime fallback): provider/active-locale wins,
+  // inline English fills gaps it doesn't carry (incl. the 'en' locale itself).
+  const value = useMemo(() => ({ locale, locales, setLocale, t, dict }), [locale, locales, setLocale, t, dict])
   return <I18nCtx.Provider value={value}>{children}</I18nCtx.Provider>
 }
