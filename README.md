@@ -69,7 +69,7 @@ French. Neither the app nor the extension being styled/translated knows the othe
 | **UI tier** (core + React binding) | |
 | `vike-themes` (+ `vike-themes/react`) | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
-| `vike-layouts` / `vike-react-layouts` | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
+| `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
 | `vike-react-auth-fr` | French locale pack for `vike-auth/react`. |
 | `vike-i18n` / `vike-react-i18n` | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
 | **Apps** | |

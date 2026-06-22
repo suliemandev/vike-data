@@ -1,4 +1,4 @@
-// The vike-react Layout contributed by vike-react-layouts/config. It reads the
+// The vike-react Layout contributed by vike-layouts/react. It reads the
 // resolved layout config (selection + slots) off pageContext and renders the
 // matching shell around the page — so a page just sets `layout: 'topbar'` in its
 // config and gets the shell, with no <Layout> wrapper in the page component.
@@ -7,7 +7,7 @@
 // (vike-layouts defineLayout); this only maps the resolved shell name to its
 // React component.
 import { usePageContext } from 'vike-react/usePageContext'
-import { defineLayout } from 'vike-layouts'
+import { defineLayout } from '../index.js'
 import { CenteredShell } from './shells/CenteredShell.jsx'
 import { TopbarShell } from './shells/TopbarShell.jsx'
 import { SidebarShell } from './shells/SidebarShell.jsx'

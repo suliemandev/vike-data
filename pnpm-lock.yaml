@@ -49,6 +49,9 @@ importers:
       vike-i18n:
         specifier: workspace:*
         version: link:../packages/vike-i18n
+      vike-layouts:
+        specifier: workspace:*
+        version: link:../packages/vike-layouts
       vike-react:
         specifier: ^0.6.0
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
@@ -58,9 +61,6 @@ importers:
       vike-react-i18n:
         specifier: workspace:*
         version: link:../packages/vike-react-i18n
-      vike-react-layouts:
-        specifier: workspace:*
-        version: link:../packages/vike-react-layouts
       vike-theme-emerald:
         specifier: workspace:*
         version: link:../packages/vike-theme-emerald
@@ -124,7 +124,14 @@ importers:
 
   packages/vike-i18n: {}
 
-  packages/vike-layouts: {}
+  packages/vike-layouts:
+    dependencies:
+      react:
+        specifier: '>=18'
+        version: 18.3.1
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
 
   packages/vike-react-auth-fr:
     dependencies:
@@ -140,18 +147,6 @@ importers:
       vike-i18n:
         specifier: workspace:*
         version: link:../vike-i18n
-      vike-react:
-        specifier: '>=0.6'
-        version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
-
-  packages/vike-react-layouts:
-    dependencies:
-      react:
-        specifier: '>=18'
-        version: 18.3.1
-      vike-layouts:
-        specifier: workspace:*
-        version: link:../vike-layouts
       vike-react:
         specifier: '>=0.6'
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))

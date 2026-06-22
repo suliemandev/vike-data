@@ -7,8 +7,8 @@
 // This core owns only the framework-agnostic half: the shell REGISTRY (which
 // shells exist and which slots each renders) and the SELECTION + SLOT config an
 // app provides. The actual shell components are per-framework UI and live in a
-// wrapper (vike-react-layouts) — exactly the core/UI split the rest of the Stem
-// set uses, so a future vike-vue-layouts reuses this selection logic unchanged.
+// subpath (vike-layouts/react) — exactly the core/UI split the rest of the Stem
+// set uses, so a future vike-layouts/vue reuses this selection logic unchanged.
 
 // kind: 'public' shells (logo only, no app nav) bridge to auth/marketing pages;
 // 'app' shells carry the signed-in chrome. slots: which slots the shell renders.
