@@ -1,9 +1,10 @@
 // A minimal in-process adapter used to PIN the adapter contract in this package's
 // tests. It is intentionally tiny and lives under test/ — the shippable memory
 // adapter and `@universal-orm/drizzle` are #46. Any real adapter must honour the
-// same five operations and the filter semantics from ../src/filter.js.
+// same six operations and the filter / list semantics from ../src/filter.js and
+// ../src/list.js.
 
-import { matchesFilter } from '../src/index.js'
+import { matchesFilter, applyListOpts } from '../src/index.js'
 
 export function createMemoryAdapter() {
   const store = new Map() // table -> row[]
@@ -17,10 +18,14 @@ export function createMemoryAdapter() {
       rows(table).push({ ...row })
       return { ...row }
     },
-    async find(table, filter) {
-      return rows(table)
+    async find(table, filter, opts) {
+      const matched = rows(table)
         .filter((r) => matchesFilter(r, filter))
         .map((r) => ({ ...r }))
+      return applyListOpts(matched, opts)
+    },
+    async count(table, filter) {
+      return rows(table).filter((r) => matchesFilter(r, filter)).length
     },
     async upsert(table, row, { onConflict } = {}) {
       const all = rows(table)

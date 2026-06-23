@@ -15,7 +15,8 @@
 // name, and build the maps to translate rows in (name -> prop) and out (prop -> name).
 // Filters/where-clauses are built from the column OBJECTS, so they are dialect-correct.
 
-import { getTableColumns, getTableName, eq, inArray, and } from 'drizzle-orm'
+import { getTableColumns, getTableName, eq, inArray, and, asc, desc, count } from 'drizzle-orm'
+import { normalizeOrderBy } from '@universal-orm/core'
 
 // Per-table name<->property maps + the column objects used to build WHERE clauses.
 function metaOf(table) {
@@ -77,12 +78,35 @@ export function createDrizzleAdapter(db, tables) {
       return fromRow(r, meta)
     },
 
-    async find(table, filter) {
+    async find(table, filter, opts = {}) {
       const { table: t, meta } = resolve(table)
       const where = whereOf(filter, meta)
-      const query = db.select().from(t)
-      const rows = where ? await query.where(where) : await query
+      // Build incrementally: where -> orderBy -> limit -> offset, so a query with
+      // none of them is byte-for-byte the original "select all" path.
+      let query = db.select().from(t)
+      if (where) query = query.where(where)
+      const order = normalizeOrderBy(opts.orderBy)
+      if (order.length) {
+        query = query.orderBy(
+          ...order.map(({ column, dir }) => {
+            const col = meta.byName[column]
+            if (!col) throw new Error(`@universal-orm/drizzle: unknown orderBy column "${column}"`)
+            return dir === 'desc' ? desc(col) : asc(col)
+          }),
+        )
+      }
+      if (opts.limit != null) query = query.limit(Number(opts.limit))
+      if (opts.offset) query = query.offset(Number(opts.offset))
+      const rows = await query
       return rows.map((r) => fromRow(r, meta))
+    },
+
+    async count(table, filter) {
+      const { table: t, meta } = resolve(table)
+      const where = whereOf(filter, meta)
+      const query = db.select({ value: count() }).from(t)
+      const [row] = await (where ? query.where(where) : query)
+      return Number(row.value)
     },
 
     async upsert(table, row, { onConflict } = {}) {

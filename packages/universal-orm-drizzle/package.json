@@ -11,12 +11,14 @@
   "scripts": {
     "test": "node --test"
   },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*"
+  },
   "peerDependencies": {
     "drizzle-orm": ">=0.30.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.3",
-    "@universal-orm/core": "workspace:*",
     "drizzle-orm": "^0.45.2"
   }
 }

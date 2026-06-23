@@ -90,13 +90,14 @@ importers:
         version: link:../universal-schema
 
   packages/universal-orm-drizzle:
+    dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
     devDependencies:
       '@electric-sql/pglite':
         specifier: ^0.5.3
         version: 0.5.3
-      '@universal-orm/core':
-        specifier: workspace:*
-        version: link:../universal-orm
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@electric-sql/pglite@0.5.3)

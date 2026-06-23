@@ -5,11 +5,12 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { setAdapter } from '@universal-orm/core'
+import { setAdapter, ADAPTER_OPS } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 
 // A recording adapter over memory: real behaviour, plus a log of the ops it saw, so
-// we can assert the extension wrote through THIS instance.
+// we can assert the extension wrote through THIS instance. Wraps every op in the
+// contract (ADAPTER_OPS) so it stays valid as the surface grows.
 function spyAdapter() {
   const inner = createMemoryAdapter()
   const calls = []
@@ -17,14 +18,9 @@ function spyAdapter() {
     calls.push({ op, table: args[0] })
     return inner[op](...args)
   }
-  return {
-    calls,
-    insert: wrap('insert'),
-    find: wrap('find'),
-    upsert: wrap('upsert'),
-    update: wrap('update'),
-    delete: wrap('delete'),
-  }
+  const spy = { calls }
+  for (const op of ADAPTER_OPS) spy[op] = wrap(op)
+  return spy
 }
 
 test('the wired subscription instance writes through the app-registered adapter', async () => {

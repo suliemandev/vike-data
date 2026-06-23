@@ -73,3 +73,45 @@ test('rows are copied in and out (no shared mutable references)', async () => {
   fetched.email = 'also-mutated' // mutating a returned row must not affect the store
   assert.equal((await db.users.findOne({ id: 'u1' })).email, 'a@b.com')
 })
+
+// Seed N users (a@, b@, c@... / A, B, C...) for the paging/order/count tests.
+async function seedUsers(db, n) {
+  const letters = 'abcdefghijklmnopqrstuvwxyz'
+  for (let i = 0; i < n; i++) {
+    await db.users.insert({ id: `u${i}`, email: `${letters[i]}@b.com`, name: letters[i].toUpperCase(), active: true })
+  }
+}
+
+test('find orders by a column, ascending and descending', async () => {
+  const db = makeDb()
+  await seedUsers(db, 4)
+  assert.deepEqual((await db.users.find({}, { orderBy: 'email' })).map((r) => r.id), ['u0', 'u1', 'u2', 'u3'])
+  assert.deepEqual(
+    (await db.users.find({}, { orderBy: { column: 'email', dir: 'desc' } })).map((r) => r.id),
+    ['u3', 'u2', 'u1', 'u0'],
+  )
+})
+
+test('find applies limit and offset (a page slice)', async () => {
+  const db = makeDb()
+  await seedUsers(db, 5)
+  const page2 = await db.users.find({}, { orderBy: 'email', limit: 2, offset: 2 })
+  assert.deepEqual(page2.map((r) => r.id), ['u2', 'u3'])
+})
+
+test('limit/offset compose with a filter', async () => {
+  const db = makeDb()
+  await seedUsers(db, 4)
+  await db.users.insert({ id: 'x', email: 'z@b.com', name: 'Z', active: false })
+  const rows = await db.users.find({ active: true }, { orderBy: { column: 'email', dir: 'desc' }, limit: 2 })
+  assert.deepEqual(rows.map((r) => r.id), ['u3', 'u2'])
+})
+
+test('count returns the number of matching rows, honouring the filter', async () => {
+  const db = makeDb()
+  await seedUsers(db, 3)
+  await db.users.insert({ id: 'x', email: 'z@b.com', name: 'Z', active: false })
+  assert.equal(await db.users.count(), 4)
+  assert.equal(await db.users.count({ active: true }), 3)
+  assert.equal(await db.users.count({ active: false }), 1)
+})

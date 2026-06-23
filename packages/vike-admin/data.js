@@ -96,9 +96,15 @@ export function dashboardData(pageContext) {
   return { resources }
 }
 
-// /admin/:table — the list. Every row of the resource's table (universal-orm `find`
-// returns all rows — no pagination yet, flagged in the epic), projected to the resolved
-// columns. Unknown / unviewable tables bounce to the dashboard.
+// The default rows-per-page for the admin list. Surfaced in the returned view-model
+// (no silent cap) so the page can show an honest "Page X of Y".
+const DEFAULT_PAGE_SIZE = 20
+
+// /admin/:table — the list, PAGED and optionally SORTED. Reads `?page=` (1-based),
+// `?sort=` (a sortable column) and `?dir=` (asc|desc) from the URL, asks universal-orm
+// for the total count and just that page of rows (find limit/offset/orderBy), then
+// returns the page/sort state the list UI needs. Unknown / unviewable tables bounce to
+// the dashboard; an out-of-range page clamps to the last page.
 export async function listData(pageContext) {
   const { table } = pageContext.routeParams
   const resource = findResource(pageContext.config, table)
@@ -110,7 +116,22 @@ export async function listData(pageContext) {
 
   const columns = viewColumns(resource, schemaTable)
   const db = buildDb(tables)
-  const rows = await db[table].find({})
+
+  // Sort: only honour a column the resource marked `sortable`, so a hand-typed
+  // `?sort=` can't order by (or error on) a hidden/derived column.
+  const search = pageContext.urlParsed?.search ?? {}
+  const sortable = new Set(columns.filter((c) => c.sortable).map((c) => c.name))
+  const sort = sortable.has(search.sort) ? search.sort : null
+  const dir = search.dir === 'desc' ? 'desc' : 'asc'
+  const orderBy = sort ? { column: sort, dir } : undefined
+
+  // Page: clamp to [1, pageCount] so a wild `?page=` lands on a real page.
+  const pageSize = DEFAULT_PAGE_SIZE
+  const total = await db[table].count({})
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const page = Math.min(Math.max(1, Number(search.page) || 1), pageCount)
+
+  const rows = await db[table].find({}, { limit: pageSize, offset: (page - 1) * pageSize, orderBy })
   const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })
 
   return {
@@ -121,6 +142,13 @@ export async function listData(pageContext) {
     fkLabels, // { column -> { value -> title } } so FK cells show the referenced row's title
     pk: primaryKeyOf(schemaTable), // the row identity the Edit links key on
     canEdit: canEdit(resource, pageContext.user),
+    // paging + sort state for the list UI
+    page,
+    pageCount,
+    pageSize,
+    total,
+    sort, // active sort column, or null
+    dir, // 'asc' | 'desc'
   }
 }
 

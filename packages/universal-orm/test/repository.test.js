@@ -105,3 +105,40 @@ test('the db handle is a plain, non-thenable object', () => {
   assert.equal(db.then, undefined)
   assert.equal(db.toJSON, undefined)
 })
+
+test('find threads limit/offset/orderBy to the adapter', async () => {
+  const db = makeDb()
+  for (const id of ['u3', 'u1', 'u2']) await db.users.insert({ id, email: `${id}@b.com`, active: true })
+  const page = await db.users.find({}, { orderBy: { column: 'id', dir: 'asc' }, limit: 1, offset: 1 })
+  assert.deepEqual(page.map((r) => r.id), ['u2'])
+})
+
+test('findOne orders then takes the first (orderBy honoured)', async () => {
+  const db = makeDb()
+  for (const id of ['u3', 'u1', 'u2']) await db.users.insert({ id, email: `${id}@b.com`, active: true })
+  assert.equal((await db.users.findOne({}, { orderBy: { column: 'id', dir: 'desc' } })).id, 'u3')
+})
+
+test('orderBy on an unknown column throws (fail-fast)', () => {
+  const db = makeDb()
+  assert.throws(() => db.users.find({}, { orderBy: 'nope' }), /find orderBy: unknown column "nope"/)
+})
+
+test('orderBy with an invalid direction throws', () => {
+  const db = makeDb()
+  assert.throws(() => db.users.find({}, { orderBy: { column: 'id', dir: 'sideways' } }), /invalid direction "sideways"/)
+})
+
+test('count returns the number of matching rows', async () => {
+  const db = makeDb()
+  await db.users.insert({ id: 'u1', email: 'a@b.com', active: true })
+  await db.users.insert({ id: 'u2', email: 'b@b.com', active: false })
+  assert.equal(await db.users.count(), 2)
+  assert.equal(await db.users.count({ active: true }), 1)
+})
+
+test('an adapter missing count fails createRepository', () => {
+  const schema = { tables: [{ table: 'users', columns: [{ name: 'id' }] }] }
+  const partial = { insert() {}, find() {}, upsert() {}, update() {}, delete() {} }
+  assert.throws(() => createRepository(schema, partial), /missing the "count" operation/)
+})

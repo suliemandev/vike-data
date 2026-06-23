@@ -93,3 +93,39 @@ test('delete removes matching rows and returns the count', async () => {
 test('an unregistered table is a clear error', async () => {
   await assert.rejects(createDrizzleAdapter(drizzle(client), []).insert('ghost', {}), /no Drizzle table registered for "ghost"/)
 })
+
+// Seed 4 users (a@..d@) for the real ORDER BY / LIMIT / OFFSET / COUNT paths.
+async function seed4() {
+  const letters = ['a', 'b', 'c', 'd']
+  for (let i = 0; i < letters.length; i++) {
+    await db.users.insert({ id: `00000000-0000-0000-0000-00000000000${i + 1}`, email: `${letters[i]}@b.com`, active: i % 2 === 0 })
+  }
+}
+
+test('find orders by a column (real ORDER BY), asc and desc', async () => {
+  await seed4()
+  assert.deepEqual((await db.users.find({}, { orderBy: 'email' })).map((r) => r.email), ['a@b.com', 'b@b.com', 'c@b.com', 'd@b.com'])
+  assert.deepEqual(
+    (await db.users.find({}, { orderBy: { column: 'email', dir: 'desc' } })).map((r) => r.email),
+    ['d@b.com', 'c@b.com', 'b@b.com', 'a@b.com'],
+  )
+})
+
+test('find pages with limit + offset (real LIMIT/OFFSET)', async () => {
+  await seed4()
+  const page2 = await db.users.find({}, { orderBy: 'email', limit: 2, offset: 2 })
+  assert.deepEqual(page2.map((r) => r.email), ['c@b.com', 'd@b.com'])
+})
+
+test('limit/offset compose with a where clause', async () => {
+  await seed4()
+  const active = await db.users.find({ active: true }, { orderBy: { column: 'email', dir: 'desc' }, limit: 1 })
+  assert.deepEqual(active.map((r) => r.email), ['c@b.com'])
+})
+
+test('count returns a number (real COUNT), honouring the filter', async () => {
+  await seed4()
+  assert.equal(await db.users.count(), 4)
+  assert.equal(await db.users.count({ active: true }), 2)
+  assert.equal(await db.users.count({ active: false }), 2)
+})
