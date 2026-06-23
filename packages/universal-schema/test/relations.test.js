@@ -5,7 +5,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { defineSchema } from '../src/define.js'
+import { defineSchema, defineJoinTable } from '../src/define.js'
 import { mergeSchemas, deriveRelations } from '../src/merge.js'
 import { toPrisma } from '../src/compilers.js'
 
@@ -86,4 +86,43 @@ test('defaults are unchanged when no naming is given (back-compat)', () => {
   const { rels } = usersWith((t) => t.uuid('manager_id').references('users.id'))
   assert.equal(rels.forward[0].fieldName, 'manager') // _id stripped
   assert.equal(rels.forward[0].inverseFieldName, 'users_manager_id') // relation name
+})
+
+// ------------------------------------------------ one-to-one inference (#129) --
+
+test('a unique FK is inferred one-to-one (Prisma inverse is `?`, not `[]`)', () => {
+  const { tables } = mergeSchemas([
+    defineSchema('users', (t) => t.uuid('id').primary()),
+    defineSchema('subscriptions', (t) => t.uuid('user_id').unique().references('users.id')),
+  ])
+  const rels = deriveRelations(tables)
+  assert.equal(rels.get('subscriptions').forward[0].toOne, true)
+  const usersOut = toPrisma(tables.find((t) => t.table === 'users'), rels.get('users'))
+  assert.match(usersOut, /subscriptions_user_id Subscriptions\? @relation\("subscriptions_user_id"\)/)
+})
+
+test('a shared-primary-key FK (FK column is also the PK) is inferred one-to-one', () => {
+  const { tables } = mergeSchemas([
+    defineSchema('users', (t) => t.uuid('id').primary()),
+    // profiles.id is BOTH the primary key and the FK to users.id => one-to-one
+    defineSchema('profiles', (t) => t.uuid('id').primary().references('users.id')),
+  ])
+  const rels = deriveRelations(tables)
+  assert.equal(rels.get('profiles').forward[0].toOne, true)
+  const usersOut = toPrisma(tables.find((t) => t.table === 'users'), rels.get('users'))
+  assert.match(usersOut, /profiles_id Profiles\? @relation\("profiles_id"\)/)
+})
+
+test('an FK inside a composite primary key stays one-to-many (m2m join table)', () => {
+  const { tables } = mergeSchemas([
+    defineSchema('users', (t) => t.uuid('id').primary()),
+    defineSchema('roles', (t) => t.uuid('id').primary()),
+    defineJoinTable('users', 'roles'),
+  ])
+  const rels = deriveRelations(tables)
+  // both legs of the join table are members of a composite PK, NOT single PKs
+  const join = rels.get('roles_users')
+  assert.ok(join.forward.every((r) => r.toOne === false))
+  const usersOut = toPrisma(tables.find((t) => t.table === 'users'), rels.get('users'))
+  assert.match(usersOut, /RolesUsers\[\] @relation/) // many, not one
 })

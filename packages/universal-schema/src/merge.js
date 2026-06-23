@@ -152,7 +152,10 @@ export function mergeSchemas(fragments) {
 // (`references(target, { as, inverseAs })`) — readability in general, and a
 // necessity for self-references, where forward + inverse land on the same model
 // and the auto names (`invited_by_ref` / `users_invited_by`) read poorly.
-// FKs are treated one-to-many unless the FK column is unique (then one-to-one).
+// FKs are treated one-to-many unless the FK column is unique OR is itself the
+// table's (single-column) primary key — a shared-primary-key one-to-one. A column
+// that is only a MEMBER of a composite `t.primaryKey(...)` keeps `primary: false`,
+// so many-to-many join-table FKs stay one-to-many.
 export function deriveRelations(tables) {
   const byTable = new Map(tables.map((t) => [t.table, { forward: [], inverse: [] }]))
   for (const t of tables) {
@@ -168,7 +171,7 @@ export function deriveRelations(tables) {
         target: c.references.table,
         refColumn: c.references.column,
         nullable: c.nullable,
-        toOne: !!c.unique, // unique FK => one-to-one; otherwise one-to-many
+        toOne: !!c.unique || !!c.primary, // unique FK, or an FK that is also the PK => one-to-one
         onDelete: c.onDelete,
         fieldName, // forward field name on the owner
         inverseFieldName, // field name on the referenced model (the back-reference)
