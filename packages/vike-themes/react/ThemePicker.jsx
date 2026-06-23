@@ -61,6 +61,7 @@ function ThemeControls() {
 
 export function ThemePicker() {
   const slot = useToolbarSlot()
+  if (slot === undefined) return null // pending: don't flash standalone before we know
   // Installed alongside vike-toolbar -> teleport the live controls into its popover.
   if (slot) return createPortal(<ThemeControls />, slot)
   // No toolbar -> the standalone fixed picker (bottom-right).

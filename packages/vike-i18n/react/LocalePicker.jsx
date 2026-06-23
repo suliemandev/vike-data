@@ -40,6 +40,7 @@ function LocaleControl() {
 
 export function LocalePicker() {
   const slot = useToolbarSlot()
+  if (slot === undefined) return null // pending: don't flash standalone before we know
   // Installed alongside vike-toolbar -> teleport the live control into its popover.
   if (slot) return createPortal(<LocaleControl />, slot)
   // No toolbar -> standalone fixed picker (bottom-left, clearing the theme picker).
