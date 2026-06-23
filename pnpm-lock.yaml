@@ -139,6 +139,9 @@ importers:
       '@universal-middleware/core':
         specifier: ^0.4.18
         version: 0.4.18(srvx@0.11.17)
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
@@ -154,6 +157,10 @@ importers:
       vike-react:
         specifier: '>=0.6'
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
+    devDependencies:
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
 
   packages/vike-drizzle:
     dependencies:
