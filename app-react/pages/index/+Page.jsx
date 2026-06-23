@@ -21,7 +21,7 @@ export default function HomePage() {
       ) : (
         <p style={{ color: 'var(--color-muted)' }}>
           {t('app.signedOut')}{' '}
-          <a href="/login" style={{ color: 'var(--color-primary)' }}>{t('auth.signInShort')}</a>{' '}
+          <a href="/login" style={{ color: 'var(--color-primary)' }}>{t('app.signInLink')}</a>{' '}
           {t('app.signInPrompt')}
         </p>
       )}
