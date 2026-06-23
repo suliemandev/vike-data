@@ -70,6 +70,12 @@ export function defineLayout(config = {}) {
       nav: spec.slots.includes('nav') ? config.nav ?? [] : [],
       footer: spec.slots.includes('footer') ? config.footer ?? [] : [],
       userMenu: spec.slots.includes('userMenu') ? config.userMenu ?? null : null,
+      // toolbar — the composable CHROME slot (spike #122, epic #120): a cumulative
+      // list of settings items a SEPARATE extension (vike-toolbar, #121) contributes
+      // into, exactly like `nav`. Resolved here only for shells that opt into it, so
+      // chrome composes by SEAM — no package split, no wrapper-layout extension.
+      // Public shells don't list it, so auth/marketing pages carry no app chrome.
+      toolbar: spec.slots.includes('toolbar') ? config.toolbar ?? [] : [],
     },
   }
 }
