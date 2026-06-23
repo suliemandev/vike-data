@@ -31,4 +31,17 @@ export default async function onCreatePageContext(pageContext) {
   pageContext.user = resolved
     ? { id: resolved.user.id, email: resolved.user.email, name: resolved.user.name }
     : null
+
+  // USER-ENRICHER SEAM. Other extensions need to add to the resolved user (e.g.
+  // vike-rbac attaches roles/permissions) for EVERY page. They can't do it in their
+  // own onCreatePageContext: Vike runs those in reverse-dependency order, so this
+  // base hook runs LAST and would clobber their work; and a `guard` is single-per-page,
+  // so a page that declares its own (vike-admin) shadows a global one. So auth, which
+  // owns `user`, runs cumulative `resolveUser` enrichers right here, right after it
+  // resolves the user and before any guard/data hook reads it. Each enricher gets the
+  // pageContext and mutates pageContext.user in place. Server-only, like this hook.
+  if (pageContext.user) {
+    const enrichers = (pageContext.config?.resolveUser || []).flat().filter(Boolean)
+    for (const enrich of enrichers) await enrich(pageContext)
+  }
 }

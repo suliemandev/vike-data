@@ -11,6 +11,7 @@
 // contributing them from the app keeps the dependency arrow pointing the right way (the
 // app knows about auth and admin, not the reverse).
 import { defineResource, column, field } from 'vike-admin/define'
+import { can, hasRole } from 'vike-rbac'
 
 const usersResource = defineResource({
   table: 'users',
@@ -28,7 +29,12 @@ const usersResource = defineResource({
     field('active'),
     // id / password_hash / timestamps are auto-hidden by convention.
   ],
-  canView: (user) => !!user,
+  // RBAC (#103): the admin predicates now delegate to the same can() the rest of the
+  // app shares, instead of an ad-hoc check. Sign in as ada@example.com (admin role ->
+  // users.view + users.edit) to see + edit Users; alan@example.com (member) is denied
+  // both, so the Users resource disappears from /admin for him.
+  canView: (user) => can(user, 'users.view'),
+  canEdit: (user) => can(user, 'users.edit'),
 })
 
 // A second resource on `sessions` whose `user_id` column references `users.id`. vike-admin
@@ -43,12 +49,12 @@ const sessionsResource = defineResource({
     field('user_id'), // FK -> rendered as a user picker
     field('token').required(),
   ],
-  canView: (user) => !!user,
-  // Row scoping (#104): a regular user sees / edits only their OWN sessions; an admin (by
-  // convention a `role: 'admin'` user) bypasses scoping and sees all. The demo user has no
-  // role, so each signed-in user is scoped to themselves — the Sessions list shows only theirs,
-  // while Users (unscoped above) still shows everyone.
-  scope: (user) => (user?.role === 'admin' ? null : { user_id: user.id }),
+  canView: (user) => !!user, // any signed-in user; the scope below bounds what they see
+  // Row scoping (#104) now backed by RBAC (#103): an admin role bypasses scoping and sees
+  // every session; anyone else is scoped to their own. hasRole(user, 'admin') replaces the
+  // old ad-hoc `user.role === 'admin'`. So ada (admin) sees all sessions, alan (member) only
+  // his own — orthogonal to can(): row scoping is ABAC, the permission check is RBAC.
+  scope: (user) => (hasRole(user, 'admin') ? null : { user_id: user.id }),
 })
 
 export default [usersResource, sessionsResource]
