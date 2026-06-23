@@ -3,24 +3,36 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Roles & permissions extension: owns roles/permissions/role_user/permission_role (via universal-orm), a cumulative `permissions` registry extensions advertise into, and one can(user, permission) / hasRole(user, role) the app, vike-admin, and a future Telefunc seam all share. Composes on vike-auth (the user is the subject).",
+  "description": "Roles & permissions extension: owns roles/permissions/role_user/permission_role (via universal-orm), a cumulative `permissions` registry extensions advertise into, and one can(user, permission) / hasRole(user, role) the app, vike-admin, and a Telefunc RPC seam (vike-rbac/telefunc) all share. Composes on vike-auth (the user is the subject).",
   "exports": {
     ".": "./index.js",
     "./config": "./+config.js",
     "./schema": "./schema.js",
     "./resolve": "./resolve.js",
-    "./seed": "./seed.js"
+    "./seed": "./seed.js",
+    "./telefunc": "./telefunc.js",
+    "./telefunc-context": "./telefunc-context.js",
+    "./telefunc-middleware": "./telefunc-middleware.js",
+    "./telefunc-plugin": "./telefunc-plugin.js"
   },
   "scripts": {
     "test": "node --test"
   },
   "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
     "@universal-orm/core": "workspace:*",
     "@vike-data/universal-schema": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*"
   },
+  "peerDependencies": {
+    "telefunc": ">=0.2"
+  },
+  "peerDependenciesMeta": {
+    "telefunc": { "optional": true }
+  },
   "devDependencies": {
-    "@universal-orm/memory": "workspace:*"
+    "@universal-orm/memory": "workspace:*",
+    "telefunc": "^0.2.20"
   }
 }

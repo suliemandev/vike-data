@@ -83,12 +83,21 @@ export default {
   // role yet, so a fresh account isn't permission-less.
   defaultRoles: ['member'],
 
+  // rbac + Telefunc seam (#110): guarded RPCs. The telefunction guards (requirePermission)
+  // run the SAME can() as the admin's canView, because every call gets the signed-in,
+  // role-enriched user on the Telefunc context. Under `vite dev` that context is provided
+  // by vike-rbac/telefunc-plugin (wired in vite.config). This `middleware` is the
+  // PRODUCTION transport (a server that mounts universal middlewares uses it); it's inert
+  // under `vite dev`, where the Vite plugin serves /_telefunc first. See pages/rpc-demo.
+  middleware: ['import:vike-rbac/telefunc-middleware:default'],
+
   // layout: pick the app-shell + fill its slots. The auth /login page sets centered.
   layout: 'topbar',
   logo: '◆ Acme',
   nav: [
     { label: 'Home', href: '/' },
     { label: 'Admin', href: '/admin' },
+    { label: 'RPC', href: '/rpc-demo' },
     { label: 'Account', href: '/account' },
     { label: 'Login', href: '/login' },
   ],

@@ -43,18 +43,15 @@ export async function resolveAccessOnto(pageContext) {
   const user = pageContext.user
   if (!user?.id) return
 
-  const { repo: d, adapter } = db()
+  const { adapter } = db()
   // Default-role-on-signup: a brand-new user (no roles yet) is granted the app's
   // configured `defaultRoles` on their first authenticated request, before we read
   // their access. Idempotent + opt-in (empty by default), so it's a no-op once they
   // hold a role or when no defaults are declared — see assignRoles in seed.js.
-  let roleUser = await d.role_user.find({ user_id: user.id })
-  if (roleUser.length === 0) {
+  const existing = await adapter.find('role_user', { user_id: user.id })
+  if (existing.length === 0) {
     const defaults = [...new Set((pageContext.config?.defaultRoles || []).flat().filter(Boolean))]
-    if (defaults.length) {
-      await assignRoles(adapter, user.id, defaults)
-      roleUser = await d.role_user.find({ user_id: user.id })
-    }
+    if (defaults.length) await assignRoles(adapter, user.id, defaults)
   }
 
   // Org-scoped roles (#109): if the app pointed `orgRoleSource` at a table that holds
@@ -63,6 +60,32 @@ export async function resolveAccessOnto(pageContext) {
   // table belongs to another extension and isn't in rbac's merged schema. Off by
   // default, so a flat app does no extra read.
   const orgGrants = await readOrgGrants(adapter, pageContext.config?.orgRoleSource, user.id)
+
+  const access = await resolveAccess(user.id, { orgGrants })
+  // Mutate in place so the enrichment rides on the object auth already exposes via
+  // passToClient (no separate passToClient needed) and the data hooks see it.
+  user.roles = access.roles
+  user.permissions = access.permissions
+  user.orgRoles = access.orgRoles
+  user.orgPermissions = access.orgPermissions
+}
+
+/**
+ * Resolve a user's effective access by user id alone — the three narrow finds
+ * (user -> roles -> permissions) plus the pure resolver. Shared by the page
+ * enricher above AND the Telefunc RPC seam (telefunc-middleware.js), which has a
+ * user id from the session cookie but no pageContext to enrich. Pass `orgGrants`
+ * (from a teams `memberships` read) to fold in org-scoped roles (#109); without
+ * them you get the GLOBAL roles/permissions, which is the app-wide `can()` data.
+ *
+ * Returns `{ roles, permissions, orgRoles, orgPermissions }` — the same shape the
+ * enricher attaches to the user, so the same sync `can(user, permission)` works
+ * whether the user came from a page render or an RPC call.
+ */
+export async function resolveAccess(userId, { orgGrants = [] } = {}) {
+  if (!userId) return { roles: [], permissions: [], orgRoles: {}, orgPermissions: {} }
+  const { repo: d } = db()
+  const roleUser = await d.role_user.find({ user_id: userId })
 
   // user -> roles -> permissions, in three narrow finds (equality + `in`).
   const roleIds = roleUser.map((r) => r.role_id)
@@ -75,13 +98,7 @@ export async function resolveAccessOnto(pageContext) {
   const permIds = permissionRole.map((pr) => pr.permission_id)
   const permissions = permIds.length ? await d.permissions.find({ id: { in: permIds } }) : []
 
-  const access = resolveUserAccess(user.id, { roleUser, roles, permissionRole, permissions, orgGrants })
-  // Mutate in place so the enrichment rides on the object auth already exposes via
-  // passToClient (no separate passToClient needed) and the data hooks see it.
-  user.roles = access.roles
-  user.permissions = access.permissions
-  user.orgRoles = access.orgRoles
-  user.orgPermissions = access.orgPermissions
+  return resolveUserAccess(userId, { roleUser, roles, permissionRole, permissions, orgGrants })
 }
 
 // Read a user's org-scoped role grants from the configured source table (vike-teams
