@@ -44,6 +44,10 @@ export function SignInForm({ action = '/auth/request', appName = 'Acme' }) {
     try {
       const body = new FormData()
       body.set('email', email)
+      // Forward where the user was headed (a guard set ?next=… when it bounced them
+      // here) so the magic-link callback returns them there instead of the default.
+      const next = new URLSearchParams(window.location.search).get('next')
+      if (next) body.set('next', next)
       const res = await fetch(action, { method: 'POST', body })
       setState(res.ok ? 'sent' : 'error')
     } catch {

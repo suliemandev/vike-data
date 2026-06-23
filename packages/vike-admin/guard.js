@@ -7,7 +7,9 @@ import { redirect } from 'vike/abort'
 
 export function adminGuard(pageContext) {
   if (!pageContext.user) {
-    throw redirect('/login')
+    // Carry where they were headed so /login can return them here after sign-in.
+    const here = pageContext.urlPathname || '/admin'
+    throw redirect(`/login?next=${encodeURIComponent(here)}`)
   }
 }
 

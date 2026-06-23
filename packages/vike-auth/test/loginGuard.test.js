@@ -33,3 +33,13 @@ test('signed-in: redirects to the app-configured loginRedirect', () => {
 test('signed-in: missing config falls back to /', () => {
   assert.equal(redirectTarget({ user: { id: 'u1' } }), '/')
 })
+
+test('signed-in: ?next= takes precedence over loginRedirect', () => {
+  const pc = { user: { id: 'u1' }, config: { loginRedirect: '/home' }, urlParsed: { search: { next: '/admin/users' } } }
+  assert.equal(redirectTarget(pc), '/admin/users')
+})
+
+test('signed-in: an unsafe ?next= is ignored, falling back to loginRedirect', () => {
+  const pc = { user: { id: 'u1' }, config: { loginRedirect: '/home' }, urlParsed: { search: { next: '//evil.com' } } }
+  assert.equal(redirectTarget(pc), '/home')
+})
