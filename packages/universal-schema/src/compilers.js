@@ -33,7 +33,10 @@ export function toPrisma(ir, rel = { forward: [], inverse: [] }) {
   const relRows = []
   for (const r of rel.forward) {
     const od = r.onDelete ? `, onDelete: ${PRISMA_ON_DELETE[r.onDelete] || 'NoAction'}` : ''
-    relRows.push(`  ${r.fieldName} ${pascal(r.target)}${r.nullable ? '?' : ''} @relation("${r.name}", fields: [${r.fkColumn}], references: [${r.refColumn}]${od})`)
+    // a composite FK carries column ARRAYS; a single-column FK its scalar fields
+    const fields = (r.fkColumns ?? [r.fkColumn]).join(', ')
+    const refs = (r.refColumns ?? [r.refColumn]).join(', ')
+    relRows.push(`  ${r.fieldName} ${pascal(r.target)}${r.nullable ? '?' : ''} @relation("${r.name}", fields: [${fields}], references: [${refs}]${od})`)
   }
   for (const r of rel.inverse) {
     relRows.push(`  ${r.inverseFieldName ?? r.name} ${pascal(r.owner)}${r.toOne ? '?' : '[]'} @relation("${r.name}")`)
@@ -74,13 +77,24 @@ function drizzleCol(c) {
 }
 export function toDrizzle(ir) {
   const fns = [...new Set(ir.columns.map((c) => DRIZZLE_FN[c.type] || 'text'))]
-  // Composite PK is Drizzle's table-extra config (a third pgTable arg) and needs
-  // the `primaryKey` helper imported alongside the column fns.
+  // Composite PK / composite FK are Drizzle's table-extra config (a third pgTable
+  // arg) and need the `primaryKey` / `foreignKey` helpers imported alongside the
+  // column fns.
   if (ir.primaryKey) fns.push('primaryKey')
+  if (ir.foreignKeys?.length) fns.push('foreignKey')
   const body = ir.columns.map(drizzleCol).join('\n')
-  const extra = ir.primaryKey
-    ? `, (table) => ({\n  pk: primaryKey({ columns: [${ir.primaryKey.map((n) => `table.${camel(n)}`).join(', ')}] }),\n})`
-    : ''
+  const extras = []
+  if (ir.primaryKey) extras.push(`  pk: primaryKey({ columns: [${ir.primaryKey.map((n) => `table.${camel(n)}`).join(', ')}] }),`)
+  // A composite FK references the target table's exported columns directly (not a
+  // lazy thunk like the column-level single FK), so the target table must be
+  // defined earlier in the module — the generator emits tables in dependency order.
+  ;(ir.foreignKeys || []).forEach((fk, i) => {
+    const cols = fk.columns.map((n) => `table.${camel(n)}`).join(', ')
+    const fcols = fk.references.columns.map((n) => `${camel(fk.references.table)}.${camel(n)}`).join(', ')
+    const od = fk.onDelete ? `.onDelete('${fk.onDelete}')` : ''
+    extras.push(`  fk${i || ''}: foreignKey({ columns: [${cols}], foreignColumns: [${fcols}] })${od},`)
+  })
+  const extra = extras.length ? `, (table) => ({\n${extras.join('\n')}\n})` : ''
   return `import { pgTable, ${fns.join(', ')} } from 'drizzle-orm/pg-core'\n\nexport const ${camel(ir.table)} = pgTable('${ir.table}', {\n${body}\n}${extra})`
 }
 
@@ -105,6 +119,15 @@ export function toRudder(ir) {
   const cols = ir.columns.map(rudderCol)
   // Composite PK as a table-level constraint (single-column PKs use `.primary()` inline).
   if (ir.primaryKey) cols.push(`      t.primary([${ir.primaryKey.map((n) => `'${n}'`).join(', ')}])`)
+  // Composite FK as a table-level constraint: t.foreign([...]).references([...]).on(table)
+  // (single-column FKs are inline on the column above).
+  for (const fk of ir.foreignKeys || []) {
+    const c = fk.columns.map((n) => `'${n}'`).join(', ')
+    const r = fk.references.columns.map((n) => `'${n}'`).join(', ')
+    let s = `      t.foreign([${c}]).references([${r}]).on('${fk.references.table}')`
+    if (fk.onDelete) s += `.onDelete('${fk.onDelete}')`
+    cols.push(s)
+  }
   const body = cols.join('\n')
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.create('${ir.table}', (t) => {\n${body}\n    })\n  }\n}`
 }

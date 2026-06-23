@@ -12,7 +12,7 @@
 
 function buildColumns(build) {
   const columns = []
-  const meta = {} // table-level: { primaryKey?: string[] }
+  const meta = {} // table-level: { primaryKey?: string[], foreignKeys?: ForeignKey[] }
   const col = (name, type) => {
     const c = { name, type, nullable: false, unique: false, primary: false, default: undefined }
     columns.push(c)
@@ -64,6 +64,28 @@ function buildColumns(build) {
     primaryKey(...names) {
       meta.primaryKey = names
     },
+    // TABLE-LEVEL composite (multi-column) FOREIGN KEY. Single-column FKs stay
+    // column-level (`t.uuid('user_id').references('users.id')`); a FK over >=2
+    // columns is table-level because it references a multi-column key AS A UNIT.
+    // The local + target column lists must be the same length, and the local
+    // columns must exist (target existence is a cross-extension check in merge.js,
+    // exactly like single-column `.references()`). Each ORM spells it differently
+    // (Prisma @relation fields:[a,b] / Drizzle foreignKey({columns,foreignColumns})
+    // / Rudder t.foreign([...]).references([...]).on(...)). `as`/`inverseAs` name the
+    // Prisma navigation fields (recommended here — the `_id`-strip heuristic that
+    // single-column FKs use doesn't apply to a multi-column key).
+    //
+    //   t.foreignKey(['org_id', 'tenant_id'], 'organizations', ['id', 'tenant_id'],
+    //                { onDelete: 'cascade', as: 'organization', inverseAs: 'memberships' })
+    foreignKey(columns, table, references, opts = {}) {
+      const cols = Array.isArray(columns) ? columns : [columns]
+      const refs = Array.isArray(references) ? references : [references]
+      const fk = { columns: cols, references: { table, columns: refs } }
+      if (opts.onDelete) fk.onDelete = opts.onDelete
+      if (opts.as) fk.relationField = opts.as
+      if (opts.inverseAs) fk.inverseField = opts.inverseAs
+      ;(meta.foreignKeys ||= []).push(fk)
+    },
   }
   build(t)
   if (meta.primaryKey) {
@@ -73,12 +95,30 @@ function buildColumns(build) {
       }
     }
   }
+  for (const fk of meta.foreignKeys || []) {
+    for (const name of fk.columns) {
+      if (!columns.some((c) => c.name === name)) {
+        throw new Error(`foreignKey references unknown column "${name}"`)
+      }
+    }
+    if (fk.columns.length !== fk.references.columns.length) {
+      throw new Error(
+        `foreignKey column count mismatch: [${fk.columns.join(', ')}] -> ${fk.references.table}.[${fk.references.columns.join(', ')}]`,
+      )
+    }
+  }
   return { columns, meta }
 }
 
 export function defineSchema(table, build) {
   const { columns, meta } = buildColumns(build)
-  return { table, mode: 'create', columns, ...(meta.primaryKey ? { primaryKey: meta.primaryKey } : {}) }
+  return {
+    table,
+    mode: 'create',
+    columns,
+    ...(meta.primaryKey ? { primaryKey: meta.primaryKey } : {}),
+    ...(meta.foreignKeys ? { foreignKeys: meta.foreignKeys } : {}),
+  }
 }
 
 export function extendSchema(table, build) {

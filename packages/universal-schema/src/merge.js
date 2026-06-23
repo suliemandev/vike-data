@@ -26,7 +26,7 @@ export function dedupeFragments(fragments) {
   const seen = new Set()
   const out = []
   for (const f of fragments) {
-    const key = `${f.mode}:${f.table}:${JSON.stringify(f.columns)}:${JSON.stringify(f.primaryKey ?? null)}`
+    const key = `${f.mode}:${f.table}:${JSON.stringify(f.columns)}:${JSON.stringify(f.primaryKey ?? null)}:${JSON.stringify(f.foreignKeys ?? null)}`
     if (seen.has(key)) continue
     seen.add(key)
     out.push(f)
@@ -52,11 +52,15 @@ export function orderFragments(fragments) {
   const creates = fragments.filter((f) => f.mode === 'create')
   const createTables = new Set(creates.map((f) => f.table))
   const deps = (f) =>
-    new Set(
-      f.columns
+    new Set([
+      ...f.columns
         .filter((c) => c.references && c.references.table !== f.table && createTables.has(c.references.table))
         .map((c) => c.references.table),
-    )
+      // table-level composite FKs contribute dependencies too
+      ...(f.foreignKeys || [])
+        .filter((fk) => fk.references.table !== f.table && createTables.has(fk.references.table))
+        .map((fk) => fk.references.table),
+    ])
 
   const emitted = new Set()
   const out = []
@@ -98,7 +102,7 @@ export function mergeSchemas(fragments) {
       conflicts.push({ kind: 'duplicate-table', table: f.table })
       continue
     }
-    tables.set(f.table, { table: f.table, columns: f.columns.map((c) => ({ ...c })), ...(f.primaryKey ? { primaryKey: f.primaryKey } : {}) })
+    tables.set(f.table, { table: f.table, columns: f.columns.map((c) => ({ ...c })), ...(f.primaryKey ? { primaryKey: f.primaryKey } : {}), ...(f.foreignKeys ? { foreignKeys: f.foreignKeys } : {}) })
   }
 
   // extends next: a 3rd-party extension ADDS columns to an existing table
@@ -133,6 +137,20 @@ export function mergeSchemas(fragments) {
         conflicts.push({ kind: 'unknown-reference-column', table: t.table, column: c.name, target: `${c.references.table}.${c.references.column}` })
       }
     }
+    // table-level composite FKs: same referential check, once per target column
+    for (const fk of t.foreignKeys || []) {
+      const cols = fk.columns.join(', ')
+      const target = tables.get(fk.references.table)
+      if (!target) {
+        conflicts.push({ kind: 'unknown-reference-table', table: t.table, column: cols, target: fk.references.table })
+        continue
+      }
+      for (const rc of fk.references.columns) {
+        if (!target.columns.some((x) => x.name === rc)) {
+          conflicts.push({ kind: 'unknown-reference-column', table: t.table, column: cols, target: `${fk.references.table}.${rc}` })
+        }
+      }
+    }
   }
 
   return { tables: [...tables.values()], conflicts }
@@ -156,6 +174,11 @@ export function mergeSchemas(fragments) {
 // table's (single-column) primary key — a shared-primary-key one-to-one. A column
 // that is only a MEMBER of a composite `t.primaryKey(...)` keeps `primary: false`,
 // so many-to-many join-table FKs stay one-to-many.
+// Table-level composite FKs (`t.foreignKey([...], target, [...])`) produce one
+// relation per declaration, carrying COLUMN ARRAYS (`fkColumns`/`refColumns`); the
+// single-column path keeps its scalar `fkColumn`/`refColumn`. Composite FKs are
+// one-to-many (there is no composite-unique concept yet) and their forward field
+// defaults to the target table name (`as`/`inverseAs` recommended).
 export function deriveRelations(tables) {
   const byTable = new Map(tables.map((t) => [t.table, { forward: [], inverse: [] }]))
   for (const t of tables) {
@@ -178,6 +201,29 @@ export function deriveRelations(tables) {
       }
       byTable.get(t.table)?.forward.push(rel)
       byTable.get(c.references.table)?.inverse.push(rel)
+    }
+    for (const fk of t.foreignKeys || []) {
+      const name = `${t.table}_${fk.columns.join('_')}`
+      const fieldName = fk.relationField || fk.references.table
+      const inverseFieldName = fk.inverseField || name
+      // Prisma needs the relation optional when ANY local scalar is nullable.
+      const nullable = fk.columns.some((cn) => t.columns.find((c) => c.name === cn)?.nullable)
+      const rel = {
+        name,
+        owner: t.table,
+        fkColumns: fk.columns,
+        fkColumn: fk.columns[0], // scalar accessor for back-compat consumers
+        target: fk.references.table,
+        refColumns: fk.references.columns,
+        refColumn: fk.references.columns[0],
+        nullable,
+        toOne: false, // no composite-unique inference yet
+        onDelete: fk.onDelete,
+        fieldName,
+        inverseFieldName,
+      }
+      byTable.get(t.table)?.forward.push(rel)
+      byTable.get(fk.references.table)?.inverse.push(rel)
     }
   }
   return byTable
