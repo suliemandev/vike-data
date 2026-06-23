@@ -13,10 +13,12 @@
   },
   "peerDependencies": {
     "react": ">=18",
+    "react-dom": ">=18",
     "vike-react": ">=0.6"
   },
   "peerDependenciesMeta": {
     "react": { "optional": true },
+    "react-dom": { "optional": true },
     "vike-react": { "optional": true }
   },
   "scripts": {

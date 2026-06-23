@@ -11,7 +11,7 @@ export const appMessages = defineMessages({
     'app.signInLink': 'Sign in',
     'app.signInPrompt': 'to see the session resolve.',
     'app.blurb':
-      'Themes, layouts and translations are all installed and configured like the other extensions. Switch language (bottom-left), theme + appearance (bottom-right); the login form strings come from vike-auth/react.',
+      'Themes, layouts and translations are all installed and configured like the other extensions. Open the toolbar (bottom-left) to switch language, theme and appearance, all in one place; the login form strings come from vike-auth/react.',
   },
   fr: {
     'app.homeTitle': 'Niveau UI React de vike-data',
@@ -20,7 +20,7 @@ export const appMessages = defineMessages({
     'app.signInLink': 'Se connecter',
     'app.signInPrompt': 'pour voir la session se résoudre.',
     'app.blurb':
-      "Les thèmes, les mises en page et les traductions sont tous installés et configurés comme les autres extensions. Changez de langue (en bas à gauche), de thème et d'apparence (en bas à droite) ; les textes du formulaire de connexion proviennent de vike-auth/react.",
+      "Les thèmes, les mises en page et les traductions sont tous installés et configurés comme les autres extensions. Ouvrez la barre d'outils (en bas à gauche) pour changer de langue, de thème et d'apparence, au même endroit ; les textes du formulaire de connexion proviennent de vike-auth/react.",
   },
 })
 

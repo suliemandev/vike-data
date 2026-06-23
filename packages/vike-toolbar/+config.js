@@ -1,25 +1,31 @@
 // vike-toolbar — the config SEAM (epic #120, #121).
 //
-// It declares ONE cumulative point, `toolbarItems`, that extensions advertise their
-// settings into — the same pattern as `nav` / `themes` / `messages`. An entry's
-// `Control` is a per-framework control component, carried through config as a
-// pointer-import string (`'import:module:export'`), exactly like vike-auth's
-// cumulative `resolveUser` enrichers: Vike resolves those strings to the real values
-// in each environment, so a component survives to the client without serialization.
+// The toolbar is a SURFACE, not an owner: it provides one shared place for settings,
+// and each extension keeps owning its own (live) control. Composition works two ways:
 //
-// `env` is server + client (NOT config): the popover SSRs then renders on the client,
-// but the items must NOT be loaded during config resolution — an entry's `Control` is a
-// .jsx component, and Vike resolves config in plain Node, which can't load JSX. Keeping
-// `config` off is why a contributor's `+toolbarItems.js` may import its control directly
-// (same reason vike-admin's `adminResources` is server-env, not config-env).
+//   1. `bodyHtmlEnd` injects a stable mount node OUTSIDE the framework hydration root
+//      (Vike's documented pattern for portals/teleports). The React UI portals the
+//      button + panel into it; an extension's own picker (vike-themes, vike-i18n, ...)
+//      teleports its LIVE control into the panel's `#vike-toolbar-items` node — keeping
+//      its provider context — or renders standalone when no toolbar is installed. The
+//      contract is just a DOM id, so it is framework-agnostic (React portal / Vue
+//      Teleport / Solid Portal all target the same node) and needs no import coupling.
 //
-// Framework-agnostic: this file imports no UI; the React Wrapper that reads
-// `toolbarItems` and renders the button + popover is pulled in by the
-// vike-toolbar/react subpath.
+//   2. `toolbarItems` is the cumulative seam for SIMPLE, context-free controls an app
+//      or extension wants the toolbar itself to render (same pattern as nav/themes).
+//      Live, provider-bound controls use the teleport path (1) instead.
+//
+// `bodyHtmlEnd` is global + cumulative + server-env (it is SSR'd HTML); `toolbarItems`
+// is server + client (NOT config: an entry's `Control` is .jsx, which Vike can't load
+// during plain-Node config resolution). Framework-agnostic: no UI is imported here; the
+// React Wrapper is pulled in by the vike-toolbar/react subpath.
 export default {
   name: 'vike-toolbar',
   meta: {
     toolbarItems: { env: { server: true, client: true }, cumulative: true },
   },
   toolbarItems: [],
+  // The out-of-hydration-root mount node the React UI portals into (and that other
+  // extensions teleport their controls into). One element, owned by vike-toolbar.
+  bodyHtmlEnd: '<div id="vike-toolbar-root"></div>',
 }
