@@ -70,3 +70,32 @@ test('on the server an unknown cookie token resolves to null', async () => {
   await onCreatePageContext(pageContext)
   assert.equal(pageContext.user, null)
 })
+
+// ------------------------------------------------ resolveUser enricher seam ----
+
+test('runs cumulative resolveUser enrichers after resolving the user', async () => {
+  const sessionToken = await openSession('enrich@example.com')
+  const calls = []
+  const pageContext = {
+    headers: { cookie: `${SESSION_COOKIE}=${sessionToken}` },
+    // cumulative config arrives as an array-of-per-source contributions
+    config: {
+      resolveUser: [
+        [(pc) => { calls.push('a'); pc.user.roles = ['admin'] }],
+        [(pc) => { calls.push('b'); pc.user.tag = pc.user.email }],
+      ],
+    },
+  }
+  await onCreatePageContext(pageContext)
+  assert.deepEqual(calls, ['a', 'b']) // ran each, in order, once user was resolved
+  assert.deepEqual(pageContext.user.roles, ['admin'])
+  assert.equal(pageContext.user.tag, 'enrich@example.com')
+})
+
+test('does not run enrichers when there is no signed-in user', async () => {
+  const calls = []
+  const pageContext = { headers: {}, config: { resolveUser: [[() => calls.push('x')]] } }
+  await onCreatePageContext(pageContext)
+  assert.equal(pageContext.user, null)
+  assert.deepEqual(calls, []) // nothing to enrich
+})

@@ -28,6 +28,15 @@ export default {
   extends: ['import:@vike-data/vike-schema/config:default'],
   middleware: 'import:vike-auth/middleware:default',
   onCreatePageContext: 'import:vike-auth/onCreatePageContext:default',
+  meta: {
+    // The user-enricher seam: extensions contribute a server-side fn that auth runs
+    // after it resolves pageContext.user, on every page (see oncreate.js). vike-rbac
+    // uses it to attach roles/permissions. Cumulative + server-only (it reads the
+    // session-derived user and may hit the DB), and it carries pointer-imported
+    // functions, so it must NOT be config-env (that would JSON-serialize the fns away).
+    resolveUser: { env: { server: true }, cumulative: true },
+  },
+  resolveUser: [],
   // onCreatePageContext sets a serializable `pageContext.user` ({id,email,name});
   // expose it to the client so a UI hook (vike-auth/react's useUser) reads the same
   // value after hydration instead of flipping to signed-out. Cumulative — merges

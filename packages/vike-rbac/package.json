@@ -1,0 +1,25 @@
+{
+  "name": "vike-rbac",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Roles & permissions extension: owns roles/permissions/role_user/permission_role (via universal-orm), a cumulative `permissions` registry extensions advertise into, and one can(user, permission) / hasRole(user, role) the app, vike-admin, and a future Telefunc seam all share. Composes on vike-auth (the user is the subject).",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./schema": "./schema.js",
+    "./resolve": "./resolve.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@vike-data/universal-schema": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
+    "vike-auth": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/memory": "workspace:*"
+  }
+}
