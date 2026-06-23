@@ -17,6 +17,7 @@ import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
+import toolbarExt from 'vike-toolbar/react'
 import rbacExt from 'vike-rbac/config'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
@@ -50,7 +51,7 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt, rbacExt],
+  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt],
   title: 'vike-data React UI tier',
 
   // admin: install vike-admin/react — one import brings the /admin/* pages and the

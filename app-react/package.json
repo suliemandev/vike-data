@@ -23,6 +23,7 @@
     "vike-rbac": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",
-    "vite": "^7.1.0"
+    "vite": "^7.1.0",
+    "vike-toolbar": "workspace:*"
   }
 }
