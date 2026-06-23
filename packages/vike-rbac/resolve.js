@@ -19,16 +19,21 @@ import { createRepository, getAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { rbacSchemas } from './schema.js'
 import { resolveUserAccess } from './index.js'
+import { assignRoles } from './seed.js'
 
 const KEY = Symbol.for('vike-rbac.db')
 
 // Built lazily on first use and cached on globalThis, so the app's setAdapter(...)
 // at server start is in place before the first request resolves the repository
 // (mirrors vike-stripe's instance). Only the four RBAC tables are needed here.
+// We cache the repository AND the underlying adapter: the repo backs the narrow
+// finds below, while the raw adapter backs assignRoles (default-role-on-signup),
+// and both must be the SAME backend so a freshly assigned role reads back.
 function db() {
   if (!globalThis[KEY]) {
     const { tables } = mergeSchemas(rbacSchemas)
-    globalThis[KEY] = createRepository({ tables }, getAdapter() ?? createMemoryAdapter())
+    const adapter = getAdapter() ?? createMemoryAdapter()
+    globalThis[KEY] = { repo: createRepository({ tables }, adapter), adapter }
   }
   return globalThis[KEY]
 }
@@ -38,9 +43,21 @@ export async function resolveAccessOnto(pageContext) {
   const user = pageContext.user
   if (!user?.id) return
 
-  const d = db()
+  const { repo: d, adapter } = db()
+  // Default-role-on-signup: a brand-new user (no roles yet) is granted the app's
+  // configured `defaultRoles` on their first authenticated request, before we read
+  // their access. Idempotent + opt-in (empty by default), so it's a no-op once they
+  // hold a role or when no defaults are declared — see assignRoles in seed.js.
+  let roleUser = await d.role_user.find({ user_id: user.id })
+  if (roleUser.length === 0) {
+    const defaults = [...new Set((pageContext.config?.defaultRoles || []).flat().filter(Boolean))]
+    if (defaults.length) {
+      await assignRoles(adapter, user.id, defaults)
+      roleUser = await d.role_user.find({ user_id: user.id })
+    }
+  }
+
   // user -> roles -> permissions, in three narrow finds (equality + `in`).
-  const roleUser = await d.role_user.find({ user_id: user.id })
   const roleIds = roleUser.map((r) => r.role_id)
   const roles = roleIds.length ? await d.roles.find({ id: { in: roleIds } }) : []
   const permissionRole = roleIds.length ? await d.permission_role.find({ role_id: { in: roleIds } }) : []
