@@ -19,6 +19,7 @@
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { SESSION_COOKIE } from './constants.js'
 import { parseCookies, serializeCookie } from './cookie.js'
+import { sanitizeNext } from './safe-redirect.js'
 
 const html = (status, body) =>
   new Response(
@@ -76,7 +77,12 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
       if (!result.ok) {
         return html(400, `<p>Could not send a link: <code>${esc(result.error)}</code>.</p><p><a href="/">Back</a></p>`)
       }
-      const link = `${url.origin}/auth/callback?token=${encodeURIComponent(result.token)}`
+      // Carry the intended destination (where a guard bounced the user from) through
+      // the magic link, so the callback can return them there. Validated to a local
+      // path so the link can never become an open redirect.
+      const next = sanitizeNext(form.get('next'))
+      const nextParam = next ? `&next=${encodeURIComponent(next)}` : ''
+      const link = `${url.origin}/auth/callback?token=${encodeURIComponent(result.token)}${nextParam}`
       // No email provider in the proof: in dev we surface the link directly
       // (the vike-dashboard pattern — dev logs the magic link to the console).
       console.log(`[vike-auth] magic link for ${result.email}: ${link}`)
@@ -92,7 +98,10 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
       if (!result.ok) {
         return html(401, `<h2>Sign-in failed</h2><p><code>${esc(result.error)}</code></p><p><a href="/">Try again</a></p>`)
       }
-      return navigate('/', sessionCookie(result.session.token, Math.floor(auth.sessionTtlMs / 1000)))
+      // Return to where the user was originally headed (carried through the link),
+      // falling back to the site root. Re-validated here, never trusting the URL.
+      const next = sanitizeNext(url.searchParams.get('next')) || '/'
+      return navigate(next, sessionCookie(result.session.token, Math.floor(auth.sessionTtlMs / 1000)))
     }
 
     // --- logout -------------------------------------------------------------
