@@ -34,6 +34,14 @@ export default {
     // or the app can contribute one, and the resolver assigns the union to a user who
     // has no roles yet. Empty by default — opt in by setting `defaultRoles: ['member']`.
     defaultRoles: { env: { server: true }, cumulative: true },
+    // Org-scoped roles (#109). vike-rbac stays decoupled from vike-teams: instead of
+    // duplicating user+org+role on `role_user`, an app that wants per-org permissions
+    // points this at the table that already holds them — vike-teams `memberships`,
+    // whose `role` string IS an org-scoped role NAME. The resolver reads it and maps
+    // each membership role through the SAME role -> permission grants, so can(user,
+    // perm, { org }) works. Server-only, single source. `orgRoleSource: 'memberships'`
+    // (or `{ table, roleColumn, orgColumn }`). Undefined -> flat, app-wide RBAC only.
+    orgRoleSource: { env: { server: true } },
   },
   permissions: [],
   defaultRoles: [],
