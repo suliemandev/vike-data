@@ -119,6 +119,9 @@ importers:
 
   packages/vike-admin:
     dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
       '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm

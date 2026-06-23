@@ -10,6 +10,7 @@
 import { randomUUID } from 'node:crypto'
 import { redirect } from 'vike/abort'
 import { readFormRequest } from './request.js'
+import { parseListQuery, QueryError } from './query.js'
 import {
   resolveAdminTables,
   getResources,
@@ -123,11 +124,17 @@ export function dashboardData(pageContext) {
 // (no silent cap) so the page can show an honest "Page X of Y".
 const DEFAULT_PAGE_SIZE = 20
 
-// /admin/:table — the list, PAGED and optionally SORTED. Reads `?page=` (1-based),
-// `?sort=` (a sortable column) and `?dir=` (asc|desc) from the URL, asks universal-orm
-// for the total count and just that page of rows (find limit/offset/orderBy), then
-// returns the page/sort state the list UI needs. Unknown / unviewable tables bounce to
-// the dashboard; an out-of-range page clamps to the last page.
+// /admin/:table — the list, PAGED, SORTED and optionally FILTERED. Reads either:
+//   - the discrete params the list UI uses: `?page=` (1-based), `?sort=` (a sortable
+//     column), `?dir=` (asc|desc); or
+//   - a single `?query=` (URL-encoded JSON: filter / orderBy / limit / offset), the
+//     narrow universal-orm surface (#86) the agent API (#113) speaks. It is parsed +
+//     VALIDATED against this resource's columns (query.js); an unknown column / operator
+//     is a 400, never a silent or SQL-smuggling read.
+// Either way the caller's filter is AND-merged UNDER the row scope (#104) so it can only
+// NARROW the result, never widen past what the user is allowed to see. Asks universal-orm
+// for the total count and just that window of rows, then returns the page/sort state the
+// list UI needs. Unknown / unviewable tables bounce to the dashboard.
 export async function listData(pageContext) {
   const { table } = pageContext.routeParams
   const resource = findResource(pageContext.config, table)
@@ -140,24 +147,55 @@ export async function listData(pageContext) {
   const columns = viewColumns(resource, schemaTable)
   const db = buildDb(tables)
 
-  // Row scoping: bound both the count and the page to the user's own rows (#104).
-  const where = scopeFilter(resource, pageContext.user)
-
-  // Sort: only honour a column the resource marked `sortable`, so a hand-typed
-  // `?sort=` can't order by (or error on) a hidden/derived column.
   const search = pageContext.urlParsed?.search ?? {}
+
+  // Parse + validate the caller's `?query=` (filter / orderBy / limit / offset) against
+  // this resource's columns. A bad query is the caller's fault: record it on pageContext so
+  // the agent API (#113) returns a 400 with the message, and fall back to an empty query so
+  // the HTML list still renders its scope-only view. (We avoid render(400): Vike recommends
+  // against a 400 status there, and it would need an error page just for the JSON path.)
+  let query
+  try {
+    query = parseListQuery(search.query, columns)
+  } catch (err) {
+    if (!(err instanceof QueryError)) throw err
+    pageContext.adminApiError = err.message
+    query = { filter: {} }
+  }
+
+  // Row scoping: AND-merge the scope filter LAST so it always wins — the caller's filter
+  // can add conditions but can never override a scoped column (#104). Empty when the
+  // resource is unscoped (admin / no scope).
+  const scope = scopeFilter(resource, pageContext.user)
+  const where = { ...query.filter, ...scope }
+
+  // Sort: a validated `?query=` orderBy wins; otherwise the discrete `?sort=`/`?dir=`,
+  // honouring only a column the resource marked `sortable`.
   const sortable = new Set(columns.filter((c) => c.sortable).map((c) => c.name))
-  const sort = sortable.has(search.sort) ? search.sort : null
-  const dir = search.dir === 'desc' ? 'desc' : 'asc'
-  const orderBy = sort ? { column: sort, dir } : undefined
+  const discreteSort = sortable.has(search.sort) ? search.sort : null
+  const orderBy = query.orderBy ?? (discreteSort ? [{ column: discreteSort, dir: search.dir === 'desc' ? 'desc' : 'asc' }] : undefined)
+  const sort = orderBy?.[0]?.column ?? null
+  const dir = orderBy?.[0]?.dir ?? 'asc'
 
-  // Page: clamp to [1, pageCount] so a wild `?page=` lands on a real page.
-  const pageSize = DEFAULT_PAGE_SIZE
   const total = await db[table].count(where)
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
-  const page = Math.min(Math.max(1, Number(search.page) || 1), pageCount)
 
-  const rows = await db[table].find(where, { limit: pageSize, offset: (page - 1) * pageSize, orderBy })
+  // Window: an explicit `?query=` limit/offset (agent style) is used verbatim; otherwise
+  // the list UI's page model. Page/pageCount are derived for the returned view-model so
+  // the UI can show an honest "Page X of Y" in both modes.
+  let pageSize, offset
+  if (query.limit != null) {
+    pageSize = query.limit
+    offset = query.offset ?? 0
+  } else {
+    pageSize = DEFAULT_PAGE_SIZE
+    const pageCountForClamp = Math.max(1, Math.ceil(total / pageSize))
+    const page = Math.min(Math.max(1, Number(search.page) || 1), pageCountForClamp)
+    offset = (page - 1) * pageSize
+  }
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const page = Math.min(Math.floor(offset / pageSize) + 1, pageCount)
+
+  const rows = await db[table].find(where, { limit: pageSize, offset, orderBy })
   const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })
 
   return {

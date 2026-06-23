@@ -16,6 +16,7 @@
 export default {
   name: 'vike-admin',
   extends: ['import:@vike-data/vike-schema/config:default'],
+  middleware: 'import:vike-admin/api:default',
   meta: {
     adminResources: {
       // server-ONLY: resources carry functions (canView/canEdit, builders), so the value
