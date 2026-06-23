@@ -24,6 +24,12 @@ export default {
   // the guard can read it server- and client-side.
   meta: {
     loginRedirect: { env: { config: true, server: true, client: true } },
+    // Resolve the session cookie server-side ONLY. The cookie is HttpOnly so the
+    // client can't read it; making this hook server-only means Vike round-trips
+    // to the server on client-side navigation (re-resolving `user` for the new
+    // page) instead of running it on the client where it would see no cookie and
+    // null out `user`. Overrides the built-in isomorphic env { server, client }.
+    onCreatePageContext: { env: { server: true } },
   },
   loginRedirect: '/',
   pages: [

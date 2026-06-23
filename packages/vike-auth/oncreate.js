@@ -13,13 +13,17 @@ import { SESSION_COOKIE } from './constants.js'
 import { parseCookies } from './cookie.js'
 
 export default async function onCreatePageContext(pageContext) {
-  // Server-only. This hook is isomorphic — Vike also runs it on the client during
-  // hydration and client-side navigation. There the session cookie is unreadable
-  // (it is HttpOnly, and `pageContext.headers` does not exist client-side), so a
-  // client run would resolve `user` to null and CLOBBER the value passToClient
-  // already delivered from the server — flipping a signed-in page to signed-out
-  // right after hydration. The cookie only exists server-side, so bail on the
-  // client and keep what the server resolved.
+  // Server-only resolution. The session cookie is HttpOnly, so it can only be read
+  // server-side. Two things follow:
+  //   1. vike-auth/react's +config.js pins this hook's env to `{ server: true }`,
+  //      so Vike never runs it on the client. That both avoids clobbering the
+  //      passToClient `user` on hydration AND makes Vike round-trip to the server
+  //      on client-side navigation, re-resolving `user` for the new page (a client
+  //      run could not, with no cookie) — which is what keeps the /login guard and
+  //      useUser() correct after client-side nav.
+  //   2. As defense in depth for any consumer that wires this hook WITHOUT that env
+  //      override (e.g. a non-React binding), bail if it ever runs on the client:
+  //      a client run has no cookie and would null out `user`.
   if (pageContext.isClientSide) return
   const token = parseCookies(pageContext.headers?.cookie)[SESSION_COOKIE]
   const resolved = token ? await auth.authenticate(token) : null
