@@ -1,13 +1,14 @@
-# vike-data (experiment)
+# vike-data
 
-> **Status: experiment / spike.** Not published. APIs are throwaway and the ORM
-> compilers emit representative output (they don't run against a real database yet).
-> This repo explores a design; it isn't meant to be installed.
+> **Status: active development, pre-release.** Not published to npm yet (every
+> package is private `0.x`). The design is settled and the extensions run for real
+> (the Drizzle path reads and writes a real Postgres in tests), but APIs can still
+> change. This repo explores how far a Vike extension can compose.
 
 A proof that a **[Vike](https://vike.dev) extension can own and compose a whole
 vertical slice** of an app: its database tables, its server behaviour, and its UI
-(pages, auth, themes, layouts, translations). You install an extension and get all
-of it, composing through Vike's config with the app on top.
+(pages, auth, admin, themes, layouts, translations). You install an extension and
+get all of it, composing through Vike's config with the app on top.
 
 **The model in one line:**
 
@@ -18,40 +19,70 @@ Two consequences run through everything here:
 
 - **Derive, don't author.** Schema is the single source of truth; migrations and
   per-ORM files are *generated* from it. The same idea applies up the stack: themes
-  are derived to CSS variables, the active translation is merged per locale.
+  are derived to CSS variables, the active translation is merged per locale, and the
+  admin UI is derived from the composed schema.
 - **Compose, don't wire.** An app installs an extension with `extends: [ext]` and
-  configures it with a sibling key (`theme`, `layout`, `locale`, `segment`),
-  exactly like `vike-react`'s `ssr`. No bespoke wiring per extension.
+  configures it with a sibling key (`theme`, `layout`, `lang`, `segment`), exactly
+  like `vike-react`'s `ssr`. No bespoke wiring per extension.
 
 ---
 
 ## Two layers
 
-### 1. Data layer — schema as the source of truth
+### 1. Data layer: schema as the source of truth
 
 Extensions declare tables with `defineSchema('users', t => ...)` (or `extendSchema`
 to add columns to a table another extension created). `vike-schema` collects every
 contribution through one cumulative `schemas` config point, merges them, **derives**
 the migration list, and **compiles** the result to **Prisma, Drizzle, or the Rudder
-engine** — the same schema, three targets. Foreign keys validate *across* extensions;
-billing's schema is even *computed* from an app option.
+engine**: the same schema, three targets. Foreign keys validate *across* extensions,
+and billing's schema is even *computed* from an app option.
 
-### 2. UI tier — themes, layouts, auth, i18n
+At runtime, extensions read and write through `universal-orm`, a narrow neutral
+repository (`db.<table>.insert/find/findOne/upsert/update/delete` plus paging and
+`count`) over the composed schema. The app installs one adapter and hands it a
+connection; extensions never import an ORM.
+
+### 2. UI tier: admin, themes, layouts, auth, i18n
 
 Same pattern, applied to the frontend. Each concern is a framework-agnostic **core**
 plus a thin **React binding** (so a `vike-vue-*` could reuse the core). The app
 installs each and sets a sibling config key:
 
-- **Themes** — a brand (light + dark tokens) compiled to CSS variables, plus an
+- **Admin** (`vike-admin`): a working admin panel on install. It ships `/admin/*`
+  pages that list, create, edit, and delete the rows of every table your extensions
+  composed, gated by auth and rendered in your themed layout. Columns and fields are
+  **derived** from the composed schema; a `defineResource` is the refinement (FK
+  selects, sortable/searchable columns, per-row `scope(user)` access). Writes no ORM
+  code.
+- **Themes**: a brand (light + dark tokens) compiled to CSS variables, plus an
   *appearance* axis (`system` / `light` / `dark`; `system` follows the OS, flash-free).
-- **Layouts** — pick an app shell (`centered` / `topbar` / `sidebar`) per page.
-- **Auth UI** — `<SignInForm>` / `<UserButton>` / `useUser()` over vike-auth's server tier.
-- **i18n** — extensions ship their own strings; translations merge per locale. The
-  base ships English; other languages are separate, installable **locale packs**.
+- **Layouts**: pick an app shell (`centered` / `topbar` / `sidebar`) per page.
+- **Auth UI**: `<SignInForm>` / `<UserButton>` / `useUser()` over vike-auth's server
+  tier, plus the `/login` + `/account` pages the extension owns.
+- **i18n**: extensions ship their own strings; translations merge per locale. English
+  ships inline as the universal fallback; other languages are subpaths
+  (`vike-auth/fr`, `vike-auth/ar`).
 
-Themes and translations **compose like packages**: install `vike-theme-emerald` and a
-new theme appears in the picker; install `vike-auth-fr` and the auth UI speaks
-French. Neither the app nor the extension being styled/translated knows the other exists.
+Everything **composes like packages**: install `vike-theme-emerald` and a new theme
+appears in the picker; add `'fr'` to `lang` and every installed extension's French
+strings light up (see below). Neither the app nor the extension being styled,
+translated, or administered knows the other exists.
+
+#### Zero-config languages
+
+The app declares its languages once and every installed extension's matching pack is
+included automatically, with no per-pack import:
+
+```js
+lang: ['en', 'fr', 'ar']   // pulls in vike-auth/fr + /ar, and any other extension's packs
+```
+
+`vike-i18n/plugin` (a Vite plugin) reads `lang` plus a cumulative `localePacks`
+registry that each extension advertises, and generates a virtual module that
+statically imports only the catalogs whose locale is in `lang`. So unused locales
+tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
+`extends`. Drop a locale from `lang` and it leaves the client bundle entirely.
 
 ---
 
@@ -61,20 +92,23 @@ French. Neither the app nor the extension being styled/translated knows the othe
 |---|---|
 | **Data layer** | |
 | `universal-schema` | The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. **Zero Vike imports.** |
-| `universal-orm` | The neutral, narrow repository (`db.<table>.insert/find/upsert/update/delete`) over the composed schema + the adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
+| `universal-orm` (`@universal-orm/core`) | The neutral, narrow repository (`db.<table>.insert/find/findOne/upsert/update/delete`, paging + `count`) over the composed schema, plus the 6-op adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
+| `@universal-orm/memory` | In-process adapter over plain Maps. Zero database; for tests, demos, and the proof. |
+| `@universal-orm/drizzle` | Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (via PGlite). |
 | `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
-| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its own `/login` + `/account` pages ship as the `vike-auth/react` subpath. |
+| `vike-drizzle` | Vike binding: `registerDrizzle(db, schema)` makes your Drizzle connection the `universal-orm` adapter, so extensions write to your database with no manual `setAdapter` wiring. |
+| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its `/login` + `/account` pages ship as the `vike-auth/react` subpath; `vike-auth/fr` + `/ar` are language subpaths. |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
 | `vike-stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert). Subject FK *computed* from `segment` (`b2b`/`b2c`); server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
-| `vike-themes` (+ `vike-themes/react`) | Tokens → CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
+| `vike-admin` (+ `vike-admin/react`) | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). |
+| `vike-themes` (+ `vike-themes/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-auth-fr` | French locale pack for `vike-auth` (framework-agnostic message data). |
-| `vike-i18n` (+ `vike-i18n/react`) | Cumulative `messages` + `locale`; `useTranslation()` → `t()` + a locale picker. |
+| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `lang` plugin. |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
-| `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home. |
+| `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel. |
 
 The split is consistent: every core is framework-agnostic and Vike-agnostic where it
 can be; the Vike-/React-specific concern lives in a `vike-*/react` subpath of the same
@@ -87,19 +121,20 @@ package (one package per concern, the framework as a subpath).
 ```bash
 pnpm install
 
-# Data-layer demo — schema merged + compiled to an ORM (default drizzle)
+# Data-layer demo: schema merged + compiled to an ORM (default drizzle)
 cd app && pnpm dev            # http://localhost:4000
 pnpm dev:prisma               # or dev:drizzle / dev:rudder
 pnpm gen:prisma               # write the per-ORM artifacts (gen:drizzle / gen:rudder)
 pnpm gen:check                # CI drift gate: fail if committed artifacts are stale
 
-# UI-tier demo — themed + localized login
+# UI-tier demo: themed + localized login + admin panel
 cd app-react && pnpm dev      # http://localhost:4100
 ```
 
 In `app-react`, switch **Language** (bottom-left) and **Appearance / Theme**
 (bottom-right) live. The login flow is passwordless: submit an email, then open the
-magic link printed in the `pnpm dev` console.
+magic link printed in the `pnpm dev` console. Once signed in, `/admin` lists and
+edits the composed tables.
 
 Run the package tests with `pnpm -r test`.
 
@@ -108,44 +143,58 @@ Run the package tests with `pnpm -r test`.
 ## How composition works
 
 1. A binding **declares a cumulative config point** via `meta` (`schemas`, `themes`,
-   `messages`). It is framework-agnostic config — just a contribution channel.
-2. Each extension **contributes** to it (a schema fragment, a theme, a message map)
-   and **self-installs** its base with a pointer-import
+   `messages`, `localePacks`, `adminResources`). It is framework-agnostic config:
+   just a contribution channel.
+2. Each extension **contributes** to it (a schema fragment, a theme, a message map, a
+   resource) and **self-installs** its base with a pointer-import
    (`extends: ['import:vike-themes/config:default']`), so one install pulls the chain.
-3. The app **picks** with a sibling key (`theme: 'acme'`, `locale: 'en'`) and can
+3. The app **picks** with a sibling key (`theme: 'acme'`, `lang: ['en','fr']`) and can
    **override** any contribution (retranslate a string, restyle a theme).
-4. The consumer **merges + derives**: schema → migrations + ORM files; themes →
-   the active CSS; messages → the dictionary for the active locale.
+4. The consumer **merges + derives**: schema to migrations + ORM files; themes to the
+   active CSS; messages to the dictionary for the active locale; the composed schema to
+   the admin UI.
 
-Non-serializable contributions (a computed schema, a live component for a Wrapper/
-Layout) are passed as **pointer-imports**, since Vike serializes runtime config and
-rejects inline functions.
+Non-serializable contributions (a computed schema, a live component for a Wrapper /
+Layout, a resource's `canEdit` function) are passed as **pointer-imports** or from a
+dedicated config file, since Vike serializes runtime config and rejects inline
+functions. For build-time module composition that a cumulative config value cannot
+express (which language packs to bundle), a Vite **virtual module** does the job (see
+zero-config languages above).
 
 ---
 
 ## Notes & deferred
 
 Per-package design notes live in each package's README (see
-[vike-auth](packages/vike-auth/README.md), [vike-stripe](packages/vike-stripe/README.md)).
-Highlights and open ends:
+[vike-auth](packages/vike-auth/README.md), [vike-admin](packages/vike-admin/README.md),
+[vike-stripe](packages/vike-stripe/README.md)). Highlights and open ends:
 
-- **Relations** — single-column FKs with `onDelete`, cross-extension validation,
+- **Relations**: single-column FKs with `onDelete`, cross-extension validation,
   self-referential FKs, overridable Prisma relation-field names, composite primary
   keys, and many-to-many through-table sugar (`defineJoinTable`) all work; deriving
   the relation graph lets Prisma's multiple/circular-relation case fall out for free.
   Deferred: composite (multi-column) FKs, one-to-one inference beyond a `unique` FK.
-- **Runtime data access** — extensions read/write through `universal-orm` (a narrow
-  `db.<table>.upsert/find/...` over the composed schema) on a swappable adapter
+- **Runtime data access**: extensions read and write through `universal-orm` (a narrow
+  `db.<table>.upsert/find/...` with paging + `count`) on a swappable adapter
   (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.
-  vike-stripe's webhooks are the live proof: `subscription` upserts, `purchase` inserts.
+  vike-stripe's webhooks are the live proof: `subscription` upserts, `purchase` inserts
+  against real Postgres through `vike-drizzle`.
+- **Admin**: list / create / edit / delete, FK `<select>`s, sortable + searchable
+  columns, pagination, and per-row `scope(user)` access all work today. A JSON / agent
+  query surface over the same `scope` guard (`/admin.json`, `?query=`) is designed and
+  next; richer field types and role-based access beyond signed-in are follow-ups.
+- **i18n**: builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`)
+  and adds the message-*composition* layer Vike leaves to userland, with zero-config
+  `lang: [...]` auto-include via a Vite virtual module (tree-shaken per locale). RTL
+  (`dir` from locale) and an AI-translate tier (`vike translate` for the long tail) are
+  the next steps.
 - **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
   table is the shape real apps use. It pressured the IR (no first-class *append-only*
   or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.
-- **i18n** builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`);
-  it adds the message-*composition* layer Vike leaves to userland. RTL (`dir` from
-  locale) and a `vike-react-auth-ar` pack are the next step.
-- **Upstream:** cumulative config is the right primitive; a few rough edges were filed
-  and fixed (idempotent extension installation
+- **Upstream:** cumulative config + `config.pages` (extensions ship their own pages,
+  [vike#3356](https://github.com/vikejs/vike/pull/3356)) are the primitives this leans
+  on; a few rough edges were filed and fixed (idempotent extension installation
   [vike#3354](https://github.com/vikejs/vike/issues/3354), redirect-logger casing
   [vike#3357](https://github.com/vikejs/vike/issues/3357)).
-- Compilers emit representative artifacts; they don't run against real databases yet.
+- ORM compilers emit committed artifacts gated by a CI drift check; the Drizzle runtime
+  path is exercised against a real database, Prisma and the Rudder engine via codegen.
