@@ -17,8 +17,6 @@ import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
-import authFr from 'vike-auth/fr'
-import authAr from 'vike-auth/ar'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 
@@ -51,7 +49,7 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt, authFr, authAr],
+  extends: [vikeReact, authExt, adminExt, themesExt, layoutsExt, emeraldExt, i18nExt],
   title: 'vike-data React UI tier',
 
   // admin: install vike-admin/react — one import brings the /admin/* pages and the
@@ -64,10 +62,14 @@ export default {
   theme: 'acme', // active brand, from the cumulative `themes` registry
   themes: [acme], // the app contributes its own brand (built-ins + emerald compose in)
 
-  // i18n: pick the default locale; the app + every extension compose their strings
-  // into the cumulative `messages` point. vike-auth/react ships English INLINE (the
-  // fallback, no contribution here); French and Arabic come from the language
-  // SUBPATHS vike-auth/fr + vike-auth/ar (extends above), the same axis as /react.
+  // i18n: declare the app's languages ONCE with `lang` (#79). The vike-i18n Vite
+  // plugin reads it + every installed extension's advertised `localePacks` and
+  // auto-includes the matching catalogs (here: vike-auth/fr + vike-auth/ar), with
+  // NO per-pack import or `extends` — drop a locale from `lang` and it tree-shakes
+  // out of the bundle. `locale` is the default active locale; English ships INLINE
+  // with the components as the universal fallback (never a pack). The app's own
+  // strings still compose through the cumulative `messages` point.
+  lang: ['en', 'fr', 'ar'],
   locale: 'en',
   messages: [appMessages],
 

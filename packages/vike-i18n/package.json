@@ -7,6 +7,7 @@
   "exports": {
     ".": "./index.js",
     "./config": "./+config.js",
+    "./plugin": "./plugin.js",
     "./oncreate": "./oncreate.js",
     "./react": "./react/+config.js",
     "./react/hooks": "./react/context.js",
@@ -14,6 +15,7 @@
   },
   "peerDependencies": {
     "react": ">=18",
+    "vike": "^0.4.0",
     "vike-react": ">=0.6"
   },
   "peerDependenciesMeta": {

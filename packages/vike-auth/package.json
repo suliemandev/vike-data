@@ -18,7 +18,9 @@
     "./react/AccountPage": "./react/AccountPage.jsx",
     "./react/messages": "./react/messages.js",
     "./fr": "./fr/+config.js",
-    "./ar": "./ar/+config.js"
+    "./fr/messages": "./fr/messages.js",
+    "./ar": "./ar/+config.js",
+    "./ar/messages": "./ar/messages.js"
   },
   "scripts": {
     "test": "node --test"
