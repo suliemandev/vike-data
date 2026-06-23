@@ -7,7 +7,12 @@ import { useData } from 'vike-react/useData'
 import { FormFields } from './FormFields.jsx'
 
 export default function EditPage() {
-  const { table, label: title, fields, values, id } = useData()
+  const data = useData()
+  // The agent API (#115) renders this route to run editData's update/delete, then reads the
+  // JSON result off pageContext — the HTML is never used. Render nothing rather than crash on
+  // the missing form fields.
+  if (data.apiWrite) return null
+  const { table, label: title, fields, values, id } = data
   const action = `/admin/${table}/${encodeURIComponent(id)}`
   return (
     <div style={{ maxWidth: 520, margin: '0 auto' }}>

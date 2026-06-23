@@ -62,21 +62,33 @@ Minimal case: `defineResource({ table: 'subscriptions' })` derives every column 
 
 The same admin, as machine-readable JSON, for an AI agent (or any HTTP client) acting on a user's behalf:
 
+The same admin, as machine-readable JSON. Read:
+
 - `GET /admin.json`: the resources the caller may view (the dashboard, as JSON).
 - `GET /admin/<table>.json`: a resource list. Pass the narrow universal-orm query as `?query=`, a URL-encoded JSON object: `{ filter, orderBy, limit, offset }` (equality + `in` only, the same surface as the rest of universal-orm). Discrete `?page` / `?sort` / `?dir` also work.
+
+Write (the row scope is forced, so a caller only ever writes their **own** rows):
+
+- `POST /admin/<table>.json` with a JSON body: create a row. `201` + the created row.
+- `PATCH /admin/<table>/<id>.json` with a JSON body: update a row by its primary key (partial, only the supplied fields). `200` + the updated row.
+- `DELETE /admin/<table>/<id>.json`: delete a row by its primary key. `200` `{ "deleted": true }`.
 
 ```bash
 curl --cookie "$SESSION" \
   "http://localhost:3000/admin/sessions.json?query=$(jq -rR @uri <<<'{"filter":{"active":true},"orderBy":"created_at","limit":20}')"
+
+curl --cookie "$SESSION" -X POST -H 'Content-Type: application/json' \
+  -d '{"token":"sess_abc"}' http://localhost:3000/admin/sessions.json
 ```
 
-This is **not** a second surface with its own auth. The `.json` endpoint renders the matching admin page through Vike, so it runs the **exact same pipeline** as the browser UI: vike-auth resolves the user, vike-rbac enriches roles/permissions, the guard runs, and `listData` applies the same `scope(user)` AND-merge and `canView` allow-list. It then returns that data as JSON instead of HTML. So:
+This is **not** a second surface with its own auth. Every `.json` endpoint renders the matching admin page through Vike, so it runs the **exact same pipeline** as the browser UI: vike-auth resolves the user, vike-rbac enriches roles/permissions, the guard runs, and the page's own data hook (`listData` for reads, `newData` / `editData` for writes) applies the same `scope(user)` AND-merge, `canView` / `canEdit` allow-list and ownership-forcing. It then returns that data as JSON instead of HTML. So:
 
 - the caller's `?query=` can only ever **narrow within the row scope**, never widen past what the UI would show (scope is AND-merged last);
-- a non-viewable / unknown resource **404**s, an anonymous caller **401**s, an unknown column or operator is a **400** with a message: the same gates as the UI, no second authorization to get wrong;
-- rows are projected to the resource's **visible columns** (+ the primary key), so a hidden column (a password hash) never leaks.
+- a write forces the scope's owner columns onto inserts and keys updates / deletes on the primary key **and** the scope, so a caller can't create a row for someone else, reassign ownership, or touch another owner's row (an id-guess is a `404`);
+- a non-viewable / non-editable / unknown resource **404**s, an anonymous caller **401**s, a bad `?query=` or JSON body is a **400** with a message: the same gates as the UI, no second authorization to get wrong;
+- rows (read and written-back) are projected to the resource's **visible columns** (+ the primary key), so a hidden column (a password hash) never leaks and is never writable.
 
-Read-only for now (GET); it reuses the session cookie. Write ops (POST → insert/update/delete) and API-token auth for headless agents are follow-ups.
+It reuses the session cookie; API-token auth for headless agents is a follow-up.
 
 ## Server-env config
 

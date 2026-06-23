@@ -110,6 +110,41 @@ function applyScopeOwnership(obj, scope) {
   return obj
 }
 
+// Build a row from a JSON body (the agent API, #115). The twin of rowFromForm for typed
+// JSON instead of string form fields: only the resource's DECLARED fields are written
+// (an unknown key is ignored, never reaching the DB), and only keys PRESENT in the body
+// (partial-update semantics — a PATCH that omits a column leaves it untouched, unlike the
+// form where every field is submitted). Values arrive already typed; we still coerce a
+// boolean leniently and an empty string to null so create matches the form's results.
+function rowFromObject(fields, input = {}) {
+  const byName = new Map(fields.map((f) => [f.name, f]))
+  const row = {}
+  for (const [key, raw] of Object.entries(input ?? {})) {
+    const f = byName.get(key)
+    if (!f) continue
+    let value = raw
+    if (f.type === 'boolean') value = value === true || value === 'true'
+    else if (value === '') value = null
+    else if (f.type === 'integer' && value != null) value = Number(value)
+    row[key] = value
+  }
+  return row
+}
+
+// The insert orchestration shared by the create form POST and the agent API: fill a
+// client-generatable (uuid/string) primary key the caller didn't supply, FORCE the scope's
+// owner columns so a scoped user can only create rows they own (#104), then insert. Returns
+// the inserted row. universal-orm rejects unknown columns, so a stray field is a clear error.
+async function performInsert(db, table, row, { schemaTable, resource, user }) {
+  const pk = schemaTable.columns.find((c) => c.primary)
+  if (pk && row[pk.name] == null && (pk.type === 'uuid' || pk.type === 'string')) {
+    row[pk.name] = randomUUID()
+  }
+  applyScopeOwnership(row, scopeFilter(resource, user))
+  await db[table].insert(row)
+  return row
+}
+
 // /admin — the dashboard: the resources this install composed, filtered to what the
 // signed-in user may view. Each card links to its list.
 export function dashboardData(pageContext) {
@@ -232,22 +267,25 @@ export async function newData(pageContext) {
 
   const fields = viewFields(resource, schemaTable)
   const db = buildDb(tables)
-  const req = readFormRequest(pageContext)
 
+  // Agent API (#115): a create driven by a JSON body the middleware parsed and handed over
+  // on `pageContext.adminApiWrite`. Same `canEdit` gate (above) and same insert + scope
+  // ownership-forcing as the form POST below; returns the created row instead of redirecting.
+  if (pageContext.adminApiWrite) {
+    try {
+      const row = rowFromObject(fields, pageContext.adminApiWrite.input)
+      const created = await performInsert(db, table, row, { schemaTable, resource, user: pageContext.user })
+      return { apiWrite: { created }, columns: viewColumns(resource, schemaTable), pk: primaryKeyOf(schemaTable) }
+    } catch (err) {
+      pageContext.adminApiError = err.message
+      return {}
+    }
+  }
+
+  const req = readFormRequest(pageContext)
   if (req.method === 'POST') {
     const row = rowFromForm(fields, await req.formData())
-
-    // Fill a client-generatable primary key (uuid/string) the form doesn't carry, so a
-    // minimal resource still inserts. Integer/auto keys are left to the database.
-    const pk = schemaTable.columns.find((c) => c.primary)
-    if (pk && row[pk.name] == null && (pk.type === 'uuid' || pk.type === 'string')) {
-      row[pk.name] = randomUUID()
-    }
-
-    // Row scoping (#104): force the owner columns so a scoped user can only create rows they own.
-    applyScopeOwnership(row, scopeFilter(resource, pageContext.user))
-
-    await db[table].insert(row)
+    await performInsert(db, table, row, { schemaTable, resource, user: pageContext.user })
     throw redirect(`/admin/${table}`)
   }
 
@@ -271,7 +309,6 @@ export async function editData(pageContext) {
   const fields = viewFields(resource, schemaTable)
   const pk = primaryKeyOf(schemaTable)
   const db = buildDb(tables)
-  const req = readFormRequest(pageContext)
 
   // Row scoping (#104): every op keys on the primary key AND the scope, so a scoped user
   // can only load / edit / delete a row they own — guessing another owner's id matches
@@ -279,6 +316,30 @@ export async function editData(pageContext) {
   const scope = scopeFilter(resource, pageContext.user)
   const owned = { ...scope, [pk]: id }
 
+  // Agent API (#115): an update or delete driven by the middleware. Keys on the primary key
+  // AND the scope exactly like the form path, so an id-guess for another owner's row matches
+  // nothing (-> notFound -> 404). Returns the result instead of redirecting to the list.
+  if (pageContext.adminApiWrite) {
+    try {
+      const { action, input } = pageContext.adminApiWrite
+      if (action === 'delete') {
+        const existing = await db[table].findOne(owned)
+        if (!existing) return { apiWrite: { notFound: true } }
+        await db[table].delete(owned)
+        return { apiWrite: { deleted: true } }
+      }
+      // Re-assert ownership on the patch so the edit can't reassign the row to another owner.
+      await db[table].update(owned, applyScopeOwnership(rowFromObject(fields, input), scope))
+      const updated = await db[table].findOne(owned)
+      if (!updated) return { apiWrite: { notFound: true } }
+      return { apiWrite: { updated }, columns: viewColumns(resource, schemaTable), pk }
+    } catch (err) {
+      pageContext.adminApiError = err.message
+      return {}
+    }
+  }
+
+  const req = readFormRequest(pageContext)
   if (req.method === 'POST') {
     const form = await req.formData()
     if (form.get('_action') === 'delete') {

@@ -1,64 +1,90 @@
-// The agent API (#113): `/admin.json` and `/admin/<table>.json` — the admin's data as
-// machine-readable JSON, for an AI agent (or any HTTP client) acting on a user's behalf.
+// The agent API (#113 read, #115 write): the admin's data as machine-readable JSON, for an
+// AI agent (or any HTTP client) acting on a user's behalf.
 //
-// THE KEY IDEA: it is not a second, parallel surface with its own auth and queries — it
-// is the EXACT SAME page pipeline, served as JSON. The middleware maps the `.json` URL to
-// its admin page route and RENDERS it through Vike (`renderPage`): vike-auth resolves the
-// user, vike-rbac enriches roles/permissions, the page guard runs, and the page's own
-// data hook (dashboardData / listData) runs — the same `scope(user)` AND-merge, `canView`
-// allow-list and validated `?query=` the browser UI goes through. We then return that
-// hook's result (`pageContext.data`) as JSON instead of HTML. So the API inherits the
-// UI's security model by construction; there is no authorization to re-implement and the
-// two can never drift (they are the same code).
+//   GET    /admin.json                 the resources the caller may view (the dashboard)
+//   GET    /admin/<table>.json?query=  a resource list (filter/orderBy/limit/offset)
+//   POST   /admin/<table>.json         create a row            -> 201 + the created row
+//   PATCH  /admin/<table>/<id>.json    update a row by its pk  -> 200 + the updated row
+//   DELETE /admin/<table>/<id>.json    delete a row by its pk  -> 200 { deleted: true }
+//
+// THE KEY IDEA (same as the read tier): it is not a second surface with its own auth and
+// logic. The middleware maps the `.json` URL to its admin page route and RENDERS it through
+// Vike (`renderPage`): vike-auth resolves the user, vike-rbac enriches roles/permissions,
+// the page guard runs, and the page's own data hook (dashboardData / listData / newData /
+// editData) runs — the same `scope(user)` AND-merge, `canView`/`canEdit` allow-list,
+// validated `?query=`, ownership-forcing and universal-orm writes the browser UI goes
+// through. We return that hook's result (`pageContext.data`) as JSON instead of HTML, so the
+// API inherits the UI's security model by construction and the two can never drift.
+//
+// For writes the middleware parses the JSON body and hands it to the page's write hook via a
+// `pageContext.adminApiWrite` marker (the hook then runs its existing insert/update/delete);
+// it never writes to the database itself.
 //
 // Why a universal middleware and not a Vike page: a page render is always served as
-// text/html (Vike force-sets the content type and injects client assets into the body),
-// so it cannot emit clean `application/json`. A universal middleware owns its Response, so
-// it returns real JSON with the right content type — the same reason vike-auth serves its
-// /auth/* endpoints from a middleware.
+// text/html, so it cannot emit clean `application/json` — a universal middleware owns its
+// Response. (Same reason vike-auth serves /auth/* from a middleware.)
 //
-// MVP scope (#113): READ only (GET). Auth is the session cookie the page pipeline already
-// reads; API tokens for headless agents are a separate follow-up. Write ops (POST →
-// insert/update/delete) are the next tier.
+// Auth is the session cookie the page pipeline already reads; API tokens for headless agents
+// are a separate follow-up.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { renderPage } from 'vike/server'
 
-// Map an `/admin*.json` request path to the admin PAGE route it mirrors, or null when the
-// path isn't an admin JSON endpoint (so the request falls through to Vike untouched).
-//   /admin.json            -> /admin            (the dashboard: viewable resources)
-//   /admin/<table>.json    -> /admin/<table>    (a resource list)
+// Map a GET `/admin*.json` path to the admin PAGE route it mirrors, or null when it isn't a
+// readable admin JSON endpoint (so the request falls through to Vike untouched).
+//   /admin.json          -> /admin           (dashboard)
+//   /admin/<table>.json  -> /admin/<table>   (list)
 export function pageRouteFor(pathname) {
   if (pathname === '/admin.json') return '/admin'
   const m = pathname.match(/^\/admin\/([^/]+)\.json$/)
   return m ? `/admin/${m[1]}` : null
 }
 
+// Map a write request (method + `/admin*.json` path) to the page route that performs it and
+// the action to hand the hook, or null when it isn't a valid write endpoint.
+//   POST   /admin/<table>.json      -> { /admin/<table>/new, create }
+//   PATCH  /admin/<table>/<id>.json -> { /admin/<table>/<id>, update }
+//   DELETE /admin/<table>/<id>.json -> { /admin/<table>/<id>, delete }
+export function writeTargetFor(pathname, method) {
+  const list = pathname.match(/^\/admin\/([^/]+)\.json$/)
+  if (list && method === 'POST') return { pageRoute: `/admin/${list[1]}/new`, action: 'create', hasBody: true }
+
+  const row = pathname.match(/^\/admin\/([^/]+)\/([^/]+)\.json$/)
+  if (row && (method === 'PATCH' || method === 'PUT')) return { pageRoute: `/admin/${row[1]}/${row[2]}`, action: 'update', hasBody: true }
+  if (row && method === 'DELETE') return { pageRoute: `/admin/${row[1]}/${row[2]}`, action: 'delete', hasBody: false }
+
+  return null
+}
+
+// Any `/admin*.json` path (read or row), used to decide whether an unhandled method is a 405
+// (the path is ours but the verb is wrong) vs a fall-through (not our path at all).
+const isAdminJsonPath = (pathname) => pageRouteFor(pathname) !== null || /^\/admin\/[^/]+\/[^/]+\.json$/.test(pathname)
+
 const json = (status, body) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
 
-// A response header from the rendered pageContext (Vike stores them as [key, value]
-// pairs, case-insensitively). Used to read a redirect's Location.
+// A response header from the rendered pageContext (Vike stores them as [key, value] pairs,
+// case-insensitively). Used to read a redirect's Location.
 function headerOf(pageContext, name) {
   const headers = pageContext.httpResponse?.headers ?? []
   const found = headers.find(([k]) => k.toLowerCase() === name.toLowerCase())
   return found?.[1] ?? null
 }
 
-// Narrow each row to the columns the resource actually exposes (its list columns) plus the
-// primary key, so the JSON never leaks a column the admin hides — a password hash, an
-// unlisted secret. Same columns the HTML list renders; the pk is included as the row's
-// stable identity (useful to an agent, never sensitive).
+// Narrow a row to the columns the resource exposes (its list columns) plus the primary key,
+// so the JSON never leaks a column the admin hides — a password hash, an unlisted secret.
+function projectRow(row, { columns = [], pk } = {}) {
+  const keys = new Set([pk, ...columns.map((c) => c.name)].filter(Boolean))
+  const out = {}
+  for (const k of keys) if (k in row) out[k] = row[k]
+  return out
+}
+
+// The list response: rows projected to their visible columns, plus the paging/sort state.
 export function projectRows(data) {
-  const keys = new Set([data.pk, ...(data.columns ?? []).map((c) => c.name)].filter(Boolean))
-  const rows = (data.rows ?? []).map((row) => {
-    const out = {}
-    for (const k of keys) if (k in row) out[k] = row[k]
-    return out
-  })
   return {
     table: data.table,
     columns: (data.columns ?? []).map((c) => ({ name: c.name, label: c.label, type: c.type })),
-    rows,
+    rows: (data.rows ?? []).map((row) => projectRow(row, data)),
     total: data.total,
     page: data.page,
     pageCount: data.pageCount,
@@ -68,56 +94,106 @@ export function projectRows(data) {
   }
 }
 
-async function adminApi(request) {
-  const url = new URL(request.url)
-  if (request.method !== 'GET') {
-    // The read tier is GET-only; a write tier (POST) is a separate follow-up. Only claim
-    // the JSON paths, so a POST elsewhere still falls through to Vike.
-    if (pageRouteFor(url.pathname)) return json(405, { error: 'Method not allowed (the agent API is read-only for now)' })
-    return
-  }
-  const pageRoute = pageRouteFor(url.pathname)
-  if (!pageRoute) return // not an admin JSON endpoint -> fall through to Vike's renderer
-
-  // Render the mirrored page through the full Vike pipeline. `?query=` (and ?page/?sort)
-  // ride along verbatim, so the data hook applies + validates them exactly as for the UI.
-  let pageContext
-  try {
-    pageContext = await renderPage({ urlOriginal: pageRoute + url.search, headersOriginal: request.headers })
-  } catch {
-    return json(500, { error: 'Internal error' })
-  }
-
-  // A bad `?query=` is recorded by the list hook on pageContext (not an abort, so the HTML
-  // list can still render); surface it as a 400 with the validation message.
-  if (pageContext.adminApiError) {
-    return json(400, { error: pageContext.adminApiError })
-  }
+// Translate a rendered pageContext into the caller's JSON response: a bad query / body -> 400,
+// a guard / canView / canEdit redirect -> 401 (sign in) or 404 (not available to this caller).
+// Shared by reads and writes; `onOk` handles the success (200) shape for each.
+function respondFrom(pageContext, onOk) {
+  if (pageContext.adminApiError) return json(400, { error: pageContext.adminApiError })
 
   const status = pageContext.httpResponse?.statusCode ?? 500
+  if (status === 200 && pageContext.data) return onOk(pageContext.data)
 
-  // Success: hand back the data hook's result. The dashboard returns its resource list
-  // as-is; a list is projected to its visible columns (see projectRows).
-  if (status === 200 && pageContext.data) {
-    const data = pageContext.data
-    return json(200, 'rows' in data ? projectRows(data) : data)
-  }
-
-  // The guard / data hook redirected (3xx) instead of rendering. After an abort the user
-  // isn't re-resolved onto the returned pageContext, so disambiguate by WHERE it sent the
-  // browser: the signed-in fence redirects to /login (the caller must authenticate -> 401);
-  // a denied or unknown resource redirects to /admin (not available to this caller -> 404,
-  // same as the UI hiding it, and without leaking unknown-vs-forbidden).
+  // After a redirect abort the user isn't re-resolved onto the returned pageContext, so
+  // disambiguate by WHERE it sent the browser: the signed-in fence -> /login (must
+  // authenticate, 401); a denied or unknown resource -> /admin (not available, 404 — the
+  // same as the UI hiding it, without leaking unknown-vs-forbidden).
   if (status >= 300 && status < 400) {
     const location = headerOf(pageContext, 'location')
     return location && location.startsWith('/login')
       ? json(401, { error: 'Authentication required' })
       : json(404, { error: 'Resource not found or not viewable' })
   }
-
   return json(status >= 400 ? status : 500, { error: 'Request failed' })
 }
 
+async function render(pageRoute, request, extra = {}) {
+  return renderPage({ urlOriginal: pageRoute, headersOriginal: request.headers, ...extra })
+}
+
+async function handleRead(request, pageRoute, search) {
+  const pageContext = await render(pageRoute + search, request)
+  return respondFrom(pageContext, (data) => json(200, 'rows' in data ? projectRows(data) : data))
+}
+
+async function handleWrite(request, target) {
+  let input = {}
+  if (target.hasBody) {
+    try {
+      input = await request.json()
+    } catch {
+      return json(400, { error: 'Request body must be valid JSON' })
+    }
+    if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+      return json(400, { error: 'Request body must be a JSON object' })
+    }
+  }
+
+  // The write happens inside the page hook (newData / editData) during this render; it reads
+  // the action + body off `adminApiWrite` and returns the result on pageContext.data instead
+  // of redirecting. We read that result regardless of the render's HTTP status: the page
+  // component can't render the write envelope (it has no form fields) and returns nothing, so
+  // the HTML render is irrelevant — only the data the hook produced matters.
+  const pageContext = await render(target.pageRoute, request, { adminApiWrite: { action: target.action, input } })
+  if (pageContext.adminApiError) return json(400, { error: pageContext.adminApiError })
+  const w = pageContext.data?.apiWrite
+  if (w) {
+    if (w.notFound) return json(404, { error: 'Resource not found or not viewable' })
+    if (w.deleted) return json(200, { deleted: true })
+    if (w.created) return json(201, projectRow(w.created, pageContext.data))
+    return json(200, projectRow(w.updated, pageContext.data))
+  }
+  // No write was performed -> the guard / canEdit gate redirected. Reuse the read tier's
+  // 401-vs-404 disambiguation.
+  return respondFrom(pageContext, () => json(500, { error: 'Request failed' }))
+}
+
+// Each request object is handled at most once. A universal middleware can be collected more
+// than once (an extension self-installed by several others), and a Response only
+// short-circuits route handlers, not other middlewares — so without this guard a second run
+// would re-read the body and, for a write, insert twice. Mirrors vike-auth's middleware.
+const handled = new WeakSet()
+
+async function adminApi(request) {
+  const url = new URL(request.url)
+  const method = request.method
+
+  if (method === 'GET') {
+    const pageRoute = pageRouteFor(url.pathname)
+    if (!pageRoute) return // not an admin JSON read endpoint -> fall through to Vike
+    if (handled.has(request)) return
+    handled.add(request)
+    try {
+      return await handleRead(request, pageRoute, url.search)
+    } catch {
+      return json(500, { error: 'Internal error' })
+    }
+  }
+
+  const target = writeTargetFor(url.pathname, method)
+  if (!target) {
+    // Our path but an unsupported verb (e.g. PATCH /admin/users.json) -> 405; anything else
+    // falls through to Vike.
+    return isAdminJsonPath(url.pathname) ? json(405, { error: `Method ${method} not allowed` }) : undefined
+  }
+  if (handled.has(request)) return
+  handled.add(request)
+  try {
+    return await handleWrite(request, target)
+  } catch {
+    return json(500, { error: 'Internal error' })
+  }
+}
+
 // order = AUTHENTICATION marks this as a middleware (runs on every request, returns a
-// Response only for the JSON paths); no `path` so it sees every request, like vike-auth's.
+// Response only for the JSON endpoints); no `path` so it sees every request, like vike-auth's.
 export default enhance(adminApi, { name: 'vike-admin-api', order: MiddlewareOrder.AUTHENTICATION })
