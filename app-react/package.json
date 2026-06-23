@@ -24,7 +24,7 @@
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",
     "vite": "^7.1.0",
-    "vike-toolbar": "workspace:*",
+    "vike-toolbar": "file:./ejected/vike-toolbar",
     "telefunc": "^0.2.20"
   }
 }

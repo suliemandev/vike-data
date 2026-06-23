@@ -164,17 +164,28 @@ zero-config languages above).
 
 ---
 
+## Customization
+
+Each extension keeps a **small, deliberate config surface** and leans on **ejecting** for
+the long tail: copy an extension's source into the app (`ejected/<extension>/`) and own it,
+instead of exposing a setting for every edge case (the Vike [eject](https://vike.dev/eject)
+escape hatch). The rule is to expose the few coarse choices an app makes constantly and make
+everything finer-grained an eject. See [CUSTOMIZATION.md](CUSTOMIZATION.md) for the model, an
+eject recipe, and a worked proof (`app-react/ejected/vike-toolbar`).
+
+---
+
 ## Notes & deferred
 
 Per-package design notes live in each package's README (see
 [vike-auth](packages/vike-auth/README.md), [vike-admin](packages/vike-admin/README.md),
 [vike-stripe](packages/vike-stripe/README.md)). Highlights and open ends:
 
-- **Relations**: single-column FKs with `onDelete`, cross-extension validation,
-  self-referential FKs, overridable Prisma relation-field names, composite primary
-  keys, and many-to-many through-table sugar (`defineJoinTable`) all work; deriving
-  the relation graph lets Prisma's multiple/circular-relation case fall out for free.
-  Deferred: composite (multi-column) FKs, one-to-one inference beyond a `unique` FK.
+- **Relations**: single-column and composite (multi-column) FKs with `onDelete`,
+  cross-extension validation, self-referential FKs, overridable Prisma relation-field
+  names, composite primary keys, and many-to-many through-table sugar (`defineJoinTable`)
+  all work; deriving the relation graph lets Prisma's multiple/circular-relation case fall
+  out for free. One-to-one is inferred from a `unique` FK or a shared-primary-key FK.
 - **Runtime data access**: extensions read and write through `universal-orm` (a narrow
   `db.<table>.upsert/find/...` with paging + `count`) on a swappable adapter
   (`@universal-orm/memory`, `@universal-orm/drizzle`), never importing an ORM.

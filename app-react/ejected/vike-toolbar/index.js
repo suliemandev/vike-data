@@ -1,0 +1,54 @@
+// vike-toolbar — the framework-agnostic CORE.
+//
+// The toolbar is one fixed logo button + a popover that OTHER extensions drop simple
+// settings into: a theme toggle, a locale switcher, an account link. The composition
+// is the same cumulative-seam pattern the rest of the Stem set uses (`nav`, `themes`,
+// `messages`, `adminResources`, `permissions`): an extension advertises a `toolbarItems`
+// entry, every installed extension's entries compose, and the per-framework UI renders
+// them. So installing an extension brings its settings into the popover with no toolbar
+// wiring beyond the cumulative key.
+//
+// Zero framework imports here — this is just the item shape + the merge. The React UI
+// (the button, the popover, rendering each item's control) lives in vike-toolbar/react.
+
+// A toolbar item is `{ id, label?, order?, Control }` where Control is the per-framework
+// control component (carried through the cumulative config as a pointer-import, exactly
+// like vike-auth's `resolveUser` enrichers — see +config.js). `order` sorts the popover
+// (ascending, default 0); ties keep contribution order (stable sort).
+
+/**
+ * Declare an extension's toolbar items for the cumulative `toolbarItems` registry.
+ * Plain passthrough that fills defaults + drops malformed entries, so a contributor
+ * writes `toolbarItems: defineToolbarItems([...])` and the composed list is uniform.
+ */
+export function defineToolbarItems(items = []) {
+  return (Array.isArray(items) ? items : [items]).filter((it) => it && it.Control).map((it, i) => ({
+    id: it.id ?? `item-${i}`,
+    label: it.label ?? null,
+    order: Number.isFinite(it.order) ? it.order : 0,
+    Control: it.Control,
+  }))
+}
+
+/**
+ * Flatten the cumulative registry (array of per-source arrays) into the ordered list the
+ * popover renders: drops falsy/control-less entries, sorts by `order` (stable), and
+ * de-duped by `id` (first contribution wins, so an app can't accidentally double an item).
+ */
+export function allToolbarItems(contributions) {
+  const flat = (contributions || []).flat().filter((it) => it && it.Control)
+  const seen = new Set()
+  const unique = []
+  for (const it of flat) {
+    const id = it.id ?? null
+    if (id != null && seen.has(id)) continue
+    if (id != null) seen.add(id)
+    unique.push(it)
+  }
+  // Stable sort by order: decorate with the original index so equal orders keep their
+  // contribution sequence (Array#sort is not guaranteed stable for all engines/inputs).
+  return unique
+    .map((it, i) => ({ it, i, order: Number.isFinite(it.order) ? it.order : 0 }))
+    .sort((a, b) => a.order - b.order || a.i - b.i)
+    .map((x) => x.it)
+}
