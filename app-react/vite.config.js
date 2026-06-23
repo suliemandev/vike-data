@@ -1,7 +1,12 @@
 import vike from 'vike/plugin'
+import vikeI18n from 'vike-i18n/plugin'
 
 export default {
-  plugins: [vike()],
+  // vikeI18n() reads the app's `lang` + every extension's advertised `localePacks`
+  // and provides the virtual:vike-i18n/packs module that bundles only the matching
+  // locales (#79). It must come after vike() so getVikeConfig() sees a resolved
+  // config.
+  plugins: [vike(), vikeI18n()],
   // vike-react renders with the automatic JSX runtime (imports react/jsx-runtime),
   // so no `import React` is needed in components. Applies to app + workspace .jsx.
   esbuild: { jsx: 'automatic' },

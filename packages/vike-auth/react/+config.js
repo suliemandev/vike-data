@@ -7,17 +7,28 @@
 // config.pages (vike#3356): install this extension and /login + /account appear,
 // with no page file in the app.
 //
-// i18n is OPT-IN, not self-installed here: the components ship their English INLINE
-// (passed to useTranslation) and render standalone with no i18n runtime. Other
-// languages are SUBPATHS (vike-auth/fr, /ar) that the app extends alongside this;
-// they contribute their catalog to the cumulative `messages` and bring vike-i18n.
+// The i18n RUNTIME is still opt-in (the components ship English INLINE and render
+// standalone with no t() provider). What this extension self-installs is only the
+// HEADLESS i18n seam (vike-i18n/config) so it can ADVERTISE its language packs to
+// the `localePacks` registry — see `localePacks` below. That advertisement is what
+// makes zero-config `lang: [...]` work (#79): the app sets `lang` once and the
+// vike-i18n Vite plugin pulls in vike-auth's matching catalogs with no per-pack
+// import. The packs (vike-auth/fr, /ar) still also work the old manual way (their
+// +config.js contributes to `messages`); the registry just lets the framework wire
+// them automatically.
 //
 // Config-ONLY on purpose (Vike loads this in plain Node to resolve config): the JSX
 // pages/components are referenced by pointer-import strings (loaded by Vite). The
 // hook lives at vike-auth/react/hooks.
 export default {
   name: 'vike-auth-react',
-  extends: ['import:vike-auth/config:default'],
+  extends: ['import:vike-auth/config:default', 'import:vike-i18n/config:default'],
+  // The registry entry: a `{ <locale>: <catalog module specifier> }` map of this
+  // extension's language packs. Plain DATA (just strings) contributed to the
+  // cumulative `localePacks`, so it composes like `messages`/`schemas` with no
+  // pointer-import resolution. The Vite plugin imports only the entries whose
+  // locale is in the app's `lang`. English is the inline fallback, never a pack.
+  localePacks: [{ fr: 'vike-auth/fr/messages', ar: 'vike-auth/ar/messages' }],
   // `loginRedirect`: where a signed-in visitor to /login is sent. The app owns
   // its post-login home — `loginRedirect: '/admin'` — defaulting to '/'. Single
   // value (last wins), available on pageContext.config in every environment so
