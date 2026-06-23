@@ -2,7 +2,7 @@ import vike from 'vike/plugin'
 import vikeI18n from 'vike-i18n/plugin'
 
 export default {
-  // vikeI18n() reads the app's `lang` + every extension's advertised `localePacks`
+  // vikeI18n() reads the app's `locales` + every extension's advertised `localePacks`
   // and provides the virtual:vike-i18n/packs module that bundles only the matching
   // locales (#79). It must come after vike() so getVikeConfig() sees a resolved
   // config.

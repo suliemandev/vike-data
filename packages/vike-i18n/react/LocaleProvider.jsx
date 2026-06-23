@@ -6,8 +6,8 @@
 //
 // The context + useTranslation hook live in the pure-JS ./context.js (exposed at
 // vike-i18n/react/hooks); this file owns only the JSX provider.
-import { useState, useMemo, useCallback } from 'react'
-import { mergeMessages, translate } from '../index.js'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { mergeMessages, translate, localeDir } from '../index.js'
 import { I18nCtx } from './context.js'
 
 const writeCookie = (name, value) => {
@@ -28,6 +28,16 @@ export function LocaleProvider({ messages = [], locale: initialLocale = 'en', lo
     },
     [locales],
   )
+
+  // Keep <html lang>/<html dir> in sync when the picker switches locale WITHOUT a
+  // navigation (pure client state). SSR + client navigation already set these via
+  // vike-react's lang/htmlAttributes (vike-i18n/react/html); this covers the live
+  // in-place switch so an RTL locale flips the whole document immediately (#54).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.lang = locale
+    document.documentElement.dir = localeDir(locale)
+  }, [locale])
 
   // Expose the merged `dict` too, so useTranslation can layer a component's inline
   // English UNDER it (the optional-runtime fallback): provider/active-locale wins,

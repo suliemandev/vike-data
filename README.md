@@ -22,7 +22,7 @@ Two consequences run through everything here:
   are derived to CSS variables, the active translation is merged per locale, and the
   admin UI is derived from the composed schema.
 - **Compose, don't wire.** An app installs an extension with `extends: [ext]` and
-  configures it with a sibling key (`theme`, `layout`, `lang`, `segment`), exactly
+  configures it with a sibling key (`theme`, `layout`, `locales`, `segment`), exactly
   like `vike-react`'s `ssr`. No bespoke wiring per extension.
 
 ---
@@ -65,7 +65,7 @@ installs each and sets a sibling config key:
   (`vike-auth/fr`, `vike-auth/ar`).
 
 Everything **composes like packages**: install `vike-theme-emerald` and a new theme
-appears in the picker; add `'fr'` to `lang` and every installed extension's French
+appears in the picker; add `'fr'` to `locales` and every installed extension's French
 strings light up (see below). Neither the app nor the extension being styled,
 translated, or administered knows the other exists.
 
@@ -75,14 +75,14 @@ The app declares its languages once and every installed extension's matching pac
 included automatically, with no per-pack import:
 
 ```js
-lang: ['en', 'fr', 'ar']   // pulls in vike-auth/fr + /ar, and any other extension's packs
+locales: ['en', 'fr', 'ar']   // pulls in vike-auth/fr + /ar, and any other extension's packs
 ```
 
-`vike-i18n/plugin` (a Vite plugin) reads `lang` plus a cumulative `localePacks`
+`vike-i18n/plugin` (a Vite plugin) reads `locales` plus a cumulative `localePacks`
 registry that each extension advertises, and generates a virtual module that
-statically imports only the catalogs whose locale is in `lang`. So unused locales
+statically imports only the catalogs whose locale is in `locales`. So unused locales
 tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
-`extends`. Drop a locale from `lang` and it leaves the client bundle entirely.
+`extends`. Drop a locale from `locales` and it leaves the client bundle entirely.
 
 ---
 
@@ -105,7 +105,7 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 | `vike-themes` (+ `vike-themes/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `lang` plugin. |
+| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin. |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
 | `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel. |
@@ -148,7 +148,7 @@ Run the package tests with `pnpm -r test`.
 2. Each extension **contributes** to it (a schema fragment, a theme, a message map, a
    resource) and **self-installs** its base with a pointer-import
    (`extends: ['import:vike-themes/config:default']`), so one install pulls the chain.
-3. The app **picks** with a sibling key (`theme: 'acme'`, `lang: ['en','fr']`) and can
+3. The app **picks** with a sibling key (`theme: 'acme'`, `locales: ['en','fr']`) and can
    **override** any contribution (retranslate a string, restyle a theme).
 4. The consumer **merges + derives**: schema to migrations + ORM files; themes to the
    active CSS; messages to the dictionary for the active locale; the composed schema to
@@ -185,9 +185,10 @@ Per-package design notes live in each package's README (see
   next; richer field types and role-based access beyond signed-in are follow-ups.
 - **i18n**: builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`)
   and adds the message-*composition* layer Vike leaves to userland, with zero-config
-  `lang: [...]` auto-include via a Vite virtual module (tree-shaken per locale). RTL
-  (`dir` from locale) and an AI-translate tier (`vike translate` for the long tail) are
-  the next steps.
+  `locales: [...]` auto-include via a Vite virtual module (tree-shaken per locale). RTL
+  falls out of the active locale: vike-i18n drives `<html lang>` + `<html dir>`, so an
+  Arabic/Hebrew locale flips the whole document and every layout shell inherits it. An
+  AI-translate tier (`vike translate` for the long tail) is the next step.
 - **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
   table is the shape real apps use. It pressured the IR (no first-class *append-only*
   or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.

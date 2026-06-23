@@ -46,3 +46,28 @@ export function availableLocales(contributions, fallback = 'en') {
   for (const c of (contributions || []).flat()) for (const l of Object.keys(c || {})) set.add(l)
   return [...set]
 }
+
+// The right-to-left written languages, by ISO base code. Direction is a property
+// of the language, not the region, so we key on the base (`ar` covers `ar-EG`).
+// Arabic, Hebrew, Persian/Farsi, Urdu, Pashto, Sindhi, Dhivehi, Syriac, Yiddish.
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'dv', 'syr', 'yi'])
+
+/**
+ * The writing direction for a locale: `'rtl'` for Arabic/Hebrew/etc., else `'ltr'`.
+ * Region-tolerant (`ar-EG` -> `ar`). This is what drives `<html dir>` (#54), so an
+ * RTL locale flips the whole document and every layout shell inherits it.
+ */
+export function localeDir(locale) {
+  const base = String(locale || '').toLowerCase().split('-')[0]
+  return RTL_LOCALES.has(base) ? 'rtl' : 'ltr'
+}
+
+/**
+ * The active locale for a request, by precedence: Vike's locale routing
+ * (`pageContext.locale`) -> the `vike_locale` cookie (`localeCookie`, set by
+ * oncreate) -> the app's configured default (`config.locale`) -> `'en'`. Centralized
+ * here so the React Wrapper and the `<html lang>`/`<html dir>` config agree.
+ */
+export function activeLocale(pageContext = {}) {
+  return pageContext.locale || pageContext.localeCookie || pageContext.config?.locale || 'en'
+}

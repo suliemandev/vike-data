@@ -62,14 +62,16 @@ export default {
   theme: 'acme', // active brand, from the cumulative `themes` registry
   themes: [acme], // the app contributes its own brand (built-ins + emerald compose in)
 
-  // i18n: declare the app's languages ONCE with `lang` (#79). The vike-i18n Vite
+  // i18n: declare the app's languages ONCE with `locales` (#79). The vike-i18n Vite
   // plugin reads it + every installed extension's advertised `localePacks` and
   // auto-includes the matching catalogs (here: vike-auth/fr + vike-auth/ar), with
-  // NO per-pack import or `extends` — drop a locale from `lang` and it tree-shakes
+  // NO per-pack import or `extends`; drop a locale from `locales` and it tree-shakes
   // out of the bundle. `locale` is the default active locale; English ships INLINE
   // with the components as the universal fallback (never a pack). The app's own
-  // strings still compose through the cumulative `messages` point.
-  lang: ['en', 'fr', 'ar'],
+  // strings still compose through the cumulative `messages` point. `ar` flips the
+  // document to RTL automatically (#54): vike-i18n drives <html lang>/<html dir>
+  // off the active locale.
+  locales: ['en', 'fr', 'ar'],
   locale: 'en',
   messages: [appMessages],
 

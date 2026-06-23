@@ -23,16 +23,19 @@ test('defineLayout defaults to the centered public shell', () => {
   const l = defineLayout()
   assert.equal(l.shell, 'centered')
   assert.equal(l.kind, 'public')
-  assert.equal(l.dir, 'ltr')
+  // dir is unset by default so the shell INHERITS the document direction
+  // (owned by the active locale via vike-i18n's <html dir>, #54).
+  assert.equal(l.dir, undefined)
 })
 
 test('an unknown shell falls back to centered', () => {
   assert.equal(defineLayout({ shell: 'hologram' }).shell, 'centered')
 })
 
-test('defineLayout carries the rtl/ltr direction', () => {
+test('defineLayout forces direction only when explicitly rtl/ltr, else inherits', () => {
   assert.equal(defineLayout({ dir: 'rtl' }).dir, 'rtl')
-  assert.equal(defineLayout({ dir: 'bogus' }).dir, 'ltr')
+  assert.equal(defineLayout({ dir: 'ltr' }).dir, 'ltr')
+  assert.equal(defineLayout({ dir: 'bogus' }).dir, undefined) // inherit, don't force ltr
 })
 
 test('an app shell keeps the slots it renders', () => {
