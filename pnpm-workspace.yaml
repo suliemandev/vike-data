@@ -8,9 +8,11 @@ packages:
 # ERR_PNPM_IGNORED_BUILDS (e.g. on a clean clone or in CI).
 allowBuilds:
   esbuild: true
+  better-sqlite3: true
 
 onlyBuiltDependencies:
   - esbuild
+  - better-sqlite3
 
 verifyDepsBeforeRun: false
 

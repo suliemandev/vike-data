@@ -1,0 +1,25 @@
+{
+  "name": "vike-rudder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Rudder binding for vike-data: install it and a @rudderjs/database connection becomes the universal-orm adapter, so every extension writes to your database with no manual setAdapter wiring. registerRudder() builds a connection from a URL without the Rudder framework bootstrap, so it works from a plain Vike app.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/rudder": "workspace:*"
+  },
+  "peerDependencies": {
+    "@rudderjs/database": ">=1.5.0"
+  },
+  "devDependencies": {
+    "@rudderjs/database": "^1.5.5",
+    "better-sqlite3": "^12.0.0",
+    "vike-stripe": "workspace:*"
+  }
+}
