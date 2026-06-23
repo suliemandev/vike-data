@@ -52,10 +52,13 @@ function buildColumns(build) {
     integer: (n) => col(n, 'integer'),
     boolean: (n) => col(n, 'boolean'),
     timestamp: (n) => col(n, 'timestamp'),
-    // sugar: created_at + updated_at, both defaulting to now
-    timestamps() {
+    // sugar: created_at + updated_at, both defaulting to now. `updatedAt: false`
+    // omits `updated_at` for an APPEND-ONLY / immutable row (an event log, a charge
+    // record) where a mutable-row timestamp would be a lie — the row is recorded
+    // once and never updated.
+    timestamps(opts = {}) {
       col('created_at', 'timestamp').default('now')
-      col('updated_at', 'timestamp').default('now')
+      if (opts.updatedAt !== false) col('updated_at', 'timestamp').default('now')
     },
     // TABLE-LEVEL composite primary key over >=2 columns (e.g. a join table keyed
     // on both its FKs). Single-column PKs stay column-level (`t.uuid('id').primary()`);

@@ -24,7 +24,7 @@ export default function paymentSchemas(config) {
       t.string('description').nullable()
       t.string('stripe_payment_intent_id').unique() // idempotency key: one row per charge
       t.timestamp('paid_at')
-      t.timestamp('created_at').default('now') // recorded at (a charge is immutable)
+      t.timestamps({ updatedAt: false }) // created_at only: a charge is immutable, never updated
     }),
   ]
 }

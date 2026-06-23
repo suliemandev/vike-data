@@ -69,6 +69,14 @@ test('timestamps() sugar adds created_at + updated_at defaulting to now', () => 
   )
 })
 
+test('timestamps({ updatedAt: false }) adds created_at only (append-only row)', () => {
+  const { columns } = defineSchema('event__log', (t) => t.timestamps({ updatedAt: false }))
+  assert.deepEqual(
+    columns.map((c) => [c.name, c.type, c.default]),
+    [['created_at', 'timestamp', 'now']],
+  )
+})
+
 test('references("table") defaults the target column to id', () => {
   const [c] = defineSchema('posts', (t) => t.uuid('author_id').references('users')).columns
   assert.deepEqual(c.references, { table: 'users', column: 'id' })
