@@ -29,8 +29,14 @@ export default {
     // The registry extensions advertise into: a list of permission definitions
     // ({ name, label?, roles?: string[] }). Plain DATA, cumulative, like `schemas`.
     permissions: { env: { config: true, server: true, client: true }, cumulative: true },
+    // The role names a brand-new user is granted on first authenticated request
+    // (the "default roles on signup" seam). Cumulative + server-only: each extension
+    // or the app can contribute one, and the resolver assigns the union to a user who
+    // has no roles yet. Empty by default — opt in by setting `defaultRoles: ['member']`.
+    defaultRoles: { env: { server: true }, cumulative: true },
   },
   permissions: [],
+  defaultRoles: [],
   schemas: rbacSchemas,
   // Plug the resolver into vike-auth's user-enricher seam: auth runs it right after
   // it resolves pageContext.user, on every page, so can(user, ...) works everywhere

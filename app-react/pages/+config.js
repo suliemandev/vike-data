@@ -76,6 +76,12 @@ export default {
   locale: 'en',
   messages: [appMessages],
 
+  // rbac: the role a brand-new magic-link signup is granted on their first request
+  // (vike-rbac's default-role-on-signup seam, #111). The `member` role is seeded in
+  // +onCreateGlobalContext; the resolver assigns it to any signed-in user who has no
+  // role yet, so a fresh account isn't permission-less.
+  defaultRoles: ['member'],
+
   // layout: pick the app-shell + fill its slots. The auth /login page sets centered.
   layout: 'topbar',
   logo: '◆ Acme',
