@@ -78,6 +78,10 @@ export function field(name) {
 //     form: [ field('email').type('email').required(), field('name') ],
 //     canView: (user) => !!user,
 //     canEdit: (user) => user?.role === 'admin',
+//     // Row scoping (#104): bound a user to their OWN rows. Return a universal-orm filter,
+//     // or a falsy value for full access (encode the admin bypass here). The filter is
+//     // AND-merged into list/load/update/delete and forced onto inserts.
+//     scope: (user) => (user?.role === 'admin' ? null : { user_id: user.id }),
 //   })
 export function defineResource(def) {
   if (!def || typeof def !== 'object') {
