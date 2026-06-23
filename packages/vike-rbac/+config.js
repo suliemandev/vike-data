@@ -8,18 +8,20 @@
 //     installing an extension brings its permission set with it;
 //   - it provides a request-time RESOLVER (resolve.js) that enriches the signed-in
 //     user with roles + permissions, so the single sync `can(user, permission)`
-//     works everywhere the user object reaches: vike-admin's canView/canEdit and
-//     (later) a Telefunc RPC. The app wires it from an onCreatePageContext (see
-//     resolve.js for why app-level); self-wiring is a follow-up.
+//     works everywhere the user object reaches: vike-admin's canView/canEdit, a page
+//     guard, AND a Telefunc RPC (vike-rbac/telefunc + the telefunc seam). The
+//     enrichment is contributed to vike-auth's `resolveUser` seam (see resolve.js).
 //
 // It self-installs vike-auth (the user is the SUBJECT of a permission check), so a
 // single `extends: ['import:vike-rbac/config:default']` pulls vike-schema <-
 // vike-auth <- vike-rbac.
 //
-// DELIBERATELY OUT OF SCOPE for this first tier (pending the brillout call):
-// org-scoped roles / multi-tenancy (a later column on role_user, gated on the
-// teams/org model) and the Telefunc seam. Row/resource scoping is the separate
-// `scope(user)` layer vike-admin already has (#105), orthogonal to can().
+// The Telefunc seam (#110) lives in the same package but is OPT-IN, not wired here:
+// an app that wants guarded RPCs installs `telefunc`, adds vike-rbac/telefunc-plugin
+// to vite.config (dev) / vike-rbac/telefunc-middleware to its server (prod), and
+// guards telefunctions with vike-rbac/telefunc's requirePermission(). Row/resource
+// scoping stays the separate `scope(user)` layer vike-admin has (#105), orthogonal
+// to can().
 import { rbacSchemas } from './schema.js'
 
 export default {

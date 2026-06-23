@@ -99,7 +99,7 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 | `vike-drizzle` | Vike binding: `registerDrizzle(db, schema)` makes your Drizzle connection the `universal-orm` adapter, so extensions write to your database with no manual `setAdapter` wiring. |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its `/login` + `/account` pages ship as the `vike-auth/react` subpath; `vike-auth/fr` + `/ar` are language subpaths. |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike-rbac` | Roles & permissions: owns `roles` / `permissions` / `role_user` / `permission_role`, a cumulative `permissions` registry, and one `can(user, permission)` / `hasRole(user, role)` the app, vike-admin, and a future Telefunc seam share. Resolves onto the user via vike-auth's `resolveUser` seam. Self-installs vike-auth. |
+| `vike-rbac` | Roles & permissions: owns `roles` / `permissions` / `role_user` / `permission_role`, a cumulative `permissions` registry, and one `can(user, permission)` / `hasRole(user, role)` the app, vike-admin, and a Telefunc RPC seam (`vike-rbac/telefunc`) all share. Resolves onto the user via vike-auth's `resolveUser` seam. Self-installs vike-auth. |
 | `vike-stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert). Subject FK *computed* from `segment` (`b2b`/`b2c`); server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
 | **UI tier** (core + React binding) | |
 | `vike-admin` (+ `vike-admin/react`) | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). |
@@ -188,9 +188,12 @@ Per-package design notes live in each package's README (see
   `hasRole(user, role)`; the demo's admin `canView`/`canEdit` and session `scope`
   delegate to it. Resolution rides on a `resolveUser` seam in vike-auth (auth runs
   cumulative enrichers right after it resolves `pageContext.user`, on every page) so the
-  check is sync everywhere the user reaches. The first tier is flat roles -> permissions;
-  org-scoped roles (multi-tenancy) and the Telefunc RPC seam are designed-but-deferred,
-  pending a model call (see #103).
+  check is sync everywhere the user reaches. The same `can()` guards a **Telefunc RPC**:
+  `vike-rbac/telefunc`'s `requirePermission()` reads the signed-in, role-enriched user off
+  the Telefunc context (provided by a Vite plugin in dev / a universal middleware in prod),
+  so a server function is authorized by exactly what the admin's `canView` enforces. Flat
+  roles -> permissions plus org-scoped roles (multi-tenancy, via vike-teams memberships)
+  both work today (see #103).
 - **i18n**: builds on Vike's locale *routing* (`onBeforeRoute` + `pageContext.locale`)
   and adds the message-*composition* layer Vike leaves to userland, with zero-config
   `locales: [...]` auto-include via a Vite virtual module (tree-shaken per locale). RTL

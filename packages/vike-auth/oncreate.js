@@ -8,9 +8,7 @@
 // can't hand `user` to the renderer. onCreatePageContext is the supported
 // per-request pageContext enrichment hook, so the read happens here. (If Vike
 // bridges middleware context -> pageContext, this collapses into the middleware.)
-import { auth } from './instance.js'
-import { SESSION_COOKIE } from './constants.js'
-import { parseCookies } from './cookie.js'
+import { resolveSessionUserFromCookie } from './server.js'
 
 export default async function onCreatePageContext(pageContext) {
   // Server-only resolution. The session cookie is HttpOnly, so it can only be read
@@ -25,12 +23,10 @@ export default async function onCreatePageContext(pageContext) {
   //      override (e.g. a non-React binding), bail if it ever runs on the client:
   //      a client run has no cookie and would null out `user`.
   if (pageContext.isClientSide) return
-  const token = parseCookies(pageContext.headers?.cookie)[SESSION_COOKIE]
-  const resolved = token ? await auth.authenticate(token) : null
-  // A plain, serializable view of the user — safe to expose to the client.
-  pageContext.user = resolved
-    ? { id: resolved.user.id, email: resolved.user.email, name: resolved.user.name }
-    : null
+  // A plain, serializable view of the user ({ id, email, name }) — safe to expose
+  // to the client. Same cookie -> user resolution a Telefunc RPC handler reuses
+  // via vike-auth/server, so both read the session identically.
+  pageContext.user = await resolveSessionUserFromCookie(pageContext.headers?.cookie)
 
   // USER-ENRICHER SEAM. Other extensions need to add to the resolved user (e.g.
   // vike-rbac attaches roles/permissions) for EVERY page. They can't do it in their

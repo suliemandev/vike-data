@@ -9,6 +9,7 @@
     "./config": "./+config.js",
     "./middleware": "./vike-middleware.js",
     "./onCreatePageContext": "./oncreate.js",
+    "./server": "./server.js",
     "./react": "./react/+config.js",
     "./react/hooks": "./react/useUser.js",
     "./react/SignInForm": "./react/SignInForm.jsx",
