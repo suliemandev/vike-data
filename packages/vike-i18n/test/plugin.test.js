@@ -1,4 +1,4 @@
-// Unit tests for the zero-config `lang: [...]` virtual-module plugin (#79). These
+// Unit tests for the zero-config `locales: [...]` virtual-module plugin (#79). These
 // pin the PURE logic that decides which catalogs get statically imported (the
 // tree-shaking claim) — the side that doesn't need a running Vite/Vike.
 import { test } from 'node:test'
@@ -22,10 +22,10 @@ test('flattenRegistry normalizes nested arrays + functions to a flat list of map
   assert.deepEqual(flattenRegistry([], {}), [])
 })
 
-test('only locales in `lang` are imported (per-locale tree-shaking)', () => {
+test('only locales in `locales` are imported (per-locale tree-shaking)', () => {
   const reg = flattenRegistry(REGISTRY_RAW, {})
 
-  // lang includes fr but NOT ar -> only the fr catalog is imported; ar is absent
+  // locales includes fr but NOT ar -> only the fr catalog is imported; ar is absent
   // from the module entirely, so Vite never bundles it.
   const out = generateModule(['en', 'fr'], reg)
   assert.match(out, /import pack0 from "vike-auth\/fr\/messages"/)
@@ -33,7 +33,7 @@ test('only locales in `lang` are imported (per-locale tree-shaking)', () => {
   assert.match(out, /export const packs = \[pack0\]/)
 })
 
-test('all advertised locales light up when all are in `lang`', () => {
+test('all advertised locales light up when all are in `locales`', () => {
   const reg = flattenRegistry(REGISTRY_RAW, {})
   const out = generateModule(['en', 'fr', 'ar'], reg)
   assert.match(out, /vike-auth\/fr\/messages/)

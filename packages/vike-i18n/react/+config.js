@@ -7,6 +7,12 @@
 // Installing this is all the app does for i18n; extensions contribute their
 // strings through the cumulative `messages` config.
 //
+// It also drives vike-react's `lang` (<html lang>) and `htmlAttributes` (<html dir>)
+// off the active locale, so the document declares its language and flips to RTL for
+// Arabic/Hebrew/etc. with no app wiring (#54). Both are pointer-imported functions
+// (vike-react resolves them server-side per page); the live client-side flip is in
+// LocaleProvider.
+//
 // Config-ONLY on purpose: Vike loads this in plain Node to resolve the config, so
 // it imports no .jsx and re-exports nothing. The JSX (Wrapper/provider/picker) is
 // referenced via the pointer-import below and loaded by Vite. The t() hook lives
@@ -15,4 +21,6 @@ export default {
   name: 'vike-i18n-react',
   extends: ['import:vike-i18n/config:default'],
   Wrapper: 'import:vike-i18n/react/LocaleWrapper:default',
+  lang: 'import:vike-i18n/react/html:lang',
+  htmlAttributes: 'import:vike-i18n/react/html:htmlAttributes',
 }

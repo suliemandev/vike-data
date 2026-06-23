@@ -9,9 +9,9 @@
 //   - config.messages : explicit cumulative contributions (the app's own strings,
 //                        and any pack still wired the manual `extends` way).
 //   - the AUTO packs   : the language catalogs the vike-i18n Vite plugin pulled in
-//                        from the `localePacks` registry for the app's `lang`
+//                        from the `localePacks` registry for the app's `locales`
 //                        (#79). Imported from the virtual module so Vite bundles
-//                        only the locales in `lang` (per-locale tree-shaking). The
+//                        only the locales in `locales` (per-locale tree-shaking). The
 //                        plugin always provides this module (empty `packs` when no
 //                        registry/lang), so the static import never fails to
 //                        resolve as long as vikeI18n() is in the app's vite config.

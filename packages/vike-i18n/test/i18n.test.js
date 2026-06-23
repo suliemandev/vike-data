@@ -2,7 +2,7 @@
 // then look up + interpolate. These pin the composition + override contract.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { defineMessages, mergeMessages, translate, availableLocales } from '../index.js'
+import { defineMessages, mergeMessages, translate, availableLocales, localeDir, activeLocale } from '../index.js'
 import config from '../+config.js'
 
 const auth = defineMessages({
@@ -61,4 +61,22 @@ test('+config declares a locale selection + cumulative messages registry', () =>
   assert.equal(config.meta.messages.cumulative, true)
   assert.equal(config.locale, 'en')
   assert.ok(config.passToClient.includes('localeCookie'))
+})
+
+test('+config declares `locales` (single) + `localePacks` (cumulative)', () => {
+  assert.equal(config.meta.locales.cumulative, undefined)
+  assert.equal(config.meta.localePacks.cumulative, true)
+  assert.deepEqual(config.locales, ['en'])
+})
+
+test('localeDir flags RTL languages, region-tolerant, else ltr', () => {
+  for (const l of ['ar', 'he', 'fa', 'ur', 'ar-EG', 'AR']) assert.equal(localeDir(l), 'rtl', l)
+  for (const l of ['en', 'fr', 'de', 'en-US', '', null, undefined]) assert.equal(localeDir(l), 'ltr', String(l))
+})
+
+test('activeLocale follows precedence: routing > cookie > config default > en', () => {
+  assert.equal(activeLocale({ locale: 'fr', localeCookie: 'ar', config: { locale: 'de' } }), 'fr')
+  assert.equal(activeLocale({ localeCookie: 'ar', config: { locale: 'de' } }), 'ar')
+  assert.equal(activeLocale({ config: { locale: 'de' } }), 'de')
+  assert.equal(activeLocale({}), 'en')
 })

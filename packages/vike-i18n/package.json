@@ -11,6 +11,7 @@
     "./oncreate": "./oncreate.js",
     "./react": "./react/+config.js",
     "./react/hooks": "./react/context.js",
+    "./react/html": "./react/html.js",
     "./react/LocaleWrapper": "./react/LocaleWrapper.jsx"
   },
   "peerDependencies": {

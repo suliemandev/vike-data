@@ -46,9 +46,15 @@ export function isAppShell(name) {
 /**
  * Resolve an app's layout config into a normalized descriptor a shell renders
  * from. Unknown/missing shells fall back to `centered` (the safe public default).
- * `dir` carries the rtl/ltr concern (a layout responsibility, #25).
  *
- *   defineLayout({ shell: 'topbar', logo: 'Acme', nav: [{label,href}], dir: 'rtl' })
+ * `dir` is OPT-IN: set it only to FORCE a shell's direction. Left unset it is
+ * `undefined`, so the shell renders no `dir` attribute and INHERITS the document
+ * direction. That document direction is owned by the active locale (vike-i18n sets
+ * `<html dir>` from the locale, #54), so an RTL locale flips every shell with no
+ * per-layout wiring. Forcing `dir: 'rtl' | 'ltr'` here overrides that for one shell.
+ *
+ *   defineLayout({ shell: 'topbar', logo: 'Acme', nav: [{label,href}] })   // inherits
+ *   defineLayout({ shell: 'topbar', dir: 'rtl' })                          // forced rtl
  */
 export function defineLayout(config = {}) {
   const shell = config.shell && SHELLS[config.shell] ? config.shell : 'centered'
@@ -56,7 +62,7 @@ export function defineLayout(config = {}) {
   return {
     shell,
     kind: spec.kind,
-    dir: config.dir === 'rtl' ? 'rtl' : 'ltr',
+    dir: config.dir === 'rtl' || config.dir === 'ltr' ? config.dir : undefined,
     // Only the slots this shell actually renders are kept, so a centered shell
     // silently ignores nav/userMenu an app passed for its app shells.
     slots: {
