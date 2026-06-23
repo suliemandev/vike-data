@@ -86,6 +86,29 @@ function primaryKeyOf(schemaTable) {
   return schemaTable.columns.find((c) => c.primary)?.name ?? 'id'
 }
 
+// Row-level scoping (#104). A resource may declare `scope(user) -> filter`, a universal-orm
+// filter that bounds every row op to the rows the user owns (e.g. `(u) => ({ user_id: u.id })`).
+// The returned filter is AND-merged into list/count/load/update/delete and FORCED onto inserts,
+// so a non-admin only ever sees, edits, or creates their own rows. Returning a falsy value means
+// "no scoping" (full access) — the admin bypass is encoded in the function itself, e.g.
+// `(u) => (u.role === 'admin' ? null : { user_id: u.id })`. A resource with no `scope` is
+// unscoped (the original behaviour), so this is purely additive.
+function scopeFilter(resource, user) {
+  if (typeof resource.scope !== 'function') return {}
+  return resource.scope(user) ?? {}
+}
+
+// Force a scope's scalar owner columns onto a row/patch, so a scoped user can neither create
+// a row owned by someone else nor reassign ownership on edit (a forged `user_id` in the form
+// is overwritten). Only scalar equalities are forced; an `in`-style scope has no single value
+// to assign, so it bounds reads/edits but not writes. Returns the same object, mutated.
+function applyScopeOwnership(obj, scope) {
+  for (const [col, val] of Object.entries(scope)) {
+    if (val !== null && typeof val !== 'object') obj[col] = val
+  }
+  return obj
+}
+
 // /admin — the dashboard: the resources this install composed, filtered to what the
 // signed-in user may view. Each card links to its list.
 export function dashboardData(pageContext) {
@@ -117,6 +140,9 @@ export async function listData(pageContext) {
   const columns = viewColumns(resource, schemaTable)
   const db = buildDb(tables)
 
+  // Row scoping: bound both the count and the page to the user's own rows (#104).
+  const where = scopeFilter(resource, pageContext.user)
+
   // Sort: only honour a column the resource marked `sortable`, so a hand-typed
   // `?sort=` can't order by (or error on) a hidden/derived column.
   const search = pageContext.urlParsed?.search ?? {}
@@ -127,11 +153,11 @@ export async function listData(pageContext) {
 
   // Page: clamp to [1, pageCount] so a wild `?page=` lands on a real page.
   const pageSize = DEFAULT_PAGE_SIZE
-  const total = await db[table].count({})
+  const total = await db[table].count(where)
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const page = Math.min(Math.max(1, Number(search.page) || 1), pageCount)
 
-  const rows = await db[table].find({}, { limit: pageSize, offset: (page - 1) * pageSize, orderBy })
+  const rows = await db[table].find(where, { limit: pageSize, offset: (page - 1) * pageSize, orderBy })
   const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })
 
   return {
@@ -180,6 +206,9 @@ export async function newData(pageContext) {
       row[pk.name] = randomUUID()
     }
 
+    // Row scoping (#104): force the owner columns so a scoped user can only create rows they own.
+    applyScopeOwnership(row, scopeFilter(resource, pageContext.user))
+
     await db[table].insert(row)
     throw redirect(`/admin/${table}`)
   }
@@ -206,18 +235,25 @@ export async function editData(pageContext) {
   const db = buildDb(tables)
   const req = readFormRequest(pageContext)
 
+  // Row scoping (#104): every op keys on the primary key AND the scope, so a scoped user
+  // can only load / edit / delete a row they own — guessing another owner's id matches
+  // nothing (load -> redirect, update/delete -> no-op).
+  const scope = scopeFilter(resource, pageContext.user)
+  const owned = { ...scope, [pk]: id }
+
   if (req.method === 'POST') {
     const form = await req.formData()
     if (form.get('_action') === 'delete') {
-      await db[table].delete({ [pk]: id })
+      await db[table].delete(owned)
     } else {
-      await db[table].update({ [pk]: id }, rowFromForm(fields, form))
+      // Re-assert ownership on the patch so the edit can't reassign the row to another owner.
+      await db[table].update(owned, applyScopeOwnership(rowFromForm(fields, form), scope))
     }
     throw redirect(`/admin/${table}`)
   }
 
-  const values = await db[table].findOne({ [pk]: id })
-  if (!values) throw redirect(`/admin/${table}`) // deleted or never existed
+  const values = await db[table].findOne(owned)
+  if (!values) throw redirect(`/admin/${table}`) // deleted, never existed, or not the user's
 
   const withOptions = await loadFkOptions(fields, { db, config: pageContext.config, tables })
   return { table, label: resourceLabel(resource), fields: withOptions, values, id, pk }

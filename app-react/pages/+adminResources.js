@@ -44,6 +44,11 @@ const sessionsResource = defineResource({
     field('token').required(),
   ],
   canView: (user) => !!user,
+  // Row scoping (#104): a regular user sees / edits only their OWN sessions; an admin (by
+  // convention a `role: 'admin'` user) bypasses scoping and sees all. The demo user has no
+  // role, so each signed-in user is scoped to themselves — the Sessions list shows only theirs,
+  // while Users (unscoped above) still shows everyone.
+  scope: (user) => (user?.role === 'admin' ? null : { user_id: user.id }),
 })
 
 export default [usersResource, sessionsResource]

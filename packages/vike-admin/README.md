@@ -38,10 +38,17 @@ export const usersResource = defineResource({
   ],
   canView: (user) => !!user,
   canEdit: (user) => user?.role === 'admin',
+  // Row scoping: bound a user to their OWN rows. Return a universal-orm filter, or a
+  // falsy value for full access (encode the admin bypass here).
+  scope: (user) => (user?.role === 'admin' ? null : { user_id: user.id }),
 })
 ```
 
 Minimal case: `defineResource({ table: 'subscriptions' })` derives every column and field from the schema. List/form refinements are optional.
+
+### Row scoping
+
+`scope(user)` returns a universal-orm filter that bounds **every** row op for that resource to the user's own rows: it is AND-merged into the list (and its count), the edit load, update and delete, and its scalar columns are forced onto inserts (so a user can neither create a row owned by someone else nor reassign ownership). Return a falsy value for full access, so the admin bypass lives in the function itself. A resource with no `scope` is unscoped. This is how `/admin` doubles as a self-service view: each user sees and edits only what they own.
 
 ## How it works
 
@@ -49,7 +56,7 @@ Minimal case: `defineResource({ table: 'subscriptions' })` derives every column 
 - **Schema introspection**: each page's `data` hook resolves the merged schema (`resolveSchemas` + `mergeSchemas`) and derives columns/fields a resource omits, auto-hiding `id` / `*_hash` / timestamps.
 - **Data**: reads/writes go through [universal-orm](../universal-orm) (`db.<table>.find` / `.insert`) on whatever adapter the app registered (memory for dev, Drizzle for real). No ORM is imported.
 - **Create POST**: the `/admin/:table/new` route owns its own POST. Vike hands the Web Request as `pageContext._reqWeb`, so the same route renders the form (GET) and inserts (POST), then redirects. No separate endpoint.
-- **Auth**: a `guard` fences `/admin/*` to signed-in users (`pageContext.user`, from vike-auth); per-resource `canView` / `canEdit` refine further.
+- **Auth**: a `guard` fences `/admin/*` to signed-in users (`pageContext.user`, from vike-auth); per-resource `canView` / `canEdit` refine access, and `scope` (above) bounds which rows a user sees and edits.
 
 ## Server-env config
 
