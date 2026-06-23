@@ -4,11 +4,12 @@
 // (or a future Prisma/native adapter); the extension code calling `db.<table>.<op>`
 // does not change.
 //
-// It honours the same contract every adapter must (the five operations, each taking
-// the table name first) and reuses universal-orm's shared `matchesFilter`, so its
-// notion of a filter is identical to every other in-process adapter.
+// It honours the same contract every adapter must (the six operations, each taking
+// the table name first) and reuses universal-orm's shared `matchesFilter` /
+// `applyListOpts`, so its notion of a filter — and of paging/ordering — is identical
+// to every other in-process adapter.
 
-import { matchesFilter } from '@universal-orm/core'
+import { matchesFilter, applyListOpts } from '@universal-orm/core'
 
 export function createMemoryAdapter() {
   const store = new Map() // table name -> row[]
@@ -23,10 +24,17 @@ export function createMemoryAdapter() {
       return { ...row }
     },
 
-    async find(table, filter) {
-      return rowsOf(table)
+    async find(table, filter, opts) {
+      const matched = rowsOf(table)
         .filter((r) => matchesFilter(r, filter))
         .map((r) => ({ ...r }))
+      // applyListOpts orders/slices in process — the shared semantics every
+      // in-process adapter honours (mirror of `matchesFilter` for filtering).
+      return applyListOpts(matched, opts)
+    },
+
+    async count(table, filter) {
+      return rowsOf(table).filter((r) => matchesFilter(r, filter)).length
     },
 
     async upsert(table, row, { onConflict } = {}) {

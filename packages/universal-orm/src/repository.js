@@ -6,9 +6,10 @@
 // `@universal-orm/drizzle` (real) unchanged. Same shape as `@universal-middleware/*`:
 // the app installs one adapter, extensions stay ORM-free.
 //
-// The surface is NARROW on purpose (#44): insert / find / findOne / upsert /
-// update / delete with simple equality + `in` filters (see ./filter.js). Joins,
-// aggregates and raw SQL are out — drop to the underlying ORM for those.
+// The surface is NARROW on purpose (#44): insert / find / findOne / count /
+// upsert / update / delete with simple equality + `in` filters (see ./filter.js)
+// and simple limit / offset / orderBy paging (see ./list.js). Joins, aggregates
+// and raw SQL are out — drop to the underlying ORM for those.
 //
 // `schema` is the MERGED schema (the output of universal-schema's mergeSchemas):
 // `{ tables: [{ table, columns: [{ name, ... }] }] }`. Tables and their columns
@@ -18,14 +19,19 @@
 // The operations an adapter must implement. Each takes the table NAME first, so a
 // single adapter instance serves every table in the composed schema:
 //
-//   insert(table, row)                   -> the inserted row
-//   find(table, filter)                  -> matching rows (array)
-//   upsert(table, row, { onConflict })   -> the upserted row
-//   update(table, filter, patch)         -> the updated rows (array)
-//   delete(table, filter)                -> number of rows deleted
+//   insert(table, row)                       -> the inserted row
+//   find(table, filter, opts)                -> matching rows (array); opts = { limit, offset, orderBy }
+//   count(table, filter)                     -> number of matching rows (for paging)
+//   upsert(table, row, { onConflict })       -> the upserted row
+//   update(table, filter, patch)             -> the updated rows (array)
+//   delete(table, filter)                    -> number of rows deleted
 //
-// `findOne` is NOT an adapter op — the core derives it from `find`.
-export const ADAPTER_OPS = ['insert', 'find', 'upsert', 'update', 'delete']
+// `find`'s `opts` is optional — an adapter that ignores it still returns all
+// matching rows, so paging degrades gracefully. `findOne` is NOT an adapter op —
+// the core derives it from `find` (with `limit: 1`).
+export const ADAPTER_OPS = ['insert', 'find', 'count', 'upsert', 'update', 'delete']
+
+import { normalizeOrderBy } from './list.js'
 
 // Property names that must NOT be treated as table lookups, so the returned `db`
 // behaves like a normal (non-thenable) object: `await db`, structured-clone and
@@ -60,13 +66,22 @@ export function createRepository(schema, adapter) {
       assertColumns(table, row, 'insert')
       return adapter.insert(table, row)
     },
-    find(filter = {}) {
+    find(filter = {}, opts = {}) {
       assertColumns(table, filter, 'find')
-      return adapter.find(table, filter)
+      // Validate orderBy columns against the schema too (a typo'd sort column is
+      // an error, not a silent no-op), then pass the normalized opts to the adapter.
+      const orderBy = normalizeOrderBy(opts.orderBy)
+      assertColumns(table, Object.fromEntries(orderBy.map((o) => [o.column, true])), 'find orderBy')
+      return adapter.find(table, filter, { ...opts, orderBy })
     },
-    async findOne(filter = {}) {
-      const rows = await this.find(filter)
+    async findOne(filter = {}, opts = {}) {
+      // Only one row is needed, so cap the adapter at 1 (cheaper on SQL adapters).
+      const rows = await this.find(filter, { ...opts, limit: 1 })
       return rows[0] ?? null
+    },
+    count(filter = {}) {
+      assertColumns(table, filter, 'count')
+      return adapter.count(table, filter)
     },
     upsert(row, opts = {}) {
       assertColumns(table, row, 'upsert')
