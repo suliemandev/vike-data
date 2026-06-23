@@ -7,7 +7,12 @@ import { useData } from 'vike-react/useData'
 import { FormFields } from './FormFields.jsx'
 
 export default function NewPage() {
-  const { table, label: title, fields } = useData()
+  const data = useData()
+  // The agent API (#115) renders this route to run newData's create, then reads the JSON
+  // result off pageContext — the HTML is never used. Render nothing rather than crash on the
+  // missing form fields.
+  if (data.apiWrite) return null
+  const { table, label: title, fields } = data
   return (
     <div style={{ maxWidth: 520, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

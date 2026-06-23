@@ -4,7 +4,7 @@
 // pin the framework-free pieces.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pageRouteFor, projectRows } from '../api.js'
+import { pageRouteFor, projectRows, writeTargetFor } from '../api.js'
 
 test('pageRouteFor maps only /admin*.json paths to their page route', () => {
   assert.equal(pageRouteFor('/admin.json'), '/admin')
@@ -15,6 +15,18 @@ test('pageRouteFor maps only /admin*.json paths to their page route', () => {
   assert.equal(pageRouteFor('/admin/users'), null)
   assert.equal(pageRouteFor('/admin/users/new.json'), null) // nested, not a resource list
   assert.equal(pageRouteFor('/other.json'), null)
+})
+
+test('writeTargetFor maps a method + path to its page route, action and body need', () => {
+  assert.deepEqual(writeTargetFor('/admin/users.json', 'POST'), { pageRoute: '/admin/users/new', action: 'create', hasBody: true })
+  assert.deepEqual(writeTargetFor('/admin/users/u1.json', 'PATCH'), { pageRoute: '/admin/users/u1', action: 'update', hasBody: true })
+  assert.deepEqual(writeTargetFor('/admin/users/u1.json', 'PUT'), { pageRoute: '/admin/users/u1', action: 'update', hasBody: true })
+  assert.deepEqual(writeTargetFor('/admin/users/u1.json', 'DELETE'), { pageRoute: '/admin/users/u1', action: 'delete', hasBody: false })
+  // wrong shape for the verb -> null (the middleware turns that into a 405)
+  assert.equal(writeTargetFor('/admin/users.json', 'PATCH'), null) // no id to update
+  assert.equal(writeTargetFor('/admin/users/u1.json', 'POST'), null) // create has no id
+  assert.equal(writeTargetFor('/admin.json', 'POST'), null) // dashboard isn't writable
+  assert.equal(writeTargetFor('/admin/users.json', 'GET'), null) // GET is a read, not a write
 })
 
 test('projectRows narrows each row to its visible columns plus the primary key', () => {
