@@ -17,11 +17,19 @@
   "peerDependencies": {
     "react": ">=18",
     "vike": "^0.4.0",
-    "vike-react": ">=0.6"
+    "vike-react": ">=0.6",
+    "react-dom": ">=18"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "vike-react": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "vike-react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "scripts": {
     "test": "node --test"

@@ -1,7 +1,15 @@
-// The runtime switcher (fixed, bottom-right): two controls for the two axes —
-// Appearance (System / Light / Dark) and Theme (the registered brands, shown only
-// when there is more than one). Both switch live and persist via cookie.
+// The runtime theme switcher: two controls for the two axes — Appearance (System /
+// Light / Dark) and Theme (the registered brands, shown only when there's more than
+// one). Both switch live and persist via cookie.
+//
+// Placement composes with vike-toolbar: when a toolbar is installed, the controls
+// TELEPORT into its shared popover (#vike-toolbar-items) so all settings live in one
+// place; with no toolbar they render standalone (fixed, bottom-right). Either way the
+// controls render inside this extension's ThemeProvider, so useTheme stays live — the
+// portal moves the DOM, not the React tree, so context is preserved.
+import { createPortal } from 'react-dom'
 import { useTheme } from './context.js'
+import { useToolbarSlot } from './useToolbarSlot.js'
 
 const prettyLabel = (name) =>
   String(name)
@@ -18,8 +26,44 @@ const selectStyle = {
   fontSize: 13,
 }
 
-export function ThemePicker() {
+const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }
+
+// The bare controls (labeled rows) — rendered both standalone and teleported.
+function ThemeControls() {
   const { themeName, names, setTheme, appearance, appearances, setAppearance } = useTheme()
+  return (
+    <>
+      <label style={rowStyle}>
+        <span style={{ color: 'var(--color-muted)' }}>Appearance</span>
+        <select value={appearance} onChange={(e) => setAppearance(e.target.value)} style={selectStyle}>
+          {appearances.map((a) => (
+            <option key={a} value={a}>
+              {prettyLabel(a)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {names.length > 1 && (
+        <label style={rowStyle}>
+          <span style={{ color: 'var(--color-muted)' }}>Theme</span>
+          <select value={themeName} onChange={(e) => setTheme(e.target.value)} style={selectStyle}>
+            {names.map((n) => (
+              <option key={n} value={n}>
+                {prettyLabel(n)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </>
+  )
+}
+
+export function ThemePicker() {
+  const slot = useToolbarSlot()
+  // Installed alongside vike-toolbar -> teleport the live controls into its popover.
+  if (slot) return createPortal(<ThemeControls />, slot)
+  // No toolbar -> the standalone fixed picker (bottom-right).
   return (
     <div
       style={{
@@ -39,28 +83,7 @@ export function ThemePicker() {
         boxShadow: '0 1px 6px rgba(0,0,0,0.1)',
       }}
     >
-      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <span style={{ color: 'var(--color-muted)' }}>Appearance</span>
-        <select value={appearance} onChange={(e) => setAppearance(e.target.value)} style={selectStyle}>
-          {appearances.map((a) => (
-            <option key={a} value={a}>
-              {prettyLabel(a)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {names.length > 1 && (
-        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <span style={{ color: 'var(--color-muted)' }}>Theme</span>
-          <select value={themeName} onChange={(e) => setTheme(e.target.value)} style={selectStyle}>
-            {names.map((n) => (
-              <option key={n} value={n}>
-                {prettyLabel(n)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <ThemeControls />
     </div>
   )
 }
