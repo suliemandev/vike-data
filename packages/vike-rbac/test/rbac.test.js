@@ -40,13 +40,29 @@ const accessFor = (id) => resolveUserAccess(id, DATA)
 const userWith = (id) => ({ id, ...accessFor(id) })
 
 test('resolveUserAccess composes user -> roles -> permissions', () => {
-  assert.deepEqual(accessFor('u-ada'), { roles: ['admin'], permissions: ['users.view', 'users.edit'] })
-  assert.deepEqual(accessFor('u-mem'), { roles: ['member'], permissions: ['posts.read'] })
+  // flat (no org grants) -> the global roles/permissions plus two empty org maps.
+  assert.deepEqual(accessFor('u-ada'), {
+    roles: ['admin'],
+    permissions: ['users.view', 'users.edit'],
+    orgRoles: {},
+    orgPermissions: {},
+  })
+  assert.deepEqual(accessFor('u-mem'), {
+    roles: ['member'],
+    permissions: ['posts.read'],
+    orgRoles: {},
+    orgPermissions: {},
+  })
 })
 
 test('resolveUserAccess returns empty for an unknown / missing user', () => {
-  assert.deepEqual(accessFor('nobody'), { roles: [], permissions: [] })
-  assert.deepEqual(resolveUserAccess(undefined, DATA), { roles: [], permissions: [] })
+  assert.deepEqual(accessFor('nobody'), { roles: [], permissions: [], orgRoles: {}, orgPermissions: {} })
+  assert.deepEqual(resolveUserAccess(undefined, DATA), {
+    roles: [],
+    permissions: [],
+    orgRoles: {},
+    orgPermissions: {},
+  })
 })
 
 test('can() checks a resolved permission, deny-safe for signed-out/unresolved', () => {
@@ -63,6 +79,42 @@ test('hasRole() checks a resolved role name', () => {
   assert.equal(hasRole(userWith('u-ada'), 'admin'), true)
   assert.equal(hasRole(userWith('u-mem'), 'admin'), false)
   assert.equal(hasRole(null, 'admin'), false)
+})
+
+test('resolveUserAccess maps org grants (memberships) through role -> permissions (#109)', () => {
+  const access = resolveUserAccess('u-org', {
+    ...DATA,
+    orgGrants: [
+      { organization_id: 'org-A', role: 'admin' },
+      { organization_id: 'org-B', role: 'member' },
+      { user_id: 'someone-else', organization_id: 'org-A', role: 'member' }, // not this user
+      { organization_id: 'org-C', role: 'ghost' }, // unknown role -> grants nothing
+    ],
+  })
+  assert.deepEqual(access.roles, []) // no global role_user row for u-org
+  assert.deepEqual(access.permissions, [])
+  assert.deepEqual(access.orgRoles, { 'org-A': ['admin'], 'org-B': ['member'] })
+  assert.deepEqual(access.orgPermissions['org-A'].sort(), ['users.edit', 'users.view'])
+  assert.deepEqual(access.orgPermissions['org-B'], ['posts.read'])
+  assert.equal(access.orgRoles['org-C'], undefined)
+})
+
+test('can()/hasRole() honor an { org } context, deny-safe without it (#109)', () => {
+  const u = {
+    id: 'u-org',
+    ...resolveUserAccess('u-org', { ...DATA, orgGrants: [{ organization_id: 'org-A', role: 'admin' }] }),
+  }
+  assert.equal(can(u, 'users.edit'), false) // no GLOBAL grant
+  assert.equal(can(u, 'users.edit', { org: 'org-A' }), true) // granted in org A
+  assert.equal(can(u, 'users.edit', { org: 'org-B' }), false) // not a member there
+  assert.equal(hasRole(u, 'admin'), false) // not a global admin
+  assert.equal(hasRole(u, 'admin', { org: 'org-A' }), true)
+})
+
+test('a global role grants everywhere, with or without an { org } (#109)', () => {
+  const ada = userWith('u-ada') // global admin
+  assert.equal(can(ada, 'users.edit'), true)
+  assert.equal(can(ada, 'users.edit', { org: 'org-Z' }), true) // global wins regardless of org
 })
 
 test('requirePermission() guard throws 403 unless the user holds it', () => {

@@ -57,18 +57,55 @@ export async function resolveAccessOnto(pageContext) {
     }
   }
 
+  // Org-scoped roles (#109): if the app pointed `orgRoleSource` at a table that holds
+  // per-org role names (vike-teams `memberships`), read this user's rows and hand them
+  // to the resolver as org grants. Read through the RAW adapter, not the repo: that
+  // table belongs to another extension and isn't in rbac's merged schema. Off by
+  // default, so a flat app does no extra read.
+  const orgGrants = await readOrgGrants(adapter, pageContext.config?.orgRoleSource, user.id)
+
   // user -> roles -> permissions, in three narrow finds (equality + `in`).
   const roleIds = roleUser.map((r) => r.role_id)
-  const roles = roleIds.length ? await d.roles.find({ id: { in: roleIds } }) : []
-  const permissionRole = roleIds.length ? await d.permission_role.find({ role_id: { in: roleIds } }) : []
+  // Org grants reference roles by NAME, so widen the role/permission reads to cover
+  // them too (a global role and an org role of the same name share the same grants).
+  const orgRoleNames = [...new Set(orgGrants.map((g) => g.role).filter(Boolean))]
+  const roles = await rolesForUser(d, roleIds, orgRoleNames)
+  const allRoleIds = roles.map((r) => r.id)
+  const permissionRole = allRoleIds.length ? await d.permission_role.find({ role_id: { in: allRoleIds } }) : []
   const permIds = permissionRole.map((pr) => pr.permission_id)
   const permissions = permIds.length ? await d.permissions.find({ id: { in: permIds } }) : []
 
-  const access = resolveUserAccess(user.id, { roleUser, roles, permissionRole, permissions })
+  const access = resolveUserAccess(user.id, { roleUser, roles, permissionRole, permissions, orgGrants })
   // Mutate in place so the enrichment rides on the object auth already exposes via
   // passToClient (no separate passToClient needed) and the data hooks see it.
   user.roles = access.roles
   user.permissions = access.permissions
+  user.orgRoles = access.orgRoles
+  user.orgPermissions = access.orgPermissions
+}
+
+// Read a user's org-scoped role grants from the configured source table (vike-teams
+// `memberships`). `source` is a table name or `{ table, roleColumn, orgColumn }`;
+// undefined/empty -> no org grants. Normalized to the resolver's grant shape.
+async function readOrgGrants(adapter, source, userId) {
+  if (!source) return []
+  const { table, roleColumn = 'role', orgColumn = 'organization_id' } =
+    typeof source === 'string' ? { table: source } : source
+  if (!table) return []
+  const rows = await adapter.find(table, { user_id: userId })
+  return rows.map((r) => ({ organization_id: r[orgColumn], role: r[roleColumn] }))
+}
+
+// Roles the user might exercise: their global role ids OR any org-grant role name. One
+// `in` read per axis (skipping an empty axis), merged + de-duped by id.
+async function rolesForUser(d, roleIds, roleNames) {
+  const [byId, byName] = await Promise.all([
+    roleIds.length ? d.roles.find({ id: { in: roleIds } }) : [],
+    roleNames.length ? d.roles.find({ name: { in: roleNames } }) : [],
+  ])
+  const merged = new Map()
+  for (const r of [...byId, ...byName]) merged.set(r.id, r)
+  return [...merged.values()]
 }
 
 export default resolveAccessOnto

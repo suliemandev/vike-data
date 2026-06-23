@@ -54,6 +54,31 @@ test('no defaultRoles configured -> a roleless user stays roleless', async () =>
   assert.deepEqual(pageContext.user.permissions, [])
 })
 
+test('orgRoleSource reads a memberships table and resolves org-scoped access (#109)', async () => {
+  const a = await freshAdapter()
+  // Ada is a GLOBAL admin AND, via a memberships row, an admin in org-A only.
+  await assignRoles(a, 'u-ada', ['admin'])
+  await a.insert('memberships', { id: 'm-1', user_id: 'u-mem', organization_id: 'org-A', role: 'admin' })
+  await a.insert('memberships', { id: 'm-2', user_id: 'u-mem', organization_id: 'org-B', role: 'member' })
+
+  // u-mem has no global role, only org memberships.
+  const ctx = { user: { id: 'u-mem' }, config: { orgRoleSource: 'memberships' } }
+  await resolveAccessOnto(ctx)
+  assert.deepEqual(ctx.user.roles, []) // no app-wide role
+  assert.deepEqual(ctx.user.permissions, [])
+  assert.deepEqual(ctx.user.orgRoles, { 'org-A': ['admin'], 'org-B': ['member'] })
+  assert.deepEqual(ctx.user.orgPermissions['org-A'].sort(), ['users.edit', 'users.view'])
+})
+
+test('no orgRoleSource configured -> no org maps, no extra read (#109)', async () => {
+  const a = await freshAdapter()
+  await a.insert('memberships', { id: 'm-1', user_id: 'u-x', organization_id: 'org-A', role: 'admin' })
+  const ctx = { user: { id: 'u-x' }, config: {} } // memberships present but not wired
+  await resolveAccessOnto(ctx)
+  assert.deepEqual(ctx.user.orgRoles, {})
+  assert.deepEqual(ctx.user.orgPermissions, {})
+})
+
 test('resolveAccessOnto bails on client-side / signed-out', async () => {
   await freshAdapter()
   const clientCtx = { isClientSide: true, user: { id: 'u-ada' } }
