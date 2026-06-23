@@ -58,6 +58,26 @@ Minimal case: `defineResource({ table: 'subscriptions' })` derives every column 
 - **Create POST**: the `/admin/:table/new` route owns its own POST. Vike hands the Web Request as `pageContext._reqWeb`, so the same route renders the form (GET) and inserts (POST), then redirects. No separate endpoint.
 - **Auth**: a `guard` fences `/admin/*` to signed-in users (`pageContext.user`, from vike-auth); per-resource `canView` / `canEdit` refine access, and `scope` (above) bounds which rows a user sees and edits.
 
+## Agent API (JSON)
+
+The same admin, as machine-readable JSON, for an AI agent (or any HTTP client) acting on a user's behalf:
+
+- `GET /admin.json`: the resources the caller may view (the dashboard, as JSON).
+- `GET /admin/<table>.json`: a resource list. Pass the narrow universal-orm query as `?query=`, a URL-encoded JSON object: `{ filter, orderBy, limit, offset }` (equality + `in` only, the same surface as the rest of universal-orm). Discrete `?page` / `?sort` / `?dir` also work.
+
+```bash
+curl --cookie "$SESSION" \
+  "http://localhost:3000/admin/sessions.json?query=$(jq -rR @uri <<<'{"filter":{"active":true},"orderBy":"created_at","limit":20}')"
+```
+
+This is **not** a second surface with its own auth. The `.json` endpoint renders the matching admin page through Vike, so it runs the **exact same pipeline** as the browser UI: vike-auth resolves the user, vike-rbac enriches roles/permissions, the guard runs, and `listData` applies the same `scope(user)` AND-merge and `canView` allow-list. It then returns that data as JSON instead of HTML. So:
+
+- the caller's `?query=` can only ever **narrow within the row scope**, never widen past what the UI would show (scope is AND-merged last);
+- a non-viewable / unknown resource **404**s, an anonymous caller **401**s, an unknown column or operator is a **400** with a message: the same gates as the UI, no second authorization to get wrong;
+- rows are projected to the resource's **visible columns** (+ the primary key), so a hidden column (a password hash) never leaks.
+
+Read-only for now (GET); it reuses the session cookie. Write ops (POST → insert/update/delete) and API-token auth for headless agents are follow-ups.
+
 ## Server-env config
 
 `adminResources` is **server** config (not client): the admin is SSR + form POSTs, so a resource's functions (`canView` / `canEdit`, builders) stay server-side and nothing serializes to the client. Each data hook derives a plain, serializable view-model.
@@ -68,5 +88,6 @@ Minimal case: `defineResource({ table: 'subscriptions' })` derives every column 
 
 ## Known limits (MVP)
 
-- universal-orm `find` returns **all** rows (filters are equality / `in`; no limit/offset/order). Fine for a demo; list **pagination** is a small universal-orm follow-up, not a silent cap.
-- list + create only. Detail / edit / delete, FK fields as selects, per-type fields, and role auth beyond signed-in are follow-ups (see issue #53).
+- Queries are the narrow universal-orm surface: equality / `in` filters, single-column `orderBy`, `limit` / `offset` (no joins, ranges, OR, or raw SQL; drop to the ORM for those).
+- The agent API is **read-only** (GET) and reuses the session cookie; write ops (POST) and API-token auth for headless agents are follow-ups.
+- Per-type form fields, searchable/async FK selects, and role auth beyond `canView` / `canEdit` / `scope` are follow-ups (see issue #53).
