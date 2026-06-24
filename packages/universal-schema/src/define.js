@@ -21,6 +21,26 @@ function buildColumns(build) {
       unique() { c.unique = true; return api },
       nullable() { c.nullable = true; return api },
       default(v) { c.default = v; return api },
+      // Semantic UI hint: what the column MEANS (email, file, enum, longtext, json,
+      // date, ...), separate from its storage `type` and orthogonal to it. `.as()`
+      // is a fact about the data, NOT a rendering instruction: an email column is
+      // still a string column, so this does NOT change DDL/migrations (the compilers
+      // only read storage `type`/flags and ignore `semantic`). It rides on the column
+      // as plain data so every consumer derives its OWN rendering from one shared
+      // declaration — vike-admin's field-widget registry today, a future read-only or
+      // email renderer tomorrow. The vocabulary is OPEN (any non-empty string): a
+      // consumer that doesn't recognize a semantic type falls back to the storage
+      // `type`, and an extension can introduce a new one alongside the widget that
+      // renders it (e.g. vike-storage adds `file`). `opts` carries per-semantic data,
+      // e.g. enum's allowed `{ values }`.
+      as(semantic, opts = {}) {
+        if (typeof semantic !== 'string' || semantic === '') {
+          throw new Error('.as(semantic) expects a non-empty string semantic type')
+        }
+        c.semantic = semantic
+        if (Object.keys(opts).length) c.semanticOptions = { ...opts }
+        return api
+      },
       // Foreign key. `target` is 'table' (defaults to its `id` column) or
       // 'table.column'. The reference is plain data: merge.js validates the
       // target exists (even when another extension owns the table), and each ORM

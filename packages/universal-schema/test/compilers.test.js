@@ -18,6 +18,22 @@ test('toPrisma maps types and the @id / @default(uuid()) primary key', () => {
   assert.match(out, /@@map\("users"\)/)
 })
 
+test('.as() is a UI hint only — it never changes compiled output', () => {
+  const plain = ir((t) => {
+    t.string('email')
+    t.string('status')
+    t.text('bio')
+  })
+  const tagged = ir((t) => {
+    t.string('email').as('email')
+    t.string('status').as('enum', { values: ['a', 'b'] })
+    t.text('bio').as('longtext')
+  })
+  assert.equal(toPrisma(tagged), toPrisma(plain))
+  assert.equal(toDrizzle(tagged), toDrizzle(plain))
+  assert.equal(toRudder(tagged), toRudder(plain))
+})
+
 test('toPrisma renders nullable, unique, now-default and text', () => {
   const out = toPrisma(
     ir((t) => {

@@ -112,6 +112,20 @@ test('an extend marks its added columns', () => {
   assert.equal(nickname.added, true)
 })
 
+test('mergeSchemas preserves a column semantic hint through composition', () => {
+  const { tables } = mergeSchemas([
+    defineSchema('docs', (t) => {
+      t.uuid('id').primary()
+      t.string('status').as('enum', { values: ['draft', 'published'] })
+    }),
+    extendSchema('docs', (t) => t.string('cover').as('file')),
+  ])
+  const cols = tables[0].columns
+  assert.equal(cols.find((c) => c.name === 'status').semantic, 'enum')
+  assert.deepEqual(cols.find((c) => c.name === 'status').semanticOptions, { values: ['draft', 'published'] })
+  assert.equal(cols.find((c) => c.name === 'cover').semantic, 'file')
+})
+
 test('mergeSchemas flags a duplicate create of the same table', () => {
   const { conflicts } = mergeSchemas([users(), users()])
   assert.deepEqual(conflicts, [{ kind: 'duplicate-table', table: 'users' }])

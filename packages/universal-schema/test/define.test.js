@@ -98,3 +98,35 @@ test('.onDelete() modifier sets the action independently', () => {
   const [c] = defineSchema('posts', (t) => t.uuid('author_id').references('users').onDelete('set null')).columns
   assert.equal(c.onDelete, 'set null')
 })
+
+test('.as(semantic) tags the column without changing its storage type', () => {
+  const [c] = defineSchema('t', (t) => t.string('email').as('email')).columns
+  assert.equal(c.type, 'string')
+  assert.equal(c.semantic, 'email')
+})
+
+test('.as() carries per-semantic options (enum values) and chains', () => {
+  const [c] = defineSchema('t', (t) =>
+    t.string('status').as('enum', { values: ['draft', 'published'] }).nullable(),
+  ).columns
+  assert.equal(c.semantic, 'enum')
+  assert.deepEqual(c.semanticOptions, { values: ['draft', 'published'] })
+  assert.equal(c.nullable, true)
+})
+
+test('a column without .as() has no semantic field (fresh shape unchanged)', () => {
+  const [c] = defineSchema('t', (t) => t.string('name')).columns
+  assert.ok(!('semantic' in c))
+  assert.ok(!('semanticOptions' in c))
+})
+
+test('.as() with no options omits semanticOptions entirely', () => {
+  const [c] = defineSchema('t', (t) => t.text('bio').as('longtext')).columns
+  assert.equal(c.semantic, 'longtext')
+  assert.ok(!('semanticOptions' in c))
+})
+
+test('.as() rejects a non-string / empty semantic type', () => {
+  assert.throws(() => defineSchema('t', (t) => t.string('x').as('')), /non-empty string/)
+  assert.throws(() => defineSchema('t', (t) => t.string('x').as(42)), /non-empty string/)
+})
