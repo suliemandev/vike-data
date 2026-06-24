@@ -89,7 +89,8 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 ## Structure
 
 > For the layering, the composition mechanism, and the runtime + codegen lifecycle, see
-> **[Architecture.md](Architecture.md)**. Per-package detail is in each package's README.
+> **[Architecture.md](Architecture.md)**. To build an extension, see
+> **[AUTHORING.md](AUTHORING.md)**. Per-package detail is in each package's README.
 
 <table>
 <thead>

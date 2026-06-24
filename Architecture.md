@@ -2,8 +2,9 @@
 
 How vike-data fits together: the package layering, the one composition mechanism every
 concern reuses, and the runtime + codegen lifecycle. The [README](README.md) is the
-narrative tour and the per-package list; this is the structural reference. Per-package
-detail lives in each package's own README.
+narrative tour and the per-package list; this is the structural reference. To build an
+extension on these seams, see [AUTHORING.md](AUTHORING.md). Per-package detail lives in
+each package's own README.
 
 The whole system rests on one idea applied at every layer:
 
