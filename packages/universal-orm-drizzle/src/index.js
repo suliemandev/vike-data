@@ -45,6 +45,16 @@ export function createDrizzleAdapter(db, tables) {
     return entry
   }
 
+  // Resolve a neutral DB-name to its Drizzle column object (for eq/inArray/orderBy/
+  // onConflict), throwing a clear, role-specific error on a typo. `role` names the
+  // role in the error (e.g. 'orderBy ', 'conflict ') so the message points at the
+  // exact place the unknown column came from.
+  const columnOf = (meta, name, role = '') => {
+    const col = meta.byName[name]
+    if (!col) throw new Error(`@universal-orm/drizzle: unknown ${role}column "${name}"`)
+    return col
+  }
+
   // Translate a neutral row/patch (DB-name keys) into Drizzle input (property keys).
   const toInput = (obj, meta) =>
     Object.fromEntries(
@@ -64,8 +74,7 @@ export function createDrizzleAdapter(db, tables) {
   const whereOf = (filter, meta) => {
     const conds = []
     for (const [name, cond] of Object.entries(filter ?? {})) {
-      const col = meta.byName[name]
-      if (!col) throw new Error(`@universal-orm/drizzle: unknown column "${name}"`)
+      const col = columnOf(meta, name)
       conds.push(cond !== null && typeof cond === 'object' && Array.isArray(cond.in) ? inArray(col, cond.in) : eq(col, cond))
     }
     return conds.length ? and(...conds) : undefined
@@ -89,8 +98,7 @@ export function createDrizzleAdapter(db, tables) {
       if (order.length) {
         query = query.orderBy(
           ...order.map(({ column, dir }) => {
-            const col = meta.byName[column]
-            if (!col) throw new Error(`@universal-orm/drizzle: unknown orderBy column "${column}"`)
+            const col = columnOf(meta, column, 'orderBy ')
             return dir === 'desc' ? desc(col) : asc(col)
           }),
         )
@@ -114,11 +122,7 @@ export function createDrizzleAdapter(db, tables) {
       const values = toInput(row, meta)
       let query = db.insert(t).values(values)
       if (onConflict && onConflict.length) {
-        const target = onConflict.map((name) => {
-          const col = meta.byName[name]
-          if (!col) throw new Error(`@universal-orm/drizzle: unknown conflict column "${name}"`)
-          return col
-        })
+        const target = onConflict.map((name) => columnOf(meta, name, 'conflict '))
         // On conflict, update every NON-conflict column to the incoming value.
         const set = {}
         for (const [prop, value] of Object.entries(values)) {
