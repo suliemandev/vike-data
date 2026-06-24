@@ -1,0 +1,26 @@
+{
+  "name": "vike-storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "File storage / uploads: a swappable storage port (put/get/delete/url, in-memory in dev, S3/R2/disk in prod), an `uploads` metadata table, and a multipart upload endpoint bound to the signed-in user. Stateful like vike-push; the per-framework upload control + the vike-admin file widget land next.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./schema": "./schema.js",
+    "./middleware": "./middleware.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
+    "@universal-orm/core": "workspace:*",
+    "@vike-data/kit": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
+    "vike-auth": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/memory": "workspace:*"
+  }
+}
