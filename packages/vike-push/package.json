@@ -1,0 +1,26 @@
+{
+  "name": "vike-push",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web Push channel: sendPush(userId, payload) over stored subscriptions, a swappable push transport (console/outbox in dev, Web Push/VAPID in prod), a subscribe endpoint, and a per-framework client control + service worker. The second channel after vike-mail; sends through vike-queue.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./schema": "./schema.js",
+    "./middleware": "./middleware.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
+    "@universal-orm/core": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
+    "vike-auth": "workspace:*",
+    "vike-queue": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/memory": "workspace:*"
+  }
+}
