@@ -12,7 +12,7 @@ import { ADAPTER_OPS } from './repository.js'
 
 const KEY = Symbol.for('universal-orm.adapter')
 
-// Register the app's single runtime adapter. Validated against the same five-op
+// Register the app's single runtime adapter. Validated against the same ADAPTER_OPS
 // contract `createRepository` enforces, so a malformed adapter fails here — at the
 // app's call site — with a clear message, not later inside an extension.
 export function setAdapter(adapter) {
