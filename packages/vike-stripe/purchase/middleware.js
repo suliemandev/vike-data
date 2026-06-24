@@ -1,6 +1,8 @@
 // The purchase server tier: a universal middleware owning the purchase webhook. A
 // thin HTTP shell over the core; the write goes through universal-orm (no ORM
-// import). The event is parsed via the shared Stripe SDK (../stripe.js).
+// import). The event is verified + parsed via the shared Stripe SDK (../stripe.js):
+// the signature is checked over the RAW body before any write, so a forged POST is
+// rejected with a 400 and never reaches the database.
 //
 //   POST /stripe/purchase/webhook   charge event -> db.payments.insert(...)
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
@@ -24,9 +26,11 @@ export function purchaseWebhookHandler(payments, { provider = stripe } = {}) {
 
     let event
     try {
-      event = await provider.webhooks.constructEvent(request)
+      const rawBody = await request.text()
+      const signature = request.headers.get('stripe-signature')
+      event = await provider.webhooks.constructEvent(rawBody, signature)
     } catch {
-      return json(400, { ok: false, error: 'invalid-event' })
+      return json(400, { ok: false, error: 'invalid-signature' })
     }
 
     const result = await payments.recordCharge(event)

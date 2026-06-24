@@ -10,6 +10,7 @@ import { createMemoryAdapter } from '@universal-orm/memory'
 import subscriptionSchemas from '../subscription/schemas.js'
 import { createSubscriptions } from '../subscription/subscription.js'
 import { subscriptionWebhookHandler, SUBSCRIPTION_WEBHOOK_PATH } from '../subscription/middleware.js'
+import { createStripe, signWebhook } from '../stripe.js'
 
 const tableOf = (frags, name) => frags.find((f) => f.table === name)
 const colOf = (frag, name) => frag.columns.find((c) => c.name === name)
@@ -68,20 +69,47 @@ test('a subjectless event is rejected, nothing written', async () => {
 })
 
 // -------------------------------------------------------------------- webhook
-const post = (path, body) =>
-  new Request(`http://localhost${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  })
+const SECRET = 'whsec_test_subscription'
+const provider = createStripe({ webhookSecret: SECRET })
+const handler = (subscriptions) => subscriptionWebhookHandler(subscriptions, { provider })
 
-test('webhook upserts and responds 200', async () => {
+const signedPost = (path, body, secret = SECRET) => {
+  const raw = typeof body === 'string' ? body : JSON.stringify(body)
+  return new Request(`http://localhost${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'stripe-signature': signWebhook(raw, secret) },
+    body: raw,
+  })
+}
+
+test('a signed webhook upserts and responds 200', async () => {
   const { subscriptions, db } = makeSubscriptions()
-  const handle = subscriptionWebhookHandler(subscriptions)
-  const res = await handle(post(SUBSCRIPTION_WEBHOOK_PATH, { subject: 'org1', plan: 'pro' }))
+  const res = await handler(subscriptions)(signedPost(SUBSCRIPTION_WEBHOOK_PATH, { subject: 'org1', plan: 'pro' }))
   assert.equal(res.status, 200)
   assert.equal((await res.json()).subscription.plan, 'pro')
   assert.equal((await db.subscriptions.findOne({ organization_id: 'org1' })).plan, 'pro')
+})
+
+test('an unsigned webhook cannot set a subscription (400, nothing written)', async () => {
+  const { subscriptions, db } = makeSubscriptions()
+  const unsigned = new Request(`http://localhost${SUBSCRIPTION_WEBHOOK_PATH}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject: 'org1', plan: 'enterprise', seats: 9999 }),
+  })
+  const res = await handler(subscriptions)(unsigned)
+  assert.equal(res.status, 400)
+  assert.equal((await res.json()).error, 'invalid-signature')
+  assert.equal((await db.subscriptions.find()).length, 0)
+})
+
+test('a payload signed with the wrong secret is rejected (400, nothing written)', async () => {
+  const { subscriptions, db } = makeSubscriptions()
+  const res = await handler(subscriptions)(
+    signedPost(SUBSCRIPTION_WEBHOOK_PATH, { subject: 'org1', plan: 'enterprise' }, 'whsec_wrong'),
+  )
+  assert.equal(res.status, 400)
+  assert.equal((await db.subscriptions.find()).length, 0)
 })
 
 test('b2c segment keys the row on user_id', async () => {
@@ -91,7 +119,7 @@ test('b2c segment keys the row on user_id', async () => {
 })
 
 test('webhook falls through on other paths, 405 on non-POST', async () => {
-  const handle = subscriptionWebhookHandler(makeSubscriptions().subscriptions)
+  const handle = handler(makeSubscriptions().subscriptions)
   assert.equal(await handle(new Request('http://localhost/elsewhere')), undefined)
   assert.equal((await handle(new Request(`http://localhost${SUBSCRIPTION_WEBHOOK_PATH}`, { method: 'GET' }))).status, 405)
 })
