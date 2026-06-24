@@ -18,27 +18,22 @@
 // console/outbox transport runs, so sendMail works zero-config (and reproduces the old
 // console.log magic-link behaviour, now routed through the seam).
 import { registerJob, getJob, dispatch } from 'vike-queue'
+import { createPort, createOutbox } from '@vike-data/kit'
 
-const TRANSPORT_KEY = Symbol.for('vike-mail.transport')
-const DEFAULT_TRANSPORT_KEY = Symbol.for('vike-mail.transport.default')
-const OUTBOX_KEY = Symbol.for('vike-mail.outbox')
 const JOB = 'vike-mail:send'
 
-// The dev outbox: every message the default transport "sends", kept in memory so tests
-// and a dev UI can inspect what would have gone out. On globalThis so module dup can't
-// fork it.
-function outbox() {
-  return (globalThis[OUTBOX_KEY] ??= [])
-}
+// The dev outbox: every message the default transport "sends", kept so tests and a dev
+// UI can inspect what would have gone out.
+const outbox = createOutbox('vike-mail')
 
 /** Messages captured by the default console/outbox transport (dev/test inspection). */
 export function getOutbox() {
-  return outbox()
+  return outbox.get()
 }
 
 /** Clear the dev outbox (tests). */
 export function clearOutbox() {
-  outbox().length = 0
+  outbox.clear()
 }
 
 // The zero-config default transport: records to the outbox and logs a one-liner. This
@@ -46,7 +41,7 @@ export function clearOutbox() {
 function defaultTransport() {
   return {
     async send(message) {
-      outbox().push(message)
+      outbox.record(message)
       // JSON.stringify both fields so a `to`/`subject` containing a newline cannot forge
       // a log line (log injection); the values are user-influenced.
       // eslint-disable-next-line no-console
@@ -55,27 +50,32 @@ function defaultTransport() {
   }
 }
 
-/**
- * Register the app's mail transport. A transport is `{ send(message) -> Promise }`,
- * where message is `{ to, subject, html?, text?, from? }`. Validated at the call site
- * like setAdapter, so a malformed transport fails clearly here.
- */
+// The transport registry (the set/get/clear provider port), over @vike-data/kit so the
+// globalThis-Symbol caching + default fallback live in one audited place. A transport is
+// `{ send(message) -> Promise }`, message `{ to, subject, html?, text?, from? }`.
+const transportPort = createPort({
+  name: 'vike-mail.transport',
+  validate: (t) => {
+    if (!t || typeof t.send !== 'function') {
+      throw new Error('setMailTransport: expected a transport with a send(message) method')
+    }
+  },
+  default: defaultTransport,
+})
+
+/** Register the app's mail transport. */
 export function setMailTransport(transport) {
-  if (!transport || typeof transport.send !== 'function') {
-    throw new Error('setMailTransport: expected a transport with a send(message) method')
-  }
-  globalThis[TRANSPORT_KEY] = transport
+  transportPort.set(transport)
 }
 
 /** The registered transport, or the built-in console/outbox default. */
 export function getMailTransport() {
-  return globalThis[TRANSPORT_KEY] ?? (globalThis[DEFAULT_TRANSPORT_KEY] ??= defaultTransport())
+  return transportPort.get()
 }
 
 /** Clear the registered transport (tests). */
 export function clearMailTransport() {
-  delete globalThis[TRANSPORT_KEY]
-  delete globalThis[DEFAULT_TRANSPORT_KEY]
+  transportPort.clear()
 }
 
 // The send job. The handler resolves the transport at RUN time (not enqueue time), so a

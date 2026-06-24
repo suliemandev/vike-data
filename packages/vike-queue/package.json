@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@universal-orm/core": "workspace:*",
+    "@vike-data/kit": "workspace:*",
     "@vike-data/vike-schema": "workspace:*"
   },
   "devDependencies": {
