@@ -20,58 +20,58 @@
 import { randomUUID } from 'node:crypto'
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
+import { createPort, createOutbox } from '@vike-data/kit'
 
-const TRANSPORT_KEY = Symbol.for('vike-push.transport')
-const DEFAULT_TRANSPORT_KEY = Symbol.for('vike-push.transport.default')
-const OUTBOX_KEY = Symbol.for('vike-push.outbox')
 const JOB = 'vike-push:send'
 const TABLE = 'push_subscriptions'
 
-function outbox() {
-  return (globalThis[OUTBOX_KEY] ??= [])
-}
+const outbox = createOutbox('vike-push')
 
 /** Deliveries captured by the default console/outbox transport (dev/test inspection). */
 export function getPushOutbox() {
-  return outbox()
+  return outbox.get()
 }
 
 /** Clear the dev outbox (tests). */
 export function clearPushOutbox() {
-  outbox().length = 0
+  outbox.clear()
 }
 
 function defaultTransport() {
   return {
     async send(subscription, payload) {
-      outbox().push({ subscription, payload })
+      outbox.record({ subscription, payload })
       // eslint-disable-next-line no-console
       console.log(`[vike-push] (dev, no transport) endpoint=${JSON.stringify(subscription.endpoint)} payload=${JSON.stringify(payload)}`)
     },
   }
 }
 
-/**
- * Register the app's push transport. A transport is `{ send(subscription, payload) }`,
- * where subscription is `{ endpoint, keys: { p256dh, auth } }`. Validated at the call
- * site, like setMailTransport / setAdapter.
- */
+// The transport registry (the set/get/clear provider port), over @vike-data/kit. A
+// transport is `{ send(subscription, payload) }`, subscription `{ endpoint, keys }`.
+const transportPort = createPort({
+  name: 'vike-push.transport',
+  validate: (t) => {
+    if (!t || typeof t.send !== 'function') {
+      throw new Error('setPushTransport: expected a transport with a send(subscription, payload) method')
+    }
+  },
+  default: defaultTransport,
+})
+
+/** Register the app's push transport. */
 export function setPushTransport(transport) {
-  if (!transport || typeof transport.send !== 'function') {
-    throw new Error('setPushTransport: expected a transport with a send(subscription, payload) method')
-  }
-  globalThis[TRANSPORT_KEY] = transport
+  transportPort.set(transport)
 }
 
 /** The registered transport, or the built-in console/outbox default. */
 export function getPushTransport() {
-  return globalThis[TRANSPORT_KEY] ?? (globalThis[DEFAULT_TRANSPORT_KEY] ??= defaultTransport())
+  return transportPort.get()
 }
 
 /** Clear the registered transport (tests). */
 export function clearPushTransport() {
-  delete globalThis[TRANSPORT_KEY]
-  delete globalThis[DEFAULT_TRANSPORT_KEY]
+  transportPort.clear()
 }
 
 function requireAdapter() {

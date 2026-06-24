@@ -156,6 +156,8 @@ importers:
         specifier: ^5.0.0
         version: 5.2.4(vue@3.5.38)
 
+  packages/kit: {}
+
   packages/universal-orm:
     devDependencies:
       '@vike-data/universal-schema':
@@ -327,6 +329,9 @@ importers:
 
   packages/vike-mail:
     dependencies:
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
       vike-queue:
         specifier: workspace:*
         version: link:../vike-queue
@@ -339,6 +344,9 @@ importers:
       '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
@@ -370,6 +378,9 @@ importers:
       '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema

@@ -17,11 +17,23 @@
 //
 // Cached on globalThis so duplicate module evaluation (pointer imports, dev HMR) can't
 // fork the registries.
+import { createPort } from '@vike-data/kit'
 import { createInlineDriver } from './inline.js'
 
 const JOBS_KEY = Symbol.for('vike-queue.jobs')
-const DRIVER_KEY = Symbol.for('vike-queue.driver')
-const INLINE_KEY = Symbol.for('vike-queue.driver.inline')
+
+// The driver registry (the set/get/clear provider port), over @vike-data/kit. The
+// default is the inline driver, so dispatch() works with zero config. The job registry
+// below is a separate keyed Map (registerJob/getJob), not a single-value port.
+const driverPort = createPort({
+  name: 'vike-queue.driver',
+  validate: (driver) => {
+    if (!driver || typeof driver.enqueue !== 'function') {
+      throw new Error('setQueueDriver: expected a driver with an enqueue() method (e.g. createDatabaseDriver())')
+    }
+  },
+  default: createInlineDriver,
+})
 
 function jobRegistry() {
   return (globalThis[JOBS_KEY] ??= new Map())
@@ -50,10 +62,7 @@ export function getJob(name) {
  * at the call site like setAdapter, so a malformed driver fails clearly here.
  */
 export function setQueueDriver(driver) {
-  if (!driver || typeof driver.enqueue !== 'function') {
-    throw new Error('setQueueDriver: expected a driver with an enqueue() method (e.g. createDatabaseDriver())')
-  }
-  globalThis[DRIVER_KEY] = driver
+  driverPort.set(driver)
 }
 
 /**
@@ -62,14 +71,13 @@ export function setQueueDriver(driver) {
  * real driver by calling setQueueDriver once at server start.
  */
 export function getQueueDriver() {
-  return globalThis[DRIVER_KEY] ?? (globalThis[INLINE_KEY] ??= createInlineDriver())
+  return driverPort.get()
 }
 
-/** Clear both registries (tests). */
+/** Clear both registries — the keyed job Map and the driver port (tests). */
 export function clearQueue() {
   delete globalThis[JOBS_KEY]
-  delete globalThis[DRIVER_KEY]
-  delete globalThis[INLINE_KEY]
+  driverPort.clear()
 }
 
 /**

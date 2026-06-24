@@ -1,0 +1,14 @@
+{
+  "name": "@vike-data/kit",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Authoring kit for vike-data extensions: tiny framework-agnostic primitives for the patterns extensions repeat. createPort (a runtime set/get/clear provider registry with a default + validate-on-set, the setAdapter/setMailTransport shape) and createOutbox (a dev capture list). Zero dependencies, zero Vike imports.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
