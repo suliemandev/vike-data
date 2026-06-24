@@ -14,7 +14,7 @@
 // Pure: returns [{ path, contents }] pairs. No filesystem access here — the
 // binding/CLI decides where to write them.
 
-import { toPrisma, toDrizzle, toRudder } from './compilers.js'
+import { toPrisma, toDrizzle, toRudder, rudderCol } from './compilers.js'
 import { deriveRelations } from './merge.js'
 
 const DONT_EDIT = [
@@ -60,20 +60,9 @@ function drizzleFile(tables) {
 // only their own columns; a later `extend` becomes its own alter migration, so
 // the ordered ledger mirrors how the columns were actually contributed.
 function rudderAlter(frag) {
-  const body = frag.columns
-    .map((c) => {
-      let s = `t.${c.type}('${c.name}')`
-      if (c.nullable) s += '.nullable()'
-      if (c.unique) s += '.unique()'
-      if (c.default === 'now') s += '.useCurrent()'
-      else if (c.default !== undefined) s += `.default(${JSON.stringify(c.default)})`
-      if (c.references) {
-        s += `.references('${c.references.column}').on('${c.references.table}')`
-        if (c.onDelete) s += `.onDelete('${c.onDelete}')`
-      }
-      return `      ${s}`
-    })
-    .join('\n')
+  // Reuse the column renderer from the create compiler (rudderCol), but never
+  // re-declare the primary key on an add-column alter.
+  const body = frag.columns.map((c) => rudderCol(c, { includePrimary: false })).join('\n')
   return `import { Migration, Schema } from '@rudderjs/database'\n\nexport default class extends Migration {\n  async up() {\n    await Schema.table('${frag.table}', (t) => {\n${body}\n    })\n  }\n}`
 }
 
