@@ -51,7 +51,7 @@ contributed from `+config.js`:
 
   | route | method | does |
   |---|---|---|
-  | `/auth/request`  | POST | issue a single-use magic link for a `email` form field (dev: prints + shows the link, no email provider) |
+  | `/auth/request`  | POST | issue a single-use magic link for a `email` form field and deliver it through the `vike-mail` port (dev: the console/outbox transport records it and the link is shown inline) |
   | `/auth/callback` | GET  | verify the token, find-or-create the user, open a session, set the cookie |
   | `/auth/logout`   | POST | destroy the session server-side and clear the cookie |
 

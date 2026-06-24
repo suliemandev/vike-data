@@ -48,6 +48,22 @@ test('a registered transport receives the link instead of the default outbox', a
   clearMailTransport()
 })
 
+test('a failing transport does not break /auth/request (no existence leak)', async () => {
+  clearMailTransport()
+  clearOutbox()
+  // The transport throws, but the endpoint must still return the neutral 200 notice:
+  // a delivery failure must never reveal whether the address exists. maxAttempts is the
+  // sendMail default (3); the swallow is in the middleware, so the request still succeeds.
+  setMailTransport({ async send() { throw new Error('transport exploded') } })
+  const mw = createAuthMiddleware(auth, { dev: false })
+
+  const res = await postRequest(mw, 'who@example.com')
+  assert.equal(res.status, 200)
+  const body = await res.text()
+  assert.match(body, /Check your inbox/)
+  clearMailTransport()
+})
+
 test('an invalid email never reaches the mailer', async () => {
   clearMailTransport()
   clearOutbox()

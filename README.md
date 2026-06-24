@@ -105,11 +105,14 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 <tr><td><code>vike-schema</code><br><code>@vike-data/vike-schema</code></td><td>Vike binding: the cumulative <code>schemas</code> config point + the codegen Vite plugin.</td></tr>
 <tr><td><code>vike-drizzle</code></td><td>Vike binding: <code>registerDrizzle(db, schema)</code> makes your Drizzle connection the <code>universal-orm</code> adapter, so extensions write to your database with no manual <code>setAdapter</code> wiring.</td></tr>
 <tr><td><code>vike-rudder</code></td><td>Vike binding: <code>registerRudder({ driver, url })</code> makes the Rudder engine the <code>universal-orm</code> adapter (the twin of <code>vike-drizzle</code>).</td></tr>
-<tr><td><code>vike-auth</code></td><td>Auth core: owns <code>users</code> / <code>sessions</code> / <code>login_tokens</code> + a magic-link server tier (universal middleware + <code>pageContext.user</code>). React UI + its <code>/login</code> + <code>/account</code> pages ship as the <code>vike-auth/react</code> subpath; <code>vike-auth/fr</code> + <code>/ar</code> are language subpaths.</td></tr>
+<tr><td><code>vike-auth</code></td><td>Auth core: owns <code>users</code> / <code>sessions</code> / <code>login_tokens</code> + a magic-link server tier (universal middleware + <code>pageContext.user</code>); the magic link is delivered through the <code>vike-mail</code> port. UI + its <code>/login</code> + <code>/account</code> pages ship as the <code>vike-auth/react</code> and <code>vike-auth/vue</code> subpaths; <code>vike-auth/fr</code> + <code>/ar</code> are language subpaths.</td></tr>
 <tr><td><code>vike-teams</code></td><td>Orgs + memberships; references and extends <code>users</code>. Self-installs vike-auth.</td></tr>
 <tr><td><code>vike-rbac</code></td><td>Roles &amp; permissions: owns <code>roles</code> / <code>permissions</code> / <code>role_user</code> / <code>permission_role</code>, a cumulative <code>permissions</code> registry, and one <code>can(user, permission)</code> / <code>hasRole(user, role)</code> the app, vike-admin, and a Telefunc RPC seam (<code>vike-rbac/telefunc</code>) all share. Resolves onto the user via vike-auth's <code>resolveUser</code> seam. Self-installs vike-auth.</td></tr>
 <tr><td><code>vike-stripe</code></td><td>Stripe billing as subpath models: <code>subscription</code> (upsert) + <code>purchase</code> (insert). Subject FK <em>computed</em> from <code>segment</code> (<code>b2b</code>/<code>b2c</code>); server tier writes via universal-orm on a webhook. Self-installs vike-teams.</td></tr>
-<tr><td colspan="2"><strong>UI tier</strong> (core + React binding)</td></tr>
+<tr><td colspan="2"><strong>Background jobs &amp; mail</strong></td></tr>
+<tr><td><code>vike-queue</code></td><td>Background-job seam: a runtime job registry + <code>dispatch()</code> over a swappable driver (the inline driver for dev, a universal-orm <code>jobs</code>-table driver, or a production broker later). The base layer other extensions queue work onto.</td></tr>
+<tr><td><code>vike-mail</code></td><td>The mail port (the mail twin of <code>@universal-orm/core</code>): <code>sendMail()</code> + a swappable transport (console/outbox in dev, Resend/SES/SMTP in prod), sending through <code>vike-queue</code>. Producers depend on the port; the app registers the transport.</td></tr>
+<tr><td colspan="2"><strong>UI tier</strong> (core + React / Vue bindings)</td></tr>
 <tr><td><code>vike-admin</code><br><code>vike-admin/react</code></td><td>An admin panel on install: <code>/admin/*</code> CRUD pages derived from the composed schema; cumulative <code>adminResources</code> + <code>defineResource</code> refinements (FK selects, sort/search, per-row <code>scope</code>).</td></tr>
 <tr><td><code>vike-themes</code><br><code>vike-themes/react</code></td><td>Tokens to CSS variables; the <code>theme</code> (brand) + <code>appearance</code> axes + <code>useTheme()</code>.</td></tr>
 <tr><td><code>vike-theme-emerald</code></td><td>Example theme package (composes via the cumulative <code>themes</code> config).</td></tr>
@@ -119,12 +122,13 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 <tr><td colspan="2"><strong>Apps</strong></td></tr>
 <tr><td><code>app</code></td><td>Data-layer demo: the merged schema rendered + compiled to all three ORMs.</td></tr>
 <tr><td><code>app-react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
+<tr><td><code>app-vue</code></td><td>The Vue twin of <code>app-react</code>: the same composition over the <code>vike-*/vue</code> subpaths.</td></tr>
 </tbody>
 </table>
 
 The split is consistent: every core is framework-agnostic and Vike-agnostic where it
-can be; the Vike-/React-specific concern lives in a `vike-*/react` subpath of the same
-package (one package per concern, the framework as a subpath).
+can be; the Vike-/framework-specific concern lives in a `vike-*/react` (and `vike-*/vue`)
+subpath of the same package (one package per concern, the framework as a subpath).
 
 ---
 
@@ -141,12 +145,14 @@ pnpm gen:check                # CI drift gate: fail if committed artifacts are s
 
 # UI-tier demo: themed + localized login + admin panel
 cd app-react && pnpm dev      # http://localhost:4100
+cd app-vue && pnpm dev        # http://localhost:4200 (the Vue twin)
 ```
 
-In `app-react`, switch **Language** (bottom-left) and **Appearance / Theme**
-(bottom-right) live. The login flow is passwordless: submit an email, then open the
-magic link printed in the `pnpm dev` console. Once signed in, `/admin` lists and
-edits the composed tables.
+In `app-react` (and its Vue twin `app-vue`), switch **Language** (bottom-left) and
+**Appearance / Theme** (bottom-right) live. The login flow is passwordless: submit an
+email, then open the magic link. Delivery goes through the `vike-mail` port; with no
+transport registered its dev console/outbox records it and the link is shown inline.
+Once signed in, `/admin` lists and edits the composed tables.
 
 Run the package tests with `pnpm -r test`.
 

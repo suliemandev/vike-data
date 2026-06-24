@@ -17,7 +17,7 @@
 // Optional-runtime, like the ORM adapter: with no transport registered, the built-in
 // console/outbox transport runs, so sendMail works zero-config (and reproduces the old
 // console.log magic-link behaviour, now routed through the seam).
-import { registerJob, dispatch } from 'vike-queue'
+import { registerJob, getJob, dispatch } from 'vike-queue'
 
 const TRANSPORT_KEY = Symbol.for('vike-mail.transport')
 const DEFAULT_TRANSPORT_KEY = Symbol.for('vike-mail.transport.default')
@@ -47,8 +47,10 @@ function defaultTransport() {
   return {
     async send(message) {
       outbox().push(message)
+      // JSON.stringify both fields so a `to`/`subject` containing a newline cannot forge
+      // a log line (log injection); the values are user-influenced.
       // eslint-disable-next-line no-console
-      console.log(`[vike-mail] (dev, no transport) to=${message.to} subject=${JSON.stringify(message.subject)}`)
+      console.log(`[vike-mail] (dev, no transport) to=${JSON.stringify(message.to)} subject=${JSON.stringify(message.subject)}`)
     },
   }
 }
@@ -76,12 +78,19 @@ export function clearMailTransport() {
   delete globalThis[DEFAULT_TRANSPORT_KEY]
 }
 
-// The send job: registered once at import, so depending on vike-mail wires it. The
-// handler resolves the transport at run time (not enqueue time), so a transport
-// registered after dispatch but before the worker runs is still honoured.
-registerJob(JOB, async (message) => {
+// The send job. The handler resolves the transport at RUN time (not enqueue time), so a
+// transport registered after dispatch but before the worker runs is still honoured.
+const sendHandler = async (message) => {
   await getMailTransport().send(message)
-})
+}
+
+// Register the job (idempotent). Called at import so depending on vike-mail wires it,
+// AND from sendMail so a clearQueue() (vike-queue's test helper wipes the job registry)
+// can't permanently break sending: the next sendMail re-registers it.
+function ensureSendJob() {
+  if (!getJob(JOB)) registerJob(JOB, sendHandler)
+}
+ensureSendJob()
 
 function normalize(message) {
   if (!message || typeof message !== 'object') throw new Error('sendMail: message must be an object')
@@ -103,6 +112,7 @@ function normalize(message) {
  * caps retries (default 3, since transports are network calls).
  */
 export async function sendMail(message, opts = {}) {
+  ensureSendJob() // self-heal if the queue's job registry was cleared since import
   const normalized = normalize(message)
   return dispatch(JOB, normalized, { maxAttempts: opts.maxAttempts ?? 3 })
 }
