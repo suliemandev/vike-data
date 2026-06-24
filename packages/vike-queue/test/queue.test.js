@@ -100,6 +100,47 @@ test('database driver: enqueue inserts a pending row; work() runs it to done', a
   assert.equal(rows[0].attempts, 1)
 })
 
+test('database driver: payload round-trips JSON; an absent payload arrives as null', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  setQueueDriver(createDatabaseDriver())
+
+  const seen = []
+  registerJob('echo', async (payload) => { seen.push(payload) })
+
+  await dispatch('echo', { a: 1, nested: { b: [2, 3] } })
+  await dispatch('echo', undefined) // JSON.stringify(undefined ?? null) -> 'null'
+  await getQueueDriver().work()
+
+  assert.deepEqual(seen[0], { a: 1, nested: { b: [2, 3] } })
+  assert.equal(seen[1], null)
+})
+
+test('database driver: a corrupt payload column is swallowed to null (parsePayload)', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  const driver = createDatabaseDriver()
+  setQueueDriver(driver)
+
+  let received = 'unset'
+  registerJob('parse', async (p) => { received = p })
+
+  // a row written with a non-JSON payload (e.g. a corrupted/legacy row)
+  const ts = '2026-01-01T00:00:00.000Z'
+  await adapter.insert('jobs', {
+    id: 'j-corrupt', name: 'parse', payload: '{not json',
+    status: 'pending', attempts: 0, max_attempts: 1, run_at: ts, created_at: ts, updated_at: ts,
+  })
+
+  const summary = await driver.work()
+  assert.deepEqual(summary, { processed: 1, done: 1, failed: 0, rescheduled: 0 })
+  assert.equal(received, null) // corrupt JSON -> null, handler still runs, row marked done
+  const row = (await adapter.find('jobs', { id: 'j-corrupt' }))[0]
+  assert.equal(row.status, 'done')
+})
+
 test('database driver: a failing job reschedules, then fails at max_attempts', async () => {
   reset()
   const adapter = createMemoryAdapter()

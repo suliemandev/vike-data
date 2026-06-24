@@ -49,6 +49,14 @@ test('setMailTransport validates the transport', () => {
   assert.throws(() => setMailTransport(null), /send\(message\)/)
 })
 
+test('a failing transport rejects sendMail (after retries, under the inline driver)', async () => {
+  reset()
+  let calls = 0
+  setMailTransport({ async send() { calls++; throw new Error('smtp down') } })
+  await assert.rejects(() => sendMail({ to: 'x@y.z', subject: 'nope' }, { maxAttempts: 2 }), /smtp down/)
+  assert.equal(calls, 2) // retried up to maxAttempts
+})
+
 test('send runs through vike-queue (it is a registered job)', async () => {
   reset()
   // The job resolves the transport at RUN time: register after dispatch is set up,

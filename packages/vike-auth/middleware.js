@@ -90,6 +90,10 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
       // vike-mail's dev console/outbox transport records it, and an app that registers a
       // real transport (Resend/SES) actually emails it. Delivery must not reveal whether
       // the address exists, so a failure is swallowed and the neutral notice still shows.
+      // INVARIANT: requestMagicLink issues a token for ANY syntactically-valid email with
+      // no DB existence check, so there is no existence-dependent branch here and thus no
+      // timing oracle. Do NOT add an "only send if the user exists" path: that would make
+      // delivery latency leak existence, which swallowing the error alone would not close.
       try {
         await sendMail({
           to: result.email,

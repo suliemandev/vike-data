@@ -51,12 +51,18 @@ export function createDatabaseDriver({ now = () => new Date().toISOString() } = 
     // Drain up to `max` ready jobs (status pending, run_at <= now). One attempt per row
     // per pass: on success -> done; on failure -> reschedule with backoff, or mark failed
     // once attempts hit max_attempts. Returns a small summary for a caller/CLI to log.
-    // (The adapter filters are equality + `in` only, so run_at <= now is applied in JS.)
+    //
+    // `max` is a PROCESSING cap, not a fetch cap: the adapter filters are equality + `in`
+    // only, so the whole pending set is read and run_at <= now is applied in JS. Fine for
+    // the spike / a single drainer; a production driver would push the predicate + LIMIT
+    // into the query. Compare run_at via Date.parse (not string order) so a custom `now`
+    // format can't silently break ordering.
     async work({ max = 100 } = {}) {
       const adapter = requireAdapter()
       const ts = now()
+      const nowMs = Date.parse(ts)
       const pending = await adapter.find(TABLE, { status: 'pending' })
-      const ready = pending.filter((j) => !j.run_at || j.run_at <= ts).slice(0, max)
+      const ready = pending.filter((j) => !j.run_at || Date.parse(j.run_at) <= nowMs).slice(0, max)
 
       let done = 0
       let failed = 0
