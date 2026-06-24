@@ -19,6 +19,7 @@ import emeraldExt from 'vike-theme-emerald/config'
 import i18nExt from 'vike-i18n/react'
 import toolbarExt from 'vike-toolbar/react'
 import rbacExt from 'vike-rbac/config'
+import pushExt from 'vike-push/config'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 
@@ -51,7 +52,13 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt],
+  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt, pushExt],
+
+  // push: install vike-push (adds the push_subscriptions table + the /push/subscribe
+  // endpoint). The VAPID public key the subscribe control hands to PushManager; the
+  // matching private key would live server-side in the app's push transport (here the
+  // dev console/outbox transport is used, so no private key is needed). Demo keypair.
+  vapidPublicKey: 'BDNJY5tBAEFdFWQFeZjDA0JoEm0MscKeDo5JpxJ1QCm2hv56lroZiHk0a3NEvq6sPJsIBGXOIsyKaf4BRP4aEG4',
   title: 'vike-data React UI tier',
 
   // admin: install vike-admin/react — one import brings the /admin/* pages and the

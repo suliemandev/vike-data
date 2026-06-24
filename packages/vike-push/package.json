@@ -8,7 +8,11 @@
     ".": "./index.js",
     "./config": "./+config.js",
     "./schema": "./schema.js",
-    "./middleware": "./middleware.js"
+    "./middleware": "./middleware.js",
+    "./sw": "./sw.js",
+    "./client": "./client.js",
+    "./react/PushToggle": "./react/PushToggle.jsx",
+    "./vue/PushToggle": "./vue/PushToggle.vue"
   },
   "scripts": {
     "test": "node --test"
@@ -22,5 +26,17 @@
   },
   "devDependencies": {
     "@universal-orm/memory": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6",
+    "vue": ">=3",
+    "vike-vue": ">=0.9"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true },
+    "vue": { "optional": true },
+    "vike-vue": { "optional": true }
   }
 }
