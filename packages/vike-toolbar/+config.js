@@ -19,6 +19,8 @@
 // is server + client (NOT config: an entry's `Control` is .jsx, which Vike can't load
 // during plain-Node config resolution). Framework-agnostic: no UI is imported here; the
 // React Wrapper is pulled in by the vike-toolbar/react subpath.
+import { TOOLBAR_ROOT_ID } from './index.js'
+
 export default {
   name: 'vike-toolbar',
   meta: {
@@ -27,5 +29,5 @@ export default {
   toolbarItems: [],
   // The out-of-hydration-root mount node the React UI portals into (and that other
   // extensions teleport their controls into). One element, owned by vike-toolbar.
-  bodyHtmlEnd: '<div id="vike-toolbar-root"></div>',
+  bodyHtmlEnd: `<div id="${TOOLBAR_ROOT_ID}"></div>`,
 }

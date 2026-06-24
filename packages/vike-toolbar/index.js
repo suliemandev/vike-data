@@ -11,6 +11,14 @@
 // Zero framework imports here — this is just the item shape + the merge. The React UI
 // (the button, the popover, rendering each item's control) lives in vike-toolbar/react.
 
+// The DOM-id contract this package OWNS. Other extensions (vike-themes, vike-i18n) target
+// these same nodes from their own framework's portal/teleport to drop a live control into
+// the shared popover. They are exported as the canonical source so consumers can import
+// them instead of re-hardcoding the literals (today each consumer re-declares its own copy).
+// These are a CONSUMED CONTRACT: the string VALUES must never change.
+export const TOOLBAR_ROOT_ID = 'vike-toolbar-root' // the out-of-hydration mount node
+export const TOOLBAR_ITEMS_ID = 'vike-toolbar-items' // the in-popover teleport target
+
 // A toolbar item is `{ id, label?, order?, Control }` where Control is the per-framework
 // control component (carried through the cumulative config as a pointer-import, exactly
 // like vike-auth's `resolveUser` enrichers — see +config.js). `order` sorts the popover
