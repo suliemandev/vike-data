@@ -15,12 +15,31 @@ const CREATE = `
     qty INTEGER
   )`
 
+// A table whose primary key is NOT `id` (#142). The old update re-read by a hard-coded `id`,
+// so on this table every matched row had `r.id === undefined` and update returned [].
+const CREATE_TOKENS = `
+  CREATE TABLE tokens (
+    token TEXT PRIMARY KEY,
+    used INTEGER
+  )`
+
+// A table with a COMPOSITE primary key — no single PK column to re-read by at all.
+const CREATE_GRANTS = `
+  CREATE TABLE grants (
+    user_id TEXT,
+    role TEXT,
+    level INTEGER,
+    PRIMARY KEY (user_id, role)
+  )`
+
 let native
 let db // the universal-orm adapter
 
 before(async () => {
   native = await NativeAdapter.make({ driver: 'sqlite', url: ':memory:' })
   await native.affectingStatement(CREATE, [])
+  await native.affectingStatement(CREATE_TOKENS, [])
+  await native.affectingStatement(CREATE_GRANTS, [])
   db = createRudderAdapter(native)
 })
 
@@ -30,6 +49,8 @@ after(async () => {
 
 beforeEach(async () => {
   await native.affectingStatement('DELETE FROM items', [])
+  await native.affectingStatement('DELETE FROM tokens', [])
+  await native.affectingStatement('DELETE FROM grants', [])
 })
 
 const seed = (rows) => Promise.all(rows.map((r) => db.insert('items', r)))
@@ -94,6 +115,29 @@ test('update returns the changed rows, even when the patch mutates the filtered 
 test('update on a non-matching filter is a no-op returning []', async () => {
   await seed([{ slug: 'a', display_name: 'A', qty: 1 }])
   assert.deepEqual(await db.update('items', { slug: 'nope' }, { qty: 9 }), [])
+})
+
+test('update returns the changed rows on a table whose PK is not `id` (#142)', async () => {
+  await db.insert('tokens', { token: 'tok_a', used: 0 })
+  await db.insert('tokens', { token: 'tok_b', used: 0 })
+  // The write must succeed AND return the changed row — the old code returned [] here because
+  // it re-read by a hard-coded `id` the table does not have.
+  const updated = await db.update('tokens', { token: 'tok_a' }, { used: 1 })
+  assert.equal(updated.length, 1)
+  assert.deepEqual(updated[0], { token: 'tok_a', used: 1 })
+  // ...and the row was actually mutated in the DB.
+  assert.equal((await db.find('tokens', { token: 'tok_a' }))[0].used, 1)
+  assert.equal((await db.find('tokens', { token: 'tok_b' }))[0].used, 0)
+})
+
+test('update returns the changed rows on a table with a COMPOSITE primary key (#142)', async () => {
+  await db.insert('grants', { user_id: 'u1', role: 'admin', level: 1 })
+  await db.insert('grants', { user_id: 'u1', role: 'member', level: 1 })
+  const updated = await db.update('grants', { user_id: 'u1', role: 'admin' }, { level: 5 })
+  assert.equal(updated.length, 1)
+  assert.deepEqual(updated[0], { user_id: 'u1', role: 'admin', level: 5 })
+  assert.equal((await db.find('grants', { user_id: 'u1', role: 'admin' }))[0].level, 5)
+  assert.equal((await db.find('grants', { user_id: 'u1', role: 'member' }))[0].level, 1)
 })
 
 test('upsert: inserts, then converges the same row keyed by the conflict column', async () => {
