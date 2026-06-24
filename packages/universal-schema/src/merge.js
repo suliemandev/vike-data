@@ -102,7 +102,25 @@ export function mergeSchemas(fragments) {
       conflicts.push({ kind: 'duplicate-table', table: f.table })
       continue
     }
-    tables.set(f.table, { table: f.table, columns: f.columns.map((c) => ({ ...c })), ...(f.primaryKey ? { primaryKey: f.primaryKey } : {}), ...(f.foreignKeys ? { foreignKeys: f.foreignKeys } : {}) })
+    // Clone the table-level `primaryKey` / `foreignKeys` arrays too, not just the columns:
+    // a fragment can arrive more than once across renders (see dedupeFragments), so the merged
+    // table must OWN its arrays — sharing the input instances would let any later mutation of
+    // `table.primaryKey` / `table.foreignKeys` corrupt the source fragment and every other
+    // merge that shares it (#143).
+    tables.set(f.table, {
+      table: f.table,
+      columns: f.columns.map((c) => ({ ...c })),
+      ...(f.primaryKey ? { primaryKey: [...f.primaryKey] } : {}),
+      ...(f.foreignKeys
+        ? {
+            foreignKeys: f.foreignKeys.map((fk) => ({
+              ...fk,
+              columns: [...fk.columns],
+              references: { ...fk.references, columns: [...fk.references.columns] },
+            })),
+          }
+        : {}),
+    })
   }
 
   // extends next: a 3rd-party extension ADDS columns to an existing table
