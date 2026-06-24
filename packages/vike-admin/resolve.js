@@ -116,12 +116,15 @@ export function viewFields(resource, table) {
       const spec = entry.build ? entry.build() : entry
       const schemaCol = byName.get(spec.name)
       const fk = fkOf(schemaCol)
+      const { type, widget, options } = fieldRender(schemaCol, fk, spec.type)
       return {
         name: spec.name,
         label: spec.label ?? titleCase(spec.name),
-        type: spec.type ?? (fk ? 'select' : inputType(schemaCol?.type)),
+        type,
+        widget,
         required: spec.required ?? requiredBySchema(schemaCol),
         ...(fk ? { fk } : {}),
+        ...(options ? { options } : {}),
       }
     })
   }
@@ -129,8 +132,35 @@ export function viewFields(resource, table) {
     .filter((c) => !isHiddenColumn(c.name))
     .map((c) => {
       const fk = fkOf(c)
-      return { name: c.name, label: titleCase(c.name), type: fk ? 'select' : inputType(c.type), required: requiredBySchema(c), ...(fk ? { fk } : {}) }
+      const { type, widget, options } = fieldRender(c, fk, undefined)
+      return {
+        name: c.name,
+        label: titleCase(c.name),
+        type,
+        widget,
+        required: requiredBySchema(c),
+        ...(fk ? { fk } : {}),
+        ...(options ? { options } : {}),
+      }
     })
+}
+
+// A field's rendering descriptor, splitting the two concerns the form view-model carries.
+// `type` is the COERCION token the data hook reads to build the row (boolean / integer /
+// select / text) — kept stable so the write path (data.js) is unchanged and back-compatible.
+// `widget` is the RENDERING token the form's field-widget registry dispatches on: it defaults
+// to `type`, but a column's SEMANTIC hint (`.as('email')`, `.as('enum')`, #176) takes
+// precedence so one schema declaration drives a rich control (email / longtext / enum / date /
+// json). An explicit field `.type(...)` override and a foreign key (always a select) win for
+// BOTH, exactly as before. For an `enum` semantic the allowed values become static select
+// `options`, in the same { value, label } shape the data hook fills for a foreign key — so the
+// select widget renders them with no extra wiring (and the FK option-loader leaves them alone).
+function fieldRender(schemaCol, fk, explicitType) {
+  const type = explicitType ?? (fk ? 'select' : inputType(schemaCol?.type))
+  const widget = explicitType ?? (fk ? 'select' : (schemaCol?.semantic ?? inputType(schemaCol?.type)))
+  const enumValues = !fk && schemaCol?.semantic === 'enum' ? schemaCol.semanticOptions?.values : null
+  const options = Array.isArray(enumValues) ? enumValues.map((v) => ({ value: v, label: String(v) })) : null
+  return { type, widget, options }
 }
 
 // The column a table's rows are labeled by in selects and FK cells. A resource may

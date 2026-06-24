@@ -13,6 +13,8 @@
     "./api": "./api.js",
     "./query": "./query.js",
     "./react": "./react/+config.js",
+    "./react/widgets": "./react/widgets.jsx",
+    "./react/widget-registry": "./react/widget-registry.js",
     "./react/DashboardPage": "./react/DashboardPage.jsx",
     "./react/ListPage": "./react/ListPage.jsx",
     "./react/NewPage": "./react/NewPage.jsx",
