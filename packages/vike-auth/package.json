@@ -19,6 +19,14 @@
     "./react/loginGuard": "./react/loginGuard.js",
     "./react/AccountPage": "./react/AccountPage.jsx",
     "./react/messages": "./react/messages.js",
+    "./vue": "./vue/+config.js",
+    "./vue/hooks": "./vue/useUser.js",
+    "./vue/SignInForm": "./vue/SignInForm.vue",
+    "./vue/UserButton": "./vue/UserButton.vue",
+    "./vue/LoginPage": "./vue/LoginPage.vue",
+    "./vue/loginGuard": "./vue/loginGuard.js",
+    "./vue/AccountPage": "./vue/AccountPage.vue",
+    "./vue/messages": "./vue/messages.js",
     "./fr": "./fr/+config.js",
     "./fr/messages": "./fr/messages.js",
     "./ar": "./ar/+config.js",
@@ -39,10 +47,14 @@
   "peerDependencies": {
     "react": ">=18",
     "vike": ">=0.4",
-    "vike-react": ">=0.6"
+    "vike-react": ">=0.6",
+    "vue": ">=3.5",
+    "vike-vue": ">=0.9"
   },
   "peerDependenciesMeta": {
     "react": { "optional": true },
-    "vike-react": { "optional": true }
+    "vike-react": { "optional": true },
+    "vue": { "optional": true },
+    "vike-vue": { "optional": true }
   }
 }

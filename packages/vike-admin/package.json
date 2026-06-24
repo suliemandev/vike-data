@@ -16,7 +16,12 @@
     "./react/DashboardPage": "./react/DashboardPage.jsx",
     "./react/ListPage": "./react/ListPage.jsx",
     "./react/NewPage": "./react/NewPage.jsx",
-    "./react/EditPage": "./react/EditPage.jsx"
+    "./react/EditPage": "./react/EditPage.jsx",
+    "./vue": "./vue/+config.js",
+    "./vue/DashboardPage": "./vue/DashboardPage.vue",
+    "./vue/ListPage": "./vue/ListPage.vue",
+    "./vue/NewPage": "./vue/NewPage.vue",
+    "./vue/EditPage": "./vue/EditPage.vue"
   },
   "scripts": {
     "test": "node --test"
@@ -30,6 +35,14 @@
   "peerDependencies": {
     "react": ">=18",
     "vike": "*",
-    "vike-react": ">=0.6"
+    "vike-react": ">=0.6",
+    "vue": ">=3",
+    "vike-vue": ">=0.9"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true },
+    "vue": { "optional": true },
+    "vike-vue": { "optional": true }
   }
 }

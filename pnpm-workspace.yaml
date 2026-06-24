@@ -1,6 +1,7 @@
 packages:
   - app
   - app-react
+  - app-vue
   - packages/*
 
 # pnpm 11 requires build scripts to be explicitly approved via `allowBuilds`;

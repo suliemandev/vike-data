@@ -1,0 +1,31 @@
+{
+  "name": "app-vue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vue 3 demo app: vike-vue + vike-auth/vue + the UI tier (themes, layouts, i18n, admin, toolbar). The Vue twin of app-react.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*",
+    "vue": "^3.5.0",
+    "vike": "^0.4.0",
+    "vike-vue": "^0.9.11",
+    "vike-admin": "workspace:*",
+    "vike-auth": "workspace:*",
+    "vike-i18n": "workspace:*",
+    "vike-layouts": "workspace:*",
+    "vike-rbac": "workspace:*",
+    "vike-theme-emerald": "workspace:*",
+    "vike-themes": "workspace:*",
+    "vike-toolbar": "workspace:*",
+    "telefunc": "^0.2.20"
+  }
+}
