@@ -41,10 +41,32 @@ const { id, key, url } = await storeUpload(user.id, { filename, mime, bytes })
 
 `POST`/`DELETE` are bound to the signed-in user (vike-auth session), so a client can only upload as itself and delete only its own files. `DELETE` is scoped to the owner, so guessing another user's id deletes nothing.
 
+## Upload controls
+
+Framework-agnostic helpers (`vike-storage/client`): `uploadFile(file)` and `deleteUpload(id)`. Thin React and Vue controls wrap them:
+
+```jsx
+import { FileUpload } from 'vike-storage/react/FileUpload'
+<FileUpload onUploaded={({ url }) => console.log(url)} />
+```
+
+```vue
+<script setup>import FileUpload from 'vike-storage/vue/FileUpload'</script>
+<FileUpload @uploaded="onUploaded" />
+```
+
+## vike-admin file widget
+
+Install the bridge alongside vike-admin and a column declared `.as('file')` renders an uploader in the admin form, with no bespoke admin code:
+
+```js
+import storageAdminExt from 'vike-storage/react-admin'
+export default { extends: [/* ... */ storageExt, storageAdminExt] }
+```
+
+The bridge registers a `file` widget into vike-admin's field-widget registry (proving the registry is third-party-extensible). The control uploads the chosen file and submits the returned URL as the column value. React today; the Vue admin widget follows once vike-admin ships a Vue widget registry (the standalone `vike-storage/vue/FileUpload` works now).
+
 ## Not yet (follow-ups)
 
-- The per-framework upload control (`vike-storage/react`, `/vue`) and the vike-admin `file` widget, so an `.as('file')` column renders as an uploader.
-- Real signed URLs / private buckets / per-object access control.
+- Real signed URLs / private buckets / per-object access control. `GET` is a capability URL (unguessable key, no per-object ACL) for now.
 - Image transforms / thumbnails.
-
-`GET` is a capability URL (unguessable key, no per-object ACL) for now; private buckets are a follow-up.

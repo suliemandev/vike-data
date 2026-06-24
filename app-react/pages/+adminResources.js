@@ -27,6 +27,9 @@ const usersResource = defineResource({
     field('email').type('email').required(),
     field('name'),
     field('active'),
+    // `avatar` is the app's `.as('file')` extension column (avatar.schema.js); vike-admin
+    // renders it as vike-storage's upload control via the registered `file` widget.
+    field('avatar'),
     // id / password_hash / timestamps are auto-hidden by convention.
   ],
   // RBAC (#103): the admin predicates now delegate to the same can() the rest of the

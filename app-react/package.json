@@ -12,6 +12,7 @@
   "dependencies": {
     "@universal-orm/core": "workspace:*",
     "@universal-orm/memory": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vike": "^0.4.0",
@@ -21,6 +22,7 @@
     "vike-i18n": "workspace:*",
     "vike-layouts": "workspace:*",
     "vike-push": "workspace:*",
+    "vike-storage": "workspace:*",
     "vike-rbac": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",

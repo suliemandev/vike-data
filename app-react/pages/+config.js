@@ -20,8 +20,11 @@ import i18nExt from 'vike-i18n/react'
 import toolbarExt from 'vike-toolbar/react'
 import rbacExt from 'vike-rbac/config'
 import pushExt from 'vike-push/config'
+import storageExt from 'vike-storage/config'
+import storageAdminExt from 'vike-storage/react-admin'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
+import { usersAvatar } from './avatar.schema.js'
 
 // (customization) the app's own brand theme — one brand carrying BOTH modes.
 // Override only the tokens you want; contributed via the cumulative `themes`
@@ -52,7 +55,14 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt, pushExt],
+  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt, pushExt, storageExt, storageAdminExt],
+
+  // storage: install vike-storage (adds the `uploads` table + the /uploads endpoint) and the
+  // storage-to-admin bridge (storageAdminExt registers a `file` widget in vike-admin). The app
+  // then extends `users` with an `avatar` column declared `.as('file')` (avatar.schema.js), so
+  // the Users admin form renders an uploader for it - the proof that the widget registry is
+  // third-party-extensible. Contributed to the cumulative `schemas` point.
+  schemas: [usersAvatar],
 
   // push: install vike-push (adds the push_subscriptions table + the /push/subscribe
   // endpoint). The VAPID public key the subscribe control hands to PushManager; the
