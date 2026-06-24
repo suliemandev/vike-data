@@ -90,11 +90,15 @@ function requireAdapter() {
 export async function saveSubscription(userId, subscription) {
   const adapter = requireAdapter()
   const ts = new Date().toISOString()
+  // Normalize the subscription's encryption material once (the column is auth_secret,
+  // not auth; missing keys become null) so the update and insert paths stay in sync.
   const keys = subscription.keys || {}
+  const p256dh = keys.p256dh ?? null
+  const authSecret = keys.auth ?? null
   const existing = (await adapter.find(TABLE, { endpoint: subscription.endpoint }))[0]
   if (existing) {
     await adapter.update(TABLE, { endpoint: subscription.endpoint }, {
-      user_id: userId, p256dh: keys.p256dh ?? null, auth_secret: keys.auth ?? null, updated_at: ts,
+      user_id: userId, p256dh, auth_secret: authSecret, updated_at: ts,
     })
     return { id: existing.id, updated: true }
   }
@@ -102,8 +106,8 @@ export async function saveSubscription(userId, subscription) {
     id: randomUUID(),
     user_id: userId,
     endpoint: subscription.endpoint,
-    p256dh: keys.p256dh ?? null,
-    auth_secret: keys.auth ?? null,
+    p256dh,
+    auth_secret: authSecret,
     created_at: ts,
     updated_at: ts,
   }
