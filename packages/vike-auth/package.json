@@ -6,6 +6,7 @@
   "description": "Auth extension: a framework-agnostic core (owns users + sessions + login_tokens and a magic-link server tier via universal middleware, ORM-agnostic) plus a React binding as a subpath (vike-auth/react), which ships its own /login + /account pages. One package; install and import the subpath for your framework.",
   "exports": {
     ".": "./index.js",
+    "texts": "./texts.json",
     "./config": "./+config.js",
     "./middleware": "./vike-middleware.js",
     "./onCreatePageContext": "./oncreate.js",

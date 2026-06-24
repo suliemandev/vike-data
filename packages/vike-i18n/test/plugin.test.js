@@ -64,3 +64,31 @@ test('multiple extensions advertising the same locale each contribute', () => {
   assert.match(out, /vike-billing\/fr\/messages/)
   assert.match(out, /export const packs = \[pack0, pack1\]/)
 })
+
+// Tier 2 (#102): the committed translation.json gets inlined into the same `packs`
+// array, AFTER the bundled tier-1 imports so it wins (committed > pack > inline en).
+const COMMITTED = { ar: { 'auth.signIn': 'تسجيل الدخول' }, fr: { 'auth.signIn': 'Connexion' } }
+
+test('committed translations inline as literals after the imported packs', () => {
+  const reg = flattenRegistry([[{ ar: 'vike-auth/ar/messages' }]], {})
+  const out = generateModule(['en', 'ar'], reg, COMMITTED)
+  // tier-1 ar pack is imported, tier-2 ar committed is inlined (not imported)
+  assert.match(out, /import pack0 from "vike-auth\/ar\/messages"/)
+  assert.match(out, /const committed1 = .*تسجيل الدخول/)
+  // committed comes AFTER pack0 in the packs array -> later wins in mergeMessages
+  assert.match(out, /export const packs = \[pack0, committed1\]/)
+})
+
+test('committed only inlines locales in `locales` (English + others tree-shake out)', () => {
+  // fr is committed but not requested; en is never a target -> neither appears
+  const out = generateModule(['en', 'ar'], [], COMMITTED)
+  assert.match(out, /تسجيل الدخول/) // ar present
+  assert.doesNotMatch(out, /Connexion/) // fr absent (not in locales)
+  assert.match(out, /export const packs = \[committed0\]/)
+})
+
+test('no committed translations -> behaves exactly as before (back-compat)', () => {
+  const out = generateModule(['en', 'ar'], flattenRegistry([[{ ar: 'vike-auth/ar/messages' }]], {}))
+  assert.match(out, /export const packs = \[pack0\]/)
+  assert.doesNotMatch(out, /committed/)
+})
