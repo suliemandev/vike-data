@@ -29,14 +29,21 @@ import {
 // row becomes `{ value: <ref column>, label: <recordTitle of the target> }`. The target's
 // label column comes from its resource's `recordTitle` (else a schema default), so a
 // `user_id` field shows users by email instead of by uuid. Plain + serializable.
-async function loadFkOptions(fields, { db, config, tables }) {
+//
+// Row scoping (#141): the lookup is bounded by the TARGET resource's own `scope(user)` —
+// the same filter that bounds its own list — so a scoped user's FK dropdown can only offer
+// rows they would be allowed to see in the referenced table, never the whole table. A
+// target with no registered resource or no scope is unbounded (the original behaviour),
+// so this is purely additive.
+async function loadFkOptions(fields, { db, config, tables, user }) {
   return Promise.all(
     fields.map(async (f) => {
       if (!f.fk) return f
       const targetTable = tableNamed(tables, f.fk.table)
       if (!targetTable) return f
-      const titleCol = recordTitleColumn(findResource(config, f.fk.table), targetTable)
-      const rows = await db[f.fk.table].find({})
+      const targetResource = findResource(config, f.fk.table)
+      const titleCol = recordTitleColumn(targetResource, targetTable)
+      const rows = await db[f.fk.table].find(scopeFilter(targetResource, user))
       const options = rows.map((r) => ({ value: r[f.fk.column], label: String(r[titleCol] ?? r[f.fk.column]) }))
       return { ...f, options }
     }),
@@ -45,8 +52,11 @@ async function loadFkOptions(fields, { db, config, tables }) {
 
 // For the list: a per-column map of FK value -> human title, so a FK cell shows the
 // referenced row's title instead of the raw key. Only the list's foreign-key columns get
-// an entry; everything else renders as-is.
-async function fkLabelsFor(columns, schemaTable, { db, config, tables }) {
+// an entry; everything else renders as-is. Like loadFkOptions, the lookup is bounded by the
+// target resource's own `scope(user)` (#141), so the title map never serializes rows of the
+// referenced table the user could not otherwise see (an in-scope FK value with no matching
+// in-scope target row simply falls back to rendering the raw key).
+async function fkLabelsFor(columns, schemaTable, { db, config, tables, user }) {
   const byName = new Map(schemaTable.columns.map((c) => [c.name, c]))
   const labels = {}
   for (const col of columns) {
@@ -54,8 +64,9 @@ async function fkLabelsFor(columns, schemaTable, { db, config, tables }) {
     if (!ref) continue
     const targetTable = tableNamed(tables, ref.table)
     if (!targetTable) continue
-    const titleCol = recordTitleColumn(findResource(config, ref.table), targetTable)
-    const rows = await db[ref.table].find({})
+    const targetResource = findResource(config, ref.table)
+    const titleCol = recordTitleColumn(targetResource, targetTable)
+    const rows = await db[ref.table].find(scopeFilter(targetResource, user))
     labels[col.name] = Object.fromEntries(rows.map((r) => [r[ref.column], String(r[titleCol] ?? r[ref.column])]))
   }
   return labels
@@ -95,7 +106,7 @@ function primaryKeyOf(schemaTable) {
 // `(u) => (u.role === 'admin' ? null : { user_id: u.id })`. A resource with no `scope` is
 // unscoped (the original behaviour), so this is purely additive.
 function scopeFilter(resource, user) {
-  if (typeof resource.scope !== 'function') return {}
+  if (!resource || typeof resource.scope !== 'function') return {}
   return resource.scope(user) ?? {}
 }
 
@@ -244,7 +255,7 @@ export async function listData(pageContext) {
   const page = pageSize > 0 ? Math.min(Math.floor(offset / pageSize) + 1, pageCount) : 1
 
   const rows = await db[table].find(where, { limit: pageSize, offset, orderBy })
-  const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })
+  const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables, user: pageContext.user })
 
   return {
     table,
@@ -302,7 +313,11 @@ export async function newData(pageContext) {
     throw redirect(`/admin/${table}`)
   }
 
-  return { table, label: resourceLabel(resource), fields: await loadFkOptions(fields, { db, config: pageContext.config, tables }) }
+  return {
+    table,
+    label: resourceLabel(resource),
+    fields: await loadFkOptions(fields, { db, config: pageContext.config, tables, user: pageContext.user }),
+  }
 }
 
 // /admin/:table/:id — the detail/edit page. GET loads the row by its primary key and
@@ -367,6 +382,6 @@ export async function editData(pageContext) {
   const values = await db[table].findOne(owned)
   if (!values) throw redirect(`/admin/${table}`) // deleted, never existed, or not the user's
 
-  const withOptions = await loadFkOptions(fields, { db, config: pageContext.config, tables })
+  const withOptions = await loadFkOptions(fields, { db, config: pageContext.config, tables, user: pageContext.user })
   return { table, label: resourceLabel(resource), fields: withOptions, values, id, pk }
 }
