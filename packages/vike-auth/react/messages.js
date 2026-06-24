@@ -7,27 +7,12 @@
 // the useTranslation fallback). Languages are the translation mirror of the
 // framework axis (vike-auth/react), composed the same way.
 import { defineMessages } from 'vike-i18n'
+// SINGLE SOURCE OF TRUTH for the English `auth.*` strings: the same texts.json this
+// package advertises via package.json#exports["texts"] for `vike translate` (#102).
+// Importing it here means the inline English the components ship and the catalog the
+// translate tool reads can never drift — one file feeds both.
+import en from '../texts.json' with { type: 'json' }
 
-export const authMessages = defineMessages({
-  en: {
-    'auth.signIn': 'Sign in to {app}',
-    'auth.subtitle': 'Passwordless. We email you a one-time link.',
-    'auth.email': 'Email',
-    'auth.send': 'Send magic link',
-    'auth.sending': 'Sending...',
-    'auth.inboxTitle': 'Check your inbox',
-    'auth.inboxBody': 'We sent a sign-in link to {email}.',
-    'auth.devNote': 'In dev no email is sent. The magic link is printed in the server console.',
-    'auth.different': 'Use a different email',
-    'auth.error': 'Something went wrong. Please try again.',
-    'auth.footer': 'Served by the vike-auth extension.',
-    'auth.signInShort': 'Sign in',
-    'auth.logout': 'Log out',
-    'auth.accountTitle': 'Your account',
-    'auth.accountSignedInAs': 'Signed in as',
-    'auth.accountName': 'Name',
-    'auth.accountSignedOut': 'You are not signed in.',
-  },
-})
+export const authMessages = defineMessages({ en })
 
 export default authMessages

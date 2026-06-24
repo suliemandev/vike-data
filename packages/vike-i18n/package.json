@@ -9,16 +9,24 @@
     "./config": "./+config.js",
     "./plugin": "./plugin.js",
     "./oncreate": "./oncreate.js",
+    "./texts": "./texts.js",
+    "./translate": "./translate.js",
+    "./translator": "./translator.js",
+    "./cli": "./cli.js",
     "./react": "./react/+config.js",
     "./react/hooks": "./react/context.js",
     "./react/html": "./react/html.js",
     "./react/LocaleWrapper": "./react/LocaleWrapper.jsx"
   },
+  "bin": {
+    "vike-translate": "./bin/vike-translate.js"
+  },
   "peerDependencies": {
     "react": ">=18",
     "vike": "^0.4.0",
     "vike-react": ">=0.6",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "@anthropic-ai/sdk": ">=0.30"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -28,6 +36,9 @@
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
       "optional": true
     }
   },
