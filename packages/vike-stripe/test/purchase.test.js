@@ -10,6 +10,7 @@ import { createMemoryAdapter } from '@universal-orm/memory'
 import paymentSchemas from '../purchase/schemas.js'
 import { createPayments } from '../purchase/payment.js'
 import { purchaseWebhookHandler, PURCHASE_WEBHOOK_PATH } from '../purchase/middleware.js'
+import { createStripe, signWebhook } from '../stripe.js'
 
 const tableOf = (frags, name) => frags.find((f) => f.table === name)
 const colOf = (frag, name) => frag.columns.find((c) => c.name === name)
@@ -84,25 +85,73 @@ test('a charge without an intent id or subject is rejected, nothing written', as
 })
 
 // -------------------------------------------------------------------- webhook
-const post = (path, body) =>
+const SECRET = 'whsec_test_purchase'
+const provider = createStripe({ webhookSecret: SECRET })
+const handler = (payments) => purchaseWebhookHandler(payments, { provider })
+
+// A correctly SIGNED POST (the signature covers the raw bytes we send).
+const signedPost = (path, body, secret = SECRET) => {
+  const raw = typeof body === 'string' ? body : JSON.stringify(body)
+  return new Request(`http://localhost${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'stripe-signature': signWebhook(raw, secret) },
+    body: raw,
+  })
+}
+
+// An UNSIGNED POST — what a forger who does not hold the secret can send.
+const unsignedPost = (path, body) =>
   new Request(`http://localhost${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   })
 
-test('webhook inserts and responds 200', async () => {
+test('a signed webhook inserts and responds 200', async () => {
   const { payments, db } = makePayments()
-  const handle = purchaseWebhookHandler(payments)
-  const res = await handle(post(PURCHASE_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_9' }))
+  const res = await handler(payments)(
+    signedPost(PURCHASE_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_9' }),
+  )
   assert.equal(res.status, 200)
   assert.equal((await res.json()).payment.amount, 4200)
   assert.equal((await db.payments.find()).length, 1)
 })
 
-test('invalid JSON is a 400, nothing written', async () => {
+test('an UNSIGNED webhook is rejected 400, nothing written', async () => {
   const { payments, db } = makePayments()
-  const res = await purchaseWebhookHandler(payments)(post(PURCHASE_WEBHOOK_PATH, '{bad'))
+  const res = await handler(payments)(
+    unsignedPost(PURCHASE_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_x' }),
+  )
+  assert.equal(res.status, 400)
+  assert.equal((await res.json()).error, 'invalid-signature')
+  assert.equal((await db.payments.find()).length, 0)
+})
+
+test('a payload signed with the WRONG secret is rejected 400, nothing written', async () => {
+  const { payments, db } = makePayments()
+  const res = await handler(payments)(
+    signedPost(PURCHASE_WEBHOOK_PATH, { subject: 'org1', amount: 4200, stripePaymentIntentId: 'pi_x' }, 'whsec_wrong'),
+  )
+  assert.equal(res.status, 400)
+  assert.equal((await db.payments.find()).length, 0)
+})
+
+test('a TAMPERED body (signature no longer matches) is rejected 400, nothing written', async () => {
+  const { payments, db } = makePayments()
+  const signature = signWebhook(JSON.stringify({ subject: 'org1', amount: 1, stripePaymentIntentId: 'pi_x' }), SECRET)
+  const tampered = new Request(`http://localhost${PURCHASE_WEBHOOK_PATH}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'stripe-signature': signature },
+    body: JSON.stringify({ subject: 'org1', amount: 999999, stripePaymentIntentId: 'pi_x' }),
+  })
+  const res = await handler(payments)(tampered)
+  assert.equal(res.status, 400)
+  assert.equal((await db.payments.find()).length, 0)
+})
+
+test('a signed but invalid-JSON body is a 400, nothing written', async () => {
+  const { payments, db } = makePayments()
+  const res = await handler(payments)(signedPost(PURCHASE_WEBHOOK_PATH, '{bad'))
   assert.equal(res.status, 400)
   assert.equal((await db.payments.find()).length, 0)
 })
