@@ -25,26 +25,34 @@ import {
   viewFields,
 } from './resolve.js'
 
+// Read the rows of a foreign-key TARGET table that the user is allowed to see, together
+// with the column its rows are labelled by. The single place the FK scope (#141) is
+// enforced: the lookup is bounded by the TARGET resource's own `scope(user)` — the same
+// filter that bounds its own list — so a scoped user can only ever surface rows they would
+// be allowed to see in the referenced table, never the whole table. A target with no
+// registered resource or no scope is unbounded (the original behaviour), so this is purely
+// additive. Returns null when the referenced table isn't in the schema (no lookup possible).
+async function scopedFkRows(ref, { db, config, tables, user }) {
+  const targetTable = tableNamed(tables, ref.table)
+  if (!targetTable) return null
+  const targetResource = findResource(config, ref.table)
+  const titleCol = recordTitleColumn(targetResource, targetTable)
+  const rows = await db[ref.table].find(scopeFilter(targetResource, user))
+  return { rows, titleCol }
+}
+
 // Fill the `options` of every foreign-key field by reading the referenced table: each
 // row becomes `{ value: <ref column>, label: <recordTitle of the target> }`. The target's
 // label column comes from its resource's `recordTitle` (else a schema default), so a
-// `user_id` field shows users by email instead of by uuid. Plain + serializable.
-//
-// Row scoping (#141): the lookup is bounded by the TARGET resource's own `scope(user)` —
-// the same filter that bounds its own list — so a scoped user's FK dropdown can only offer
-// rows they would be allowed to see in the referenced table, never the whole table. A
-// target with no registered resource or no scope is unbounded (the original behaviour),
-// so this is purely additive.
-async function loadFkOptions(fields, { db, config, tables, user }) {
+// `user_id` field shows users by email instead of by uuid. Plain + serializable. Bounded
+// by the target's scope via scopedFkRows (#141).
+async function loadFkOptions(fields, deps) {
   return Promise.all(
     fields.map(async (f) => {
       if (!f.fk) return f
-      const targetTable = tableNamed(tables, f.fk.table)
-      if (!targetTable) return f
-      const targetResource = findResource(config, f.fk.table)
-      const titleCol = recordTitleColumn(targetResource, targetTable)
-      const rows = await db[f.fk.table].find(scopeFilter(targetResource, user))
-      const options = rows.map((r) => ({ value: r[f.fk.column], label: String(r[titleCol] ?? r[f.fk.column]) }))
+      const lookup = await scopedFkRows(f.fk, deps)
+      if (!lookup) return f
+      const options = lookup.rows.map((r) => ({ value: r[f.fk.column], label: String(r[lookup.titleCol] ?? r[f.fk.column]) }))
       return { ...f, options }
     }),
   )
@@ -53,21 +61,20 @@ async function loadFkOptions(fields, { db, config, tables, user }) {
 // For the list: a per-column map of FK value -> human title, so a FK cell shows the
 // referenced row's title instead of the raw key. Only the list's foreign-key columns get
 // an entry; everything else renders as-is. Like loadFkOptions, the lookup is bounded by the
-// target resource's own `scope(user)` (#141), so the title map never serializes rows of the
-// referenced table the user could not otherwise see (an in-scope FK value with no matching
-// in-scope target row simply falls back to rendering the raw key).
-async function fkLabelsFor(columns, schemaTable, { db, config, tables, user }) {
+// target resource's own `scope(user)` via scopedFkRows (#141), so the title map never
+// serializes rows of the referenced table the user could not otherwise see (an in-scope FK
+// value with no matching in-scope target row simply falls back to rendering the raw key).
+async function fkLabelsFor(columns, schemaTable, deps) {
   const byName = new Map(schemaTable.columns.map((c) => [c.name, c]))
   const labels = {}
   for (const col of columns) {
     const ref = byName.get(col.name)?.references
     if (!ref) continue
-    const targetTable = tableNamed(tables, ref.table)
-    if (!targetTable) continue
-    const targetResource = findResource(config, ref.table)
-    const titleCol = recordTitleColumn(targetResource, targetTable)
-    const rows = await db[ref.table].find(scopeFilter(targetResource, user))
-    labels[col.name] = Object.fromEntries(rows.map((r) => [r[ref.column], String(r[titleCol] ?? r[ref.column])]))
+    const lookup = await scopedFkRows(ref, deps)
+    if (!lookup) continue
+    labels[col.name] = Object.fromEntries(
+      lookup.rows.map((r) => [r[ref.column], String(r[lookup.titleCol] ?? r[ref.column])]),
+    )
   }
   return labels
 }
