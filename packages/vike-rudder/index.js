@@ -29,6 +29,7 @@ export async function registerRudder(config, { override = false } = {}) {
   const existing = getAdapter()
   if (existing && !override) return existing
   const native = config instanceof NativeAdapter ? config : await NativeAdapter.make(config)
-  setAdapter(createRudderAdapter(native))
-  return getAdapter()
+  const adapter = createRudderAdapter(native)
+  setAdapter(adapter)
+  return adapter
 }
