@@ -215,3 +215,49 @@ test('deriveMigrations joins multiple altered columns into one name', () => {
   ])
   assert.equal(names[1], '002_alter_users_add_a_b')
 })
+
+// A fragment can arrive more than once across renders, so the merged table must OWN its
+// table-level `primaryKey` / `foreignKeys` arrays (not share the input fragment's instances).
+// Otherwise a later mutation of the merged table would corrupt the source fragment and every
+// other merge that shares it (#143).
+test('mergeSchemas does not share the primaryKey / foreignKeys arrays with the input fragment', () => {
+  const assignments = defineSchema('assignments', (t) => {
+    t.uuid('org_id')
+    t.uuid('unit_id')
+    t.primaryKey('org_id', 'unit_id')
+    t.foreignKey(['org_id', 'unit_id'], 'org_units', ['org_id', 'unit_id'])
+  })
+  // org_units exists so the FK validates cleanly (referential check passes -> no conflicts).
+  const orgUnits = defineSchema('org_units', (t) => {
+    t.uuid('org_id')
+    t.uuid('unit_id')
+    t.primaryKey('org_id', 'unit_id')
+  })
+
+  const { tables, conflicts } = mergeSchemas([orgUnits, assignments])
+  assert.deepEqual(conflicts, [])
+  const merged = tables.find((t) => t.table === 'assignments')
+
+  // Different array instances...
+  assert.notEqual(merged.primaryKey, assignments.primaryKey)
+  assert.notEqual(merged.foreignKeys, assignments.foreignKeys)
+  assert.notEqual(merged.foreignKeys[0], assignments.foreignKeys[0])
+  assert.notEqual(merged.foreignKeys[0].columns, assignments.foreignKeys[0].columns)
+  assert.notEqual(merged.foreignKeys[0].references, assignments.foreignKeys[0].references)
+  assert.notEqual(merged.foreignKeys[0].references.columns, assignments.foreignKeys[0].references.columns)
+
+  // ...so mutating the merged table cannot bleed back into the source fragment.
+  merged.primaryKey.push('leaked')
+  merged.foreignKeys.push({ columns: ['x'], references: { table: 'y', columns: ['z'] } })
+  merged.foreignKeys[0].columns.push('leaked')
+  merged.foreignKeys[0].references.columns.push('leaked')
+  assert.deepEqual(assignments.primaryKey, ['org_id', 'unit_id'])
+  assert.equal(assignments.foreignKeys.length, 1)
+  assert.deepEqual(assignments.foreignKeys[0].columns, ['org_id', 'unit_id'])
+  assert.deepEqual(assignments.foreignKeys[0].references.columns, ['org_id', 'unit_id'])
+
+  // ...and two independent merges of the same fragment do not alias each other.
+  const second = mergeSchemas([orgUnits, assignments]).tables.find((t) => t.table === 'assignments')
+  assert.deepEqual(second.primaryKey, ['org_id', 'unit_id'])
+  assert.equal(second.foreignKeys.length, 1)
+})
