@@ -91,31 +91,36 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 > For the layering, the composition mechanism, and the runtime + codegen lifecycle, see
 > **[Architecture.md](Architecture.md)**. Per-package detail is in each package's README.
 
-| Package | Owns |
-|---|---|
-| **Data layer** | |
-| `universal-schema` | The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. **Zero Vike imports.** |
-| `universal-orm` (`@universal-orm/core`) | The neutral, narrow repository (`db.<table>.insert/find/findOne/upsert/update/delete`, paging + `count`) over the composed schema, plus the 6-op adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
-| `@universal-orm/memory` | In-process adapter over plain Maps. Zero database; for tests, demos, and the proof. |
-| `@universal-orm/drizzle` | Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (via PGlite). |
-| `@universal-orm/rudder` | Rudder adapter: runs the neutral calls against the `@rudderjs/database` native engine (snake_case keys pass straight through). |
-| `vike-schema` (`@vike-data/vike-schema`) | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
-| `vike-drizzle` | Vike binding: `registerDrizzle(db, schema)` makes your Drizzle connection the `universal-orm` adapter, so extensions write to your database with no manual `setAdapter` wiring. |
-| `vike-rudder` | Vike binding: `registerRudder({ driver, url })` makes the Rudder engine the `universal-orm` adapter (the twin of `vike-drizzle`). |
-| `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its `/login` + `/account` pages ship as the `vike-auth/react` subpath; `vike-auth/fr` + `/ar` are language subpaths. |
-| `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike-rbac` | Roles & permissions: owns `roles` / `permissions` / `role_user` / `permission_role`, a cumulative `permissions` registry, and one `can(user, permission)` / `hasRole(user, role)` the app, vike-admin, and a Telefunc RPC seam (`vike-rbac/telefunc`) all share. Resolves onto the user via vike-auth's `resolveUser` seam. Self-installs vike-auth. |
-| `vike-stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert). Subject FK *computed* from `segment` (`b2b`/`b2c`); server tier writes via universal-orm on a webhook. Self-installs vike-teams. |
-| **UI tier** (core + React binding) | |
-| `vike-admin` (+ `vike-admin/react`) | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). |
-| `vike-themes` (+ `vike-themes/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
-| `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
-| `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-toolbar` (+ `vike-toolbar/react`) | A fixed logo button + settings popover; a cumulative `toolbarItems` seam other extensions (e.g. the locale + theme pickers) teleport their controls into. |
-| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin; the `vike translate` CLI (tier-2 long-tail translations). |
-| **Apps** | |
-| `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
-| `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel. |
+<table>
+<thead>
+<tr><th align="left" width="240">Package</th><th align="left">Owns</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="2"><strong>Data layer</strong></td></tr>
+<tr><td><code>universal-schema</code></td><td>The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. <strong>Zero Vike imports.</strong></td></tr>
+<tr><td><code>universal-orm</code><br><code>@universal-orm/core</code></td><td>The neutral, narrow repository (<code>db.&lt;table&gt;.insert/find/findOne/upsert/update/delete</code>, paging + <code>count</code>) over the composed schema, plus the 6-op adapter contract. Runtime twin of <code>universal-schema</code>. <strong>Zero Vike, zero ORM imports.</strong></td></tr>
+<tr><td><code>@universal-orm/memory</code></td><td>In-process adapter over plain Maps. Zero database; for tests, demos, and the proof.</td></tr>
+<tr><td><code>@universal-orm/drizzle</code></td><td>Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (via PGlite).</td></tr>
+<tr><td><code>@universal-orm/rudder</code></td><td>Rudder adapter: runs the neutral calls against the <code>@rudderjs/database</code> native engine (snake_case keys pass straight through).</td></tr>
+<tr><td><code>vike-schema</code><br><code>@vike-data/vike-schema</code></td><td>Vike binding: the cumulative <code>schemas</code> config point + the codegen Vite plugin.</td></tr>
+<tr><td><code>vike-drizzle</code></td><td>Vike binding: <code>registerDrizzle(db, schema)</code> makes your Drizzle connection the <code>universal-orm</code> adapter, so extensions write to your database with no manual <code>setAdapter</code> wiring.</td></tr>
+<tr><td><code>vike-rudder</code></td><td>Vike binding: <code>registerRudder({ driver, url })</code> makes the Rudder engine the <code>universal-orm</code> adapter (the twin of <code>vike-drizzle</code>).</td></tr>
+<tr><td><code>vike-auth</code></td><td>Auth core: owns <code>users</code> / <code>sessions</code> / <code>login_tokens</code> + a magic-link server tier (universal middleware + <code>pageContext.user</code>). React UI + its <code>/login</code> + <code>/account</code> pages ship as the <code>vike-auth/react</code> subpath; <code>vike-auth/fr</code> + <code>/ar</code> are language subpaths.</td></tr>
+<tr><td><code>vike-teams</code></td><td>Orgs + memberships; references and extends <code>users</code>. Self-installs vike-auth.</td></tr>
+<tr><td><code>vike-rbac</code></td><td>Roles &amp; permissions: owns <code>roles</code> / <code>permissions</code> / <code>role_user</code> / <code>permission_role</code>, a cumulative <code>permissions</code> registry, and one <code>can(user, permission)</code> / <code>hasRole(user, role)</code> the app, vike-admin, and a Telefunc RPC seam (<code>vike-rbac/telefunc</code>) all share. Resolves onto the user via vike-auth's <code>resolveUser</code> seam. Self-installs vike-auth.</td></tr>
+<tr><td><code>vike-stripe</code></td><td>Stripe billing as subpath models: <code>subscription</code> (upsert) + <code>purchase</code> (insert). Subject FK <em>computed</em> from <code>segment</code> (<code>b2b</code>/<code>b2c</code>); server tier writes via universal-orm on a webhook. Self-installs vike-teams.</td></tr>
+<tr><td colspan="2"><strong>UI tier</strong> (core + React binding)</td></tr>
+<tr><td><code>vike-admin</code><br><code>vike-admin/react</code></td><td>An admin panel on install: <code>/admin/*</code> CRUD pages derived from the composed schema; cumulative <code>adminResources</code> + <code>defineResource</code> refinements (FK selects, sort/search, per-row <code>scope</code>).</td></tr>
+<tr><td><code>vike-themes</code><br><code>vike-themes/react</code></td><td>Tokens to CSS variables; the <code>theme</code> (brand) + <code>appearance</code> axes + <code>useTheme()</code>.</td></tr>
+<tr><td><code>vike-theme-emerald</code></td><td>Example theme package (composes via the cumulative <code>themes</code> config).</td></tr>
+<tr><td><code>vike-layouts</code><br><code>vike-layouts/react</code></td><td>Shell selection + slot config; the <code>&lt;CenteredShell&gt;</code> / <code>&lt;TopbarShell&gt;</code> / <code>&lt;SidebarShell&gt;</code>.</td></tr>
+<tr><td><code>vike-toolbar</code><br><code>vike-toolbar/react</code></td><td>A fixed logo button + settings popover; a cumulative <code>toolbarItems</code> seam other extensions (e.g. the locale + theme pickers) teleport their controls into.</td></tr>
+<tr><td><code>vike-i18n</code><br><code>vike-i18n/react</code><br><code>vike-i18n/plugin</code></td><td>Cumulative <code>messages</code> + <code>locale</code>; <code>useTranslation()</code> to <code>t()</code> + a locale picker; the zero-config <code>locales</code> plugin; the <code>vike translate</code> CLI (tier-2 long-tail translations).</td></tr>
+<tr><td colspan="2"><strong>Apps</strong></td></tr>
+<tr><td><code>app</code></td><td>Data-layer demo: the merged schema rendered + compiled to all three ORMs.</td></tr>
+<tr><td><code>app-react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
+</tbody>
+</table>
 
 The split is consistent: every core is framework-agnostic and Vike-agnostic where it
 can be; the Vike-/React-specific concern lives in a `vike-*/react` subpath of the same
