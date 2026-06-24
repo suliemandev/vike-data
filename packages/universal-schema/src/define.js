@@ -149,6 +149,20 @@ export function defineJoinTable(tableA, tableB, opts = {}) {
   const onDelete = opts.onDelete || 'cascade'
   const fk = (t) => opts.columns?.[t] || `${singularize(t)}_id`
   const [colA, colB] = [fk(tableA), fk(tableB)]
+  // The two FK columns must be distinct, else we'd emit a table with a duplicated column
+  // and a `[col, col]` primary key — an invalid artifact, silently. Throw with an accurate
+  // remedy for each cause.
+  if (colA === colB) {
+    // A self-referential m2m (`defineJoinTable('users','users')` — friendships/followers)
+    // can't be fixed by `columns` (keyed by table name -> same key both sides), so point at
+    // defineSchema. Two DIFFERENT tables that singularize identically CAN use `columns`.
+    const remedy =
+      tableA === tableB
+        ? `self-referential many-to-many isn't supported here — define the join table directly with ` +
+          `defineSchema('${name}', t => { ... }) and name its two foreign-key columns yourself.`
+        : `pass distinct names via { columns: { '${tableA}': 'a_id', '${tableB}': 'b_id' } }.`
+    throw new Error(`defineJoinTable('${tableA}', '${tableB}'): both foreign keys resolve to the column "${colA}". ${remedy}`)
+  }
   return defineSchema(name, (t) => {
     t[type](colA).references(`${tableA}.id`, { onDelete })
     t[type](colB).references(`${tableB}.id`, { onDelete })

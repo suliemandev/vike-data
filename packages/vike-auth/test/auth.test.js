@@ -16,6 +16,45 @@ test('createAuth requires a store', () => {
   assert.throws(() => createAuth({}), /requires a \{ store \}/)
 })
 
+// ------------------------------------------------------------ active flag -----
+
+test('authenticate() denies a deactivated user and tears down the session', async () => {
+  let deleted = null
+  const store = {
+    async findSessionByToken() {
+      return { token: 'sess', user_id: 'u1', expires_at: '2099-01-01T00:00:00.000Z' }
+    },
+    async findUserById() {
+      return { id: 'u1', email: 'banned@example.com', active: false }
+    },
+    async deleteSessionByToken(t) {
+      deleted = t
+    },
+  }
+  const auth = createAuth({ store })
+  assert.equal(await auth.authenticate('sess'), null) // deactivated -> logged out
+  assert.equal(deleted, 'sess') // the live session is destroyed
+})
+
+test('redeemMagicLink() refuses to open a session for a deactivated user', async () => {
+  const store = {
+    async findLoginToken() {
+      return { token: 'lt', email: 'banned@example.com', consumed_at: null, expires_at: '2099-01-01T00:00:00.000Z' }
+    },
+    async consumeLoginToken() {
+      return { token: 'lt', consumed_at: '2026-01-01T00:00:00.000Z' }
+    },
+    async findUserByEmail() {
+      return { id: 'u1', email: 'banned@example.com', active: false }
+    },
+    async createSession() {
+      throw new Error('must not open a session for an inactive user')
+    },
+  }
+  const auth = createAuth({ store })
+  assert.deepEqual(await auth.redeemMagicLink('lt'), { ok: false, error: 'inactive-user' })
+})
+
 // --------------------------------------------------------- requestMagicLink ---
 
 test('requestMagicLink rejects an email without @', async () => {

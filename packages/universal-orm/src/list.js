@@ -33,7 +33,7 @@ export function normalizeOrderBy(orderBy) {
 
 // Coerce a limit/offset to a non-negative integer, or undefined when absent.
 // Rejects negatives and non-numbers so a bad `?page=` can't silently page weirdly.
-function asCount(value, what) {
+export function asCount(value, what) {
   if (value == null) return undefined
   const n = Number(value)
   if (!Number.isInteger(n) || n < 0) throw new Error(`${what}: expected a non-negative integer, got ${JSON.stringify(value)}`)

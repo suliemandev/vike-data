@@ -52,6 +52,15 @@ test('translate returns the key itself when missing (debuggable)', () => {
   assert.equal(translate({}, 'nope.key'), 'nope.key')
 })
 
+test('translate does not re-interpolate a placeholder that came from a var value', () => {
+  // Regression: a sequential split/join per key would re-scan substituted text, so a value
+  // containing `{b}` got interpolated on a later pass. A single pass emits it literally.
+  const dict = { t: '{a}{b}' }
+  assert.equal(translate(dict, 't', { a: '{b}', b: 'X' }), '{b}X')
+  // a missing var leaves its placeholder literal (unchanged behavior)
+  assert.equal(translate({ t: 'hi {name}' }, 't', { other: 'z' }), 'hi {name}')
+})
+
 test('availableLocales lists every provided locale, fallback first', () => {
   assert.deepEqual(availableLocales([[auth], [app]]), ['en', 'fr'])
 })
@@ -79,4 +88,15 @@ test('activeLocale follows precedence: routing > cookie > config default > en', 
   assert.equal(activeLocale({ localeCookie: 'ar', config: { locale: 'de' } }), 'ar')
   assert.equal(activeLocale({ config: { locale: 'de' } }), 'de')
   assert.equal(activeLocale({}), 'en')
+})
+
+test('activeLocale clamps an unsupported (stale/forged cookie) locale to the declared set', () => {
+  // Regression: a `vike_locale=ar` cookie in an en/fr app would make the server emit
+  // <html dir=rtl> for `ar` while the client provider fell back to en -> hydration flip.
+  // Clamp to `config.locales` (the #79 declared set) so server + client agree.
+  const cfg = { locale: 'en', locales: ['en', 'fr'] }
+  assert.equal(activeLocale({ localeCookie: 'ar', config: cfg }), 'en') // unsupported -> default
+  assert.equal(activeLocale({ localeCookie: 'fr', config: cfg }), 'fr') // supported -> kept
+  // with no declared set, the raw value passes through (back-compat)
+  assert.equal(activeLocale({ localeCookie: 'ar', config: { locale: 'en' } }), 'ar')
 })

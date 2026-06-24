@@ -113,6 +113,16 @@ test('find threads limit/offset/orderBy to the adapter', async () => {
   assert.deepEqual(page.map((r) => r.id), ['u2'])
 })
 
+test('find validates limit/offset at the repository (so SQL adapters are guarded too)', async () => {
+  // Regression: the negative/non-integer guard lived only in the in-process applyListOpts,
+  // so a SQL adapter would get a raw bad value (e.g. a bad `?page=`). Coercing in find()
+  // makes every adapter reject it the same way.
+  const db = makeDb()
+  assert.throws(() => db.users.find({}, { limit: -1 }), /limit: expected a non-negative integer/)
+  assert.throws(() => db.users.find({}, { offset: 1.5 }), /offset: expected a non-negative integer/)
+  assert.deepEqual(await db.users.find({}, { limit: 0 }), []) // 0 is valid -> no rows
+})
+
 test('findOne orders then takes the first (orderBy honoured)', async () => {
   const db = makeDb()
   for (const id of ['u3', 'u1', 'u2']) await db.users.insert({ id, email: `${id}@b.com`, active: true })

@@ -17,7 +17,7 @@
 //                        resolve as long as vikeI18n() is in the app's vite config.
 import { usePageContext } from 'vike-react/usePageContext'
 import { packs as autoPacks } from 'virtual:vike-i18n/packs'
-import { availableLocales } from '../index.js'
+import { availableLocales, activeLocale } from '../index.js'
 import { LocaleProvider } from './LocaleProvider.jsx'
 import { LocalePicker } from './LocalePicker.jsx'
 
@@ -28,7 +28,10 @@ export default function LocaleWrapper({ children }) {
   // matching mergeMessages' "later contribution wins" rule).
   const messages = [...autoPacks, ...(config.messages || [])]
   const locales = availableLocales(messages)
-  const locale = pageContext.locale || pageContext.localeCookie || config.locale || 'en'
+  // Use the centralized activeLocale (same precedence + clamp the <html lang/dir> drivers
+  // use), so an unsupported/stale cookie can't make the provider's initial locale disagree
+  // with what the server announced.
+  const locale = activeLocale(pageContext)
 
   return (
     <LocaleProvider messages={messages} locale={locale} locales={locales}>

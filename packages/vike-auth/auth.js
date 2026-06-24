@@ -56,6 +56,9 @@ export function createAuth({
 
       let user = await store.findUserByEmail(pending.email)
       if (!user) user = await store.createUser({ email: pending.email })
+      // A deactivated account can't sign in. `active` is set on every user; treat only an
+      // EXPLICIT `false` as deactivated (a legacy row without the column reads as active).
+      if (user.active === false) return { ok: false, error: 'inactive-user' }
 
       const session = await store.createSession({
         userId: user.id,
@@ -77,6 +80,12 @@ export function createAuth({
       }
       const user = await store.findUserById(session.user_id)
       if (!user) return null
+      // A user deactivated mid-session is logged out: tear down the live session so the
+      // stale cookie reads as logged-out from here on, the same as an expired one.
+      if (user.active === false) {
+        await store.deleteSessionByToken(token)
+        return null
+      }
       return { user, session }
     },
 

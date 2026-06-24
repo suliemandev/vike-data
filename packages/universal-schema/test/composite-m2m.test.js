@@ -60,6 +60,22 @@ test('defineJoinTable singularizes pluralized table names for FK columns', () =>
   assert.deepEqual(names, ['address_id', 'company_id']) // companies->company, addresses->address
 })
 
+test('defineJoinTable throws when both FKs resolve to the same column', () => {
+  // Regression: a self-referential m2m (friendships/followers) made both FK columns
+  // `user_id`, silently emitting a duplicate column + a [user_id, user_id] PK. Now it
+  // throws — and points at defineSchema, since `columns` (keyed by table name) can't help a
+  // self-join.
+  assert.throws(
+    () => defineJoinTable('users', 'users'),
+    /both foreign keys resolve to the column "user_id".*self-referential many-to-many/s,
+  )
+  // Two DIFFERENT tables that singularize to the same column collide too, but there the
+  // `columns` override (distinct keys) resolves it.
+  assert.throws(() => defineJoinTable('boxes', 'box'), /both foreign keys resolve to the column "box_id"/)
+  const frag = defineJoinTable('boxes', 'box', { columns: { boxes: 'box_a', box: 'box_b' } })
+  assert.deepEqual(frag.columns.map((c) => c.name).sort(), ['box_a', 'box_b'])
+})
+
 test('defineJoinTable options override name, FK columns, type and onDelete', () => {
   const frag = defineJoinTable('users', 'teams', {
     table: 'memberships',
