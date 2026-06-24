@@ -10,23 +10,23 @@
     "./oncreate": "./oncreate.js",
     "./react": "./react/+config.js",
     "./react/hooks": "./react/context.js",
-    "./react/ThemeWrapper": "./react/ThemeWrapper.jsx"
+    "./react/ThemeWrapper": "./react/ThemeWrapper.jsx",
+    "./vue": "./vue/+config.js",
+    "./vue/ThemeWrapper": "./vue/ThemeWrapper.vue"
   },
   "peerDependencies": {
     "react": ">=18",
     "vike-react": ">=0.6",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "vue": ">=3",
+    "vike-vue": ">=0.9"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "vike-react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
+    "react": { "optional": true },
+    "vike-react": { "optional": true },
+    "react-dom": { "optional": true },
+    "vue": { "optional": true },
+    "vike-vue": { "optional": true }
   },
   "scripts": {
     "test": "node --test"
