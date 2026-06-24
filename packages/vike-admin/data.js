@@ -105,7 +105,18 @@ function scopeFilter(resource, user) {
 // to assign, so it bounds reads/edits but not writes. Returns the same object, mutated.
 function applyScopeOwnership(obj, scope) {
   for (const [col, val] of Object.entries(scope)) {
-    if (val !== null && typeof val !== 'object') obj[col] = val
+    if (val !== null && typeof val !== 'object') {
+      obj[col] = val // scalar scope: force the owner column
+    } else if (val && Array.isArray(val.in)) {
+      // An `in`-style scope (e.g. `organization_id: { in: user.orgIds }`) has no single
+      // value to force, but a submitted value MUST be inside the allowed set — otherwise a
+      // scoped user could CREATE a row owned by, or REASSIGN a row to, a tenant they don't
+      // belong to (the owner column is a writable form field). Reject a forged value;
+      // absence is left to the column default.
+      if (col in obj && obj[col] != null && !val.in.includes(obj[col])) {
+        throw new QueryError(`scope: "${col}" must be one of the values you have access to`)
+      }
+    }
   }
   return obj
 }
@@ -227,8 +238,10 @@ export async function listData(pageContext) {
     const page = Math.min(Math.max(1, Number(search.page) || 1), pageCountForClamp)
     offset = (page - 1) * pageSize
   }
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
-  const page = Math.min(Math.floor(offset / pageSize) + 1, pageCount)
+  // `?query={"limit":0}` is a valid "count only, no rows" request, but dividing by a zero
+  // page size would yield Infinity/NaN in the response. Treat it as a single empty page.
+  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1
+  const page = pageSize > 0 ? Math.min(Math.floor(offset / pageSize) + 1, pageCount) : 1
 
   const rows = await db[table].find(where, { limit: pageSize, offset, orderBy })
   const fkLabels = await fkLabelsFor(columns, schemaTable, { db, config: pageContext.config, tables })

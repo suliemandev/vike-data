@@ -22,8 +22,12 @@
  * writes `toolbarItems: defineToolbarItems([...])` and the composed list is uniform.
  */
 export function defineToolbarItems(items = []) {
-  return (Array.isArray(items) ? items : [items]).filter((it) => it && it.Control).map((it, i) => ({
-    id: it.id ?? `item-${i}`,
+  // Leave `id` null when the author didn't set one — do NOT fabricate `item-${i}` here.
+  // The index is local to THIS contribution, so two id-less extensions would both produce
+  // `item-0`, and allToolbarItems (dedupe by id) would drop the second as a "duplicate".
+  // A globally-unique fallback can only be assigned after flattening (see allToolbarItems).
+  return (Array.isArray(items) ? items : [items]).filter((it) => it && it.Control).map((it) => ({
+    id: it.id ?? null,
     label: it.label ?? null,
     order: Number.isFinite(it.order) ? it.order : 0,
     Control: it.Control,
@@ -32,8 +36,10 @@ export function defineToolbarItems(items = []) {
 
 /**
  * Flatten the cumulative registry (array of per-source arrays) into the ordered list the
- * popover renders: drops falsy/control-less entries, sorts by `order` (stable), and
- * de-duped by `id` (first contribution wins, so an app can't accidentally double an item).
+ * popover renders: drops falsy/control-less entries, de-dupes by EXPLICIT `id` only (first
+ * wins, so an app can't accidentally double a deliberately-identified item), sorts by
+ * `order` (stable), then assigns each surviving item a unique render id. Auto (null) ids
+ * never dedupe against each other, so every contributed item survives.
  */
 export function allToolbarItems(contributions) {
   const flat = (contributions || []).flat().filter((it) => it && it.Control)
@@ -47,8 +53,9 @@ export function allToolbarItems(contributions) {
   }
   // Stable sort by order: decorate with the original index so equal orders keep their
   // contribution sequence (Array#sort is not guaranteed stable for all engines/inputs).
+  // Then fill a unique fallback id by FINAL position, so the React key is always unique.
   return unique
     .map((it, i) => ({ it, i, order: Number.isFinite(it.order) ? it.order : 0 }))
     .sort((a, b) => a.order - b.order || a.i - b.i)
-    .map((x) => x.it)
+    .map((x, i) => ({ ...x.it, id: x.it.id ?? `item-${i}` }))
 }

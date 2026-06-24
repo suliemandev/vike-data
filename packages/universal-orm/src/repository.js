@@ -31,7 +31,7 @@
 // the core derives it from `find` (with `limit: 1`).
 export const ADAPTER_OPS = ['insert', 'find', 'count', 'upsert', 'update', 'delete']
 
-import { normalizeOrderBy } from './list.js'
+import { normalizeOrderBy, asCount } from './list.js'
 
 // Property names that must NOT be treated as table lookups, so the returned `db`
 // behaves like a normal (non-thenable) object: `await db`, structured-clone and
@@ -72,7 +72,12 @@ export function createRepository(schema, adapter) {
       // an error, not a silent no-op), then pass the normalized opts to the adapter.
       const orderBy = normalizeOrderBy(opts.orderBy)
       assertColumns(table, Object.fromEntries(orderBy.map((o) => [o.column, true])), 'find orderBy')
-      return adapter.find(table, filter, { ...opts, orderBy })
+      // Coerce limit/offset HERE (not only in the in-process applyListOpts) so a SQL
+      // adapter, which builds LIMIT/OFFSET straight from opts, is guarded against a
+      // negative or non-integer value (e.g. a bad `?page=`) just like the memory one.
+      const limit = asCount(opts.limit, 'limit')
+      const offset = asCount(opts.offset, 'offset')
+      return adapter.find(table, filter, { ...opts, orderBy, limit, offset })
     },
     async findOne(filter = {}, opts = {}) {
       // Only one row is needed, so cap the adapter at 1 (cheaper on SQL adapters).

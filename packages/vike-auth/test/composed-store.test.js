@@ -55,6 +55,28 @@ test('login tokens are single-use through the adapter', async () => {
   assert.equal(await store.consumeLoginToken('ghost'), null) // unknown
 })
 
+test('consuming a login token is an ATOMIC conditional update (single-use race-safe)', async () => {
+  // Regression: a read-check-update would let two concurrent racers both pass the check
+  // and both mint a session. The consume must be a single UPDATE filtered on
+  // `consumed_at: null`, so exactly one racer matches. Spy the adapter to pin that filter.
+  const base = createMemoryAdapter()
+  let updateFilter = null
+  setAdapter({
+    ...base,
+    update: (table, filter, patch) => {
+      if (table === 'login_tokens') updateFilter = filter
+      return base.update(table, filter, patch)
+    },
+  })
+  const store = createStore()
+  await store.createLoginToken({ email: 'r@example.com', token: 'race', expiresAt: '2099-01-01T00:00:00.000Z' })
+  const ok = await store.consumeLoginToken('race')
+  assert.ok(ok, 'first consume succeeds')
+  assert.equal(updateFilter?.consumed_at, null, 'update is guarded by consumed_at: null')
+  assert.equal(updateFilter?.token, 'race')
+  assert.equal(await store.consumeLoginToken('race'), null) // the conditional update no longer matches
+})
+
 // -------------------------------------------------- the composition payoff ----
 
 test('two store instances share one source of truth via the adapter', async () => {

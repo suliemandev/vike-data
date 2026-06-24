@@ -35,9 +35,13 @@ export function mergeMessages(contributions, locale, fallback = 'en') {
 
 /** Look up a key and interpolate `{var}` placeholders. Missing key -> the key. */
 export function translate(dict, key, vars) {
-  let s = dict && dict[key] != null ? dict[key] : key
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v))
-  return s
+  const s = dict && dict[key] != null ? dict[key] : key
+  if (!vars) return s
+  // Single left-to-right pass: a `{x}` is replaced from `vars` only if present, else left
+  // literal. Crucially, replacement TEXT is not re-scanned — so a value that itself contains
+  // `{y}` is emitted verbatim instead of being interpolated again (no double-substitution,
+  // which matters if any var is user-supplied).
+  return String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m))
 }
 
 /** Every locale any contribution provides (for a locale picker), fallback first. */
@@ -69,5 +73,15 @@ export function localeDir(locale) {
  * here so the React Wrapper and the `<html lang>`/`<html dir>` config agree.
  */
 export function activeLocale(pageContext = {}) {
-  return pageContext.locale || pageContext.localeCookie || pageContext.config?.locale || 'en'
+  const want = pageContext.locale || pageContext.localeCookie || pageContext.config?.locale || 'en'
+  // Clamp to the app's declared `locales` (#79). The `vike_locale` cookie is user-writable
+  // and never re-validated, so a stale/unsupported value (e.g. an `ar` cookie in an en/fr
+  // app) would otherwise make the SERVER emit `<html lang/dir>` for a locale the client
+  // provider then falls back OFF of -> a hydration flip + lang/dir disagreeing with the
+  // rendered content. Falling back here the same way the provider does keeps them in sync.
+  const supported = pageContext.config?.locales
+  if (Array.isArray(supported) && supported.length && !supported.includes(want)) {
+    return pageContext.config?.locale || supported[0] || 'en'
+  }
+  return want
 }

@@ -115,11 +115,15 @@ export function createStore() {
       return dispatch(
         () => memory.consumeLoginToken(token),
         async (a) => {
-          const row = await firstRow(a, LOGIN_TOKENS, { token })
-          if (!row || row.consumed_at) return null // unknown or already single-used
+          // Atomic single-use: the filter includes `consumed_at: null`, so the UPDATE
+          // only matches an UNCONSUMED token and compiles to `WHERE token=? AND
+          // consumed_at IS NULL`. A read-then-update would race — two requests firing the
+          // same magic link concurrently would both read null, both pass, and both mint a
+          // session. Keying single-use on the conditional update means exactly one racer
+          // matches a row; the loser gets none and is rejected.
           const consumed_at = isoIn(0)
-          const [updated] = await a.update(LOGIN_TOKENS, { token }, { consumed_at })
-          return updated ?? { ...row, consumed_at }
+          const [updated] = await a.update(LOGIN_TOKENS, { token, consumed_at: null }, { consumed_at })
+          return updated ?? null
         },
       )
     },

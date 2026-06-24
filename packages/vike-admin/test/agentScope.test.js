@@ -73,6 +73,15 @@ test('limit/offset from the query window the result', async () => {
   assert.equal(data.pageSize, 2)
 })
 
+test('a limit:0 query (count-only) yields a clean single empty page, not NaN/Infinity', async () => {
+  // Regression: dividing by a zero page size made pageCount Infinity and page NaN.
+  const data = await listData(pc(admin, query({ limit: 0 })))
+  assert.equal(data.total, 3) // total still counts every row
+  assert.deepEqual(data.rows, []) // no rows returned
+  assert.equal(data.page, 1)
+  assert.equal(data.pageCount, 1)
+})
+
 test('an invalid query records adminApiError (the API turns it into a 400) and renders scope-only', async () => {
   for (const bad of [{ filter: { nope: 1 } }, { orderBy: 'token' /* not sortable */ }]) {
     const ctx = pc(admin, query(bad))
