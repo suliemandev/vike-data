@@ -29,7 +29,7 @@ export default { extends: ['import:vike-toolbar/config:default'], toolbarItems: 
 
 | Subpath | What |
 |---|---|
-| `.` | The core: `defineToolbarItems()` / `allToolbarItems()` (normalize + sort + de-dupe by id). |
+| `.` | The core: `defineToolbarItems()` / `allToolbarItems()` (normalize + sort + de-dupe by id), plus the canonical DOM-id constants `TOOLBAR_ROOT_ID` (`vike-toolbar-root`) and `TOOLBAR_ITEMS_ID` (`vike-toolbar-items`) that consumers teleport into. |
 | `./config` | The Vike config: the cumulative `toolbarItems` registry + the `bodyHtmlEnd` mount node. |
 | `./react`, `./react/Toolbar`, `./react/ToolbarWrapper` | The button + portalled panel + teleport surface. |
 

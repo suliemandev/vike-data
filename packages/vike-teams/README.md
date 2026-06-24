@@ -42,5 +42,5 @@ export default {
 > validates the target exists across extensions, so a FK into auth's `users`
 > only resolves once vike-auth is installed (a dangling ref is a flagged
 > conflict, not a crash). `users` <-> `organizations` is a relation cycle, and it
-> compiles cleanly to all three ORMs. See the
-> [relations section](../../README.md#relations-v2) of the root README.
+> compiles cleanly to all three ORMs. See the relations support in
+> [`@vike-data/universal-schema`](../universal-schema).

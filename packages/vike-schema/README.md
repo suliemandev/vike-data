@@ -17,7 +17,14 @@ import { defineSchema } from '@vike-data/vike-schema/schema'
 
 export default {
   extends: ['import:@vike-data/vike-schema/config:default'], // pull in the `schemas` point
-  schemas: [defineSchema('widgets', (t) => ({ id: t.id(), name: t.text() }))],
+  // The callback MUTATES `t` (each `t.<type>(name)` adds a column); its return value
+  // is ignored, so build columns with statements, not an object literal.
+  schemas: [
+    defineSchema('widgets', (t) => {
+      t.uuid('id').primary()
+      t.string('name')
+    }),
+  ],
 }
 ```
 

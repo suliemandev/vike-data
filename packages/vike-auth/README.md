@@ -69,9 +69,13 @@ unchanged. The core is usable from plain Node:
 import { createAuth, createMemoryStore } from 'vike-auth'
 
 const auth = createAuth({ store: createMemoryStore() })
+
+// requestMagicLink / redeemMagicLink return an { ok } envelope: { ok: true, email, token }
+// and { ok: true, user, session } on success, or { ok: false, error } (e.g. 'expired-token').
 const { token } = await auth.requestMagicLink('alice@example.com')
 const { user, session } = await auth.redeemMagicLink(token)
-await auth.authenticate(session.token) // -> { user, session }
+
+await auth.authenticate(session.token) // -> { user, session } or null
 await auth.destroySession(session.token) // real logout
 ```
 

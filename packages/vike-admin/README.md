@@ -1,6 +1,6 @@
 # vike-admin
 
-A working admin panel on install. Add `vike-admin/react`, contribute a resource or two, and get `/admin/*` pages that **list and create** the rows of every table your extensions composed, gated by auth, rendered in your themed layout. It writes no ORM code.
+A working admin panel on install. Add `vike-admin/react`, contribute a resource or two, and get `/admin/*` pages that **list, create, edit, and delete** the rows of every table your extensions composed, gated by auth, rendered in your themed layout. It writes no ORM code.
 
 This is "declare intent, derive implementation": the composed schema is the intent, the admin UI is **derived**, and a resource is the **refinement**.
 
@@ -52,17 +52,15 @@ Minimal case: `defineResource({ table: 'subscriptions' })` derives every column 
 
 ## How it works
 
-- **Pages** (`config.pages`): `/admin` (dashboard), `/admin/:table` (list), `/admin/:table/new` (create).
+- **Pages** (`config.pages`): `/admin` (dashboard), `/admin/:table` (list), `/admin/:table/new` (create), `/admin/:table/:id` (edit + delete).
 - **Schema introspection**: each page's `data` hook resolves the merged schema (`resolveSchemas` + `mergeSchemas`) and derives columns/fields a resource omits, auto-hiding `id` / `*_hash` / timestamps.
 - **Data**: reads/writes go through [universal-orm](../universal-orm) (`db.<table>.find` / `.insert`) on whatever adapter the app registered (memory for dev, Drizzle for real). No ORM is imported.
-- **Create POST**: the `/admin/:table/new` route owns its own POST. Vike hands the Web Request as `pageContext._reqWeb`, so the same route renders the form (GET) and inserts (POST), then redirects. No separate endpoint.
+- **Write POSTs**: the write routes own their own POST. Vike hands the Web Request as `pageContext._reqWeb`, so `/admin/:table/new` renders the form (GET) and inserts (POST), and `/admin/:table/:id` renders the edit form (GET) and updates or deletes (POST), then redirects. No separate endpoint.
 - **Auth**: a `guard` fences `/admin/*` to signed-in users (`pageContext.user`, from vike-auth); per-resource `canView` / `canEdit` refine access, and `scope` (above) bounds which rows a user sees and edits.
 
 ## Agent API (JSON)
 
-The same admin, as machine-readable JSON, for an AI agent (or any HTTP client) acting on a user's behalf:
-
-The same admin, as machine-readable JSON. Read:
+The same admin, as machine-readable JSON, for an AI agent (or any HTTP client) acting on a user's behalf. Read:
 
 - `GET /admin.json`: the resources the caller may view (the dashboard, as JSON).
 - `GET /admin/<table>.json`: a resource list. Pass the narrow universal-orm query as `?query=`, a URL-encoded JSON object: `{ filter, orderBy, limit, offset }` (equality + `in` only, the same surface as the rest of universal-orm). Discrete `?page` / `?sort` / `?dir` also work.
@@ -101,5 +99,5 @@ It reuses the session cookie; API-token auth for headless agents is a follow-up.
 ## Known limits (MVP)
 
 - Queries are the narrow universal-orm surface: equality / `in` filters, single-column `orderBy`, `limit` / `offset` (no joins, ranges, OR, or raw SQL; drop to the ORM for those).
-- The agent API is **read-only** (GET) and reuses the session cookie; write ops (POST) and API-token auth for headless agents are follow-ups.
+- The agent API does full read + write (GET / POST / PATCH / DELETE) but reuses the session cookie; API-token auth for headless agents is a follow-up.
 - Per-type form fields, searchable/async FK selects, and role auth beyond `canView` / `canEdit` / `scope` are follow-ups (see issue #53).
