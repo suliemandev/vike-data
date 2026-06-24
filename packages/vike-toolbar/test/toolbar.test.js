@@ -3,7 +3,7 @@
 // is opaque here (a per-framework component) — a string stands in for it in these tests.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { defineToolbarItems, allToolbarItems } from '../index.js'
+import { defineToolbarItems, allToolbarItems, TOOLBAR_ROOT_ID, TOOLBAR_ITEMS_ID } from '../index.js'
 import config from '../+config.js'
 
 const ctrl = (name) => `<${name}>` // stand-in for a control component
@@ -63,6 +63,16 @@ test('allToolbarItems de-dupes by id (first contribution wins)', () => {
   ])
   assert.equal(composed.length, 1)
   assert.equal(composed[0].label, 'first')
+})
+
+test('the toolbar DOM-id contract is pinned (consumed by vike-themes / vike-i18n)', () => {
+  // These string VALUES are a cross-package contract — other extensions teleport into the
+  // same nodes by id. They are exported as the canonical source; a rename here would
+  // silently break those consumers, so pin the literals.
+  assert.equal(TOOLBAR_ROOT_ID, 'vike-toolbar-root')
+  assert.equal(TOOLBAR_ITEMS_ID, 'vike-toolbar-items')
+  // The bodyHtmlEnd mount node is built from the canonical id, not a re-typed literal.
+  assert.equal(config.bodyHtmlEnd, `<div id="${TOOLBAR_ROOT_ID}"></div>`)
 })
 
 test('+config declares the cumulative toolbarItems seam (config+server+client)', () => {

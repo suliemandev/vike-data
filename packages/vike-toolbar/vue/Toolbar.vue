@@ -1,22 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import logoSvg from './vike-logo.svg?raw'
+import { TOOLBAR_ROOT_ID, TOOLBAR_ITEMS_ID } from '../index.js'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
 })
 
-const ROOT_ID = 'vike-toolbar-root'
 const open = ref(false)
 const root = ref(null)
 
 const logoMarkup = logoSvg.replace('width="38"', 'width="24"').replace('height="38"', 'height="24"')
 
 onMounted(() => {
-  const el = document.getElementById(ROOT_ID)
+  const el = document.getElementById(TOOLBAR_ROOT_ID)
   if (el) { root.value = el; return }
   const obs = new MutationObserver(() => {
-    const node = document.getElementById(ROOT_ID)
+    const node = document.getElementById(TOOLBAR_ROOT_ID)
     if (node) { root.value = node; obs.disconnect() }
   })
   obs.observe(document.body, { childList: true, subtree: true })
@@ -37,7 +37,7 @@ const FIXED = { position: 'fixed', insetInlineStart: '16px', zIndex: 50, fontFam
       </div>
       <!-- Teleport target for other extensions' live controls. Empty + display:contents
            so its (externally-teleported) children flow into the panel's column. -->
-      <div id="vike-toolbar-items" :style="{ display: 'contents' }" />
+      <div :id="TOOLBAR_ITEMS_ID" :style="{ display: 'contents' }" />
     </div>
   </Teleport>
   <button

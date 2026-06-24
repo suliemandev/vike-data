@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePortalTarget } from './usePortalTarget.js'
+import { TOOLBAR_ROOT_ID, TOOLBAR_ITEMS_ID } from '../index.js'
 // Inline the logo as raw SVG markup, not an <img src>: an <img> re-decodes the file
 // whenever React re-creates the element, which can blink the icon. Inlined DOM never
 // reloads, so the button stays rock-steady.
@@ -23,7 +24,6 @@ import logoSvg from './vike-logo.svg?raw'
 // Size the root <svg> down to the button (it ships at 38x38); the viewBox keeps it crisp.
 const logoMarkup = logoSvg.replace('width="38"', 'width="24"').replace('height="38"', 'height="24"')
 
-const ROOT_ID = 'vike-toolbar-root'
 const FIXED = { position: 'fixed', insetInlineStart: 16, zIndex: 50, fontFamily: 'var(--font-sans)' }
 
 const panelStyle = {
@@ -42,7 +42,7 @@ const panelStyle = {
 }
 
 export function Toolbar({ items = [] }) {
-  const root = usePortalTarget(ROOT_ID)
+  const root = usePortalTarget(TOOLBAR_ROOT_ID)
   const [open, setOpen] = useState(false)
 
   return (
@@ -60,7 +60,7 @@ export function Toolbar({ items = [] }) {
             ))}
             {/* Teleport target for other extensions' live controls. Empty + display:contents
                 so its (externally-portaled) children flow into the panel's column. */}
-            <div id="vike-toolbar-items" style={{ display: 'contents' }} />
+            <div id={TOOLBAR_ITEMS_ID} style={{ display: 'contents' }} />
           </div>,
           root,
         )}
