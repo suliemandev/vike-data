@@ -12,8 +12,9 @@ const db = createRepository({ tables }, createMemoryAdapter())
 await db.users.insert({ id: 'u1', email: 'a@b.com', active: true })
 ```
 
-It honours the same five-operation contract every adapter must, and reuses
-universal-orm's shared `matchesFilter`, so its notion of a filter is identical to
+It honours the same six-operation contract every adapter must, and reuses
+universal-orm's shared `matchesFilter` and `applyListOpts`, so its notion of a
+filter and of orderBy/limit/offset paging is identical to
 every other in-process adapter. Swapping in [`@universal-orm/drizzle`](../universal-orm-drizzle)
 for a real database changes only this one line — the extension code calling
 `db.<table>.<op>` does not change.

@@ -69,9 +69,13 @@ unchanged. The core is usable from plain Node:
 import { createAuth, createMemoryStore } from 'vike-auth'
 
 const auth = createAuth({ store: createMemoryStore() })
+
+// requestMagicLink / redeemMagicLink return an { ok } envelope: { ok: true, email, token }
+// and { ok: true, user, session } on success, or { ok: false, error } (e.g. 'expired-token').
 const { token } = await auth.requestMagicLink('alice@example.com')
 const { user, session } = await auth.redeemMagicLink(token)
-await auth.authenticate(session.token) // -> { user, session }
+
+await auth.authenticate(session.token) // -> { user, session } or null
 await auth.destroySession(session.token) // real logout
 ```
 
@@ -138,5 +142,5 @@ See [vike-teams](../vike-teams/README.md) for the composition proof.
 > Cross-table references are real foreign keys: `sessions.user_id` is declared
 > `t.uuid('user_id').references('users.id', { onDelete: 'cascade' })`, and it
 > compiles to a Prisma relation, a Drizzle `.references()`, and a Rudder FK
-> constraint. See the [relations section](../../README.md#relations-v2) of the
-> root README.
+> constraint. See the relations support in
+> [`@vike-data/universal-schema`](../universal-schema).

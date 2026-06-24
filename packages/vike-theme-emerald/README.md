@@ -12,8 +12,8 @@ by name with zero wiring.
 import emeraldExt from 'vike-theme-emerald/config'
 
 export default {
-  extends: [themesExt, emeraldExt],   // emerald registers into the cumulative `themes`
-  theme: 'emerald',                   // ...and the app selects it by name
+  extends: [emeraldExt],   // emerald self-installs vike-themes and registers into `themes`
+  theme: 'emerald',        // ...and the app selects it by name
 }
 ```
 

@@ -63,18 +63,21 @@ typo'd column or an unknown table is a clear error, not a silent no-op.
 ## The adapter contract
 
 The app installs **one** adapter and hands it the connection; extensions never
-import an ORM (same shape as `@universal-middleware/*`). An adapter implements five
+import an ORM (same shape as `@universal-middleware/*`). An adapter implements six
 operations, each taking the table **name** first:
 
 ```js
 const adapter = {
   insert(table, row),                  // -> inserted row
-  find(table, filter),                 // -> rows[]
+  find(table, filter, opts),           // -> rows[]   (opts: { limit, offset, orderBy })
+  count(table, filter),                // -> number of matching rows
   upsert(table, row, { onConflict }),  // -> upserted row (onConflict: column names)
   update(table, filter, patch),        // -> updated rows[]
   delete(table, filter),               // -> number deleted
 }
 ```
+
+`findOne` is not an adapter op; the repository derives it from `find` (with `limit: 1`).
 
 In-process adapters can reuse the shared filter matcher so every adapter agrees on
 what a filter means; SQL adapters translate the same shape into a `WHERE` clause:
@@ -110,7 +113,7 @@ const db = createRepository({ tables }, adapter)
 ```
 
 `getAdapter()` returns `null` until the app sets one, so an extension falls back to
-the memory adapter for zero-config dev/demo/proof. `setAdapter` validates the five-op
+the memory adapter for zero-config dev/demo/proof. `setAdapter` validates the six-op
 contract up front, and the registry is cached on `globalThis` so pointer-import / HMR
 double-eval can't fork it. `clearAdapter()` resets it (tests).
 

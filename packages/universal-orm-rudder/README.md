@@ -43,6 +43,6 @@ Rudder's bulk writes (`updateAll` / `upsert`) return an affected-row count rathe
 
 ## Limitations
 
-- A single-column primary key (default `id`, override with `createRudderAdapter(native, { primaryKey })`) is assumed for the `update` re-read. Composite-PK tables (the m2m join tables from #17) are a follow-up.
+- `update` re-reads the matched rows and applies the patch to each, so it needs no primary-key assumption (this was reworked in [#142](https://github.com/suliemandev/vike-data/issues/142)). `createRudderAdapter(native)` takes the native adapter only.
 - No transactions (consistent with `@universal-orm/core`'s narrow surface; a single upsert is the common op).
 - The narrow filter surface only: equality and `in`. Drop to `@rudderjs/database` directly for joins, ranges, OR, or raw SQL.

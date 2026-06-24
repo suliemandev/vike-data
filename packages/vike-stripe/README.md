@@ -47,9 +47,10 @@ POST /stripe/subscription/webhook  -> db.subscriptions.upsert(row, { onConflict 
 POST /stripe/purchase/webhook      -> db.payments.insert(row)   (idempotent per intent)
 ```
 
-The webhook parses the event via the shared Stripe SDK, then calls a framework- and
-ORM-agnostic core (`subscription.js` / `payment.js`) that does a single universal-orm
-call. The write routes through **the adapter the app registered** (`setAdapter` in
+The webhook verifies the Stripe signature over the RAW request body **before any
+write** (a forged or unsigned request is a `400` and never reaches the core), then
+calls a framework- and ORM-agnostic core (`subscription.js` / `payment.js`) that does
+a single universal-orm call. The write routes through **the adapter the app registered** (`setAdapter` in
 `@universal-orm/core`): a real app installs `@universal-orm/drizzle` once at server
 start and the webhook writes to Postgres for real; with nothing registered it falls
 back to the in-process **memory adapter** (the zero-config proof and demo). The core
@@ -64,9 +65,10 @@ is unchanged either way — that round trip is proven on Postgres (PGlite) in
 
 No transactions yet (each write is a single atomic statement).
 
-> In the proof the webhook is a plain JSON POST — no Stripe signature verification,
-> which is a provider concern for a real vike-stripe. The point is to watch an
-> extension INSERT/upsert for real, ORM-agnostically.
+> The webhook verifies the `stripe-signature` header over the raw body (a shared
+> `constructEvent` in `stripe.js`, the single place a signature gates a write) before
+> the core runs, so an extension INSERTs/upserts for real, ORM-agnostically, only on a
+> genuinely-signed event.
 
 ## Parameterized, the idiomatic way
 
