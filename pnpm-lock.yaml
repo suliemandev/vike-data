@@ -442,6 +442,28 @@ importers:
         specifier: 0.4.259-commit-f6ecfb2
         version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5)
 
+  packages/vike-storage:
+    dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+      vike-auth:
+        specifier: workspace:*
+        version: link:../vike-auth
+    devDependencies:
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+
   packages/vike-stripe:
     dependencies:
       '@universal-middleware/core':
