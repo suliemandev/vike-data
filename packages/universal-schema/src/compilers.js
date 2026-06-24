@@ -100,9 +100,14 @@ export function toDrizzle(ir) {
 
 // ----------------------------------------------------------------- Rudder ----
 // Targets the Rudder database engine (@rudderjs/database); WE own its migrations.
-function rudderCol(c) {
+// Render one column as a Rudder schema-builder chain. `includePrimary` emits the
+// inline `.primary()` for a `create` (default); an `alter` adds columns to an
+// existing table and never re-declares the primary key, so generate.js passes
+// `false`. Everything else (unique / nullable / default / FK + onDelete) renders
+// identically, so both the create and alter paths share this one renderer.
+export function rudderCol(c, { includePrimary = true } = {}) {
   let s = `t.${c.type}('${c.name}')`
-  if (c.primary) s += '.primary()'
+  if (includePrimary && c.primary) s += '.primary()'
   if (c.unique) s += '.unique()'
   if (c.nullable) s += '.nullable()'
   if (c.default === 'now') s += '.useCurrent()'
