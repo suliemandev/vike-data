@@ -1,4 +1,4 @@
-// The vike-react Wrapper contributed by vike-react-themes/config. It turns the
+// The vike-react Wrapper contributed by vike-themes/react. It turns the
 // declarative theme config into a running ThemeProvider:
 //   - the registered brands (cumulative `themes` config, from vike-themes + theme
 //     packages + the app's own defineTheme) become the selectable set,
