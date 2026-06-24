@@ -36,7 +36,9 @@ export function createPushMiddleware() {
       if (!user) return json(401, { error: 'not-signed-in' })
       const body = await readJson(request)
       if (!body || !body.endpoint) return json(400, { error: 'invalid-endpoint' })
-      await removeSubscription(body.endpoint)
+      // Scope the delete to the signed-in user, so a client can only unsubscribe its own
+      // subscription, never another user's endpoint. Always 200 (idempotent, no oracle).
+      await removeSubscription(user.id, body.endpoint)
       return json(200, { ok: true })
     }
 

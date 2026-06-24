@@ -115,10 +115,15 @@ export async function saveSubscription(userId, subscription) {
   return { id: row.id, created: true }
 }
 
-/** Remove a subscription by its endpoint (unsubscribe, or a gone/expired endpoint). */
-export async function removeSubscription(endpoint) {
+/**
+ * Remove one of a user's subscriptions by endpoint. Scoped to `userId` so a caller can
+ * only ever delete its OWN subscription, never another user's row that happens to share
+ * (or guess) the endpoint - the delete-side counterpart to saveSubscription's user
+ * binding. Returns the number of rows deleted (0 when the user has no such endpoint).
+ */
+export async function removeSubscription(userId, endpoint) {
   const adapter = requireAdapter()
-  return adapter.delete(TABLE, { endpoint })
+  return adapter.delete(TABLE, { endpoint, user_id: userId })
 }
 
 // The send job: one delivery per subscription. Resolves the transport at RUN time so a
