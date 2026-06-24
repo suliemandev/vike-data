@@ -119,12 +119,45 @@ test('POST /push/subscribe is 401 without a session', async () => {
   assert.equal(getPushOutbox().length, 0)
 })
 
-test('removeSubscription deletes by endpoint', async () => {
+test('removeSubscription deletes the calling user\'s subscription by endpoint', async () => {
   const adapter = setup()
   await saveSubscription('u-1', sub('https://push/aaa'))
   await saveSubscription('u-1', sub('https://push/bbb'))
-  await removeSubscription('https://push/aaa')
+  await removeSubscription('u-1', 'https://push/aaa')
   const rows = await adapter.find('push_subscriptions', {})
   assert.equal(rows.length, 1)
   assert.equal(rows[0].endpoint, 'https://push/bbb')
+})
+
+test('removeSubscription will not delete another user\'s subscription (IDOR guard)', async () => {
+  const adapter = setup()
+  await saveSubscription('u-1', sub('https://push/aaa'))
+  // u-2 knows u-1's endpoint but is not its owner: the scoped delete matches nothing.
+  const deleted = await removeSubscription('u-2', 'https://push/aaa')
+  assert.equal(deleted, 0)
+  const rows = await adapter.find('push_subscriptions', {})
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].user_id, 'u-1')
+})
+
+test('POST /push/unsubscribe cannot remove another signed-in user\'s subscription', async () => {
+  const adapter = setup()
+  await openSessionCookie('owner@example.com')
+  const cookieAttacker = await openSessionCookie('attacker@example.com')
+  const owner = (await adapter.find('users', { email: 'owner@example.com' }))[0]
+  await saveSubscription(owner.id, sub('https://push/aaa'))
+
+  const mw = createPushMiddleware()
+  // The attacker is signed in and sends the owner's endpoint.
+  const res = await mw(new Request('http://localhost/push/unsubscribe', {
+    method: 'POST',
+    headers: { cookie: cookieAttacker, 'content-type': 'application/json' },
+    body: JSON.stringify({ endpoint: 'https://push/aaa' }),
+  }))
+
+  // 200 (idempotent unsubscribe, no existence oracle), but the owner's row survives.
+  assert.equal(res.status, 200)
+  const rows = await adapter.find('push_subscriptions', {})
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].user_id, owner.id)
 })
