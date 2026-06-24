@@ -1,0 +1,24 @@
+{
+  "name": "vike-queue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Background-job seam: a cumulative job registry + a runtime dispatch() over a swappable driver (inline for dev, a universal-orm database driver, or a production driver later). Framework-agnostic; the base layer other extensions (vike-mail, ...) queue work onto.",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./+config.js",
+    "./schema": "./schema.js",
+    "./inline": "./inline.js",
+    "./database": "./database.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/memory": "workspace:*"
+  }
+}

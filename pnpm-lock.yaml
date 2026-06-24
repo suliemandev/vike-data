@@ -244,6 +244,9 @@ importers:
       vike-i18n:
         specifier: workspace:*
         version: link:../vike-i18n
+      vike-mail:
+        specifier: workspace:*
+        version: link:../vike-mail
       vike-react:
         specifier: '>=0.6'
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
@@ -315,6 +318,25 @@ importers:
       vue:
         specifier: '>=3'
         version: 3.5.38
+
+  packages/vike-mail:
+    dependencies:
+      vike-queue:
+        specifier: workspace:*
+        version: link:../vike-queue
+
+  packages/vike-queue:
+    dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+    devDependencies:
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
 
   packages/vike-rbac:
     dependencies:
