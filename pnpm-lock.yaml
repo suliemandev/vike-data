@@ -325,6 +325,28 @@ importers:
         specifier: workspace:*
         version: link:../vike-queue
 
+  packages/vike-push:
+    dependencies:
+      '@universal-middleware/core':
+        specifier: ^0.4.18
+        version: 0.4.18(srvx@0.11.17)
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
+      vike-auth:
+        specifier: workspace:*
+        version: link:../vike-auth
+      vike-queue:
+        specifier: workspace:*
+        version: link:../vike-queue
+    devDependencies:
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+
   packages/vike-queue:
     dependencies:
       '@universal-orm/core':
