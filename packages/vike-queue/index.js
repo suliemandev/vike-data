@@ -95,7 +95,8 @@ export function dispatch(name, payload, opts = {}) {
  * uses (the inline driver calls it directly; the DB worker calls it per claimed row).
  * Throws the last error if every attempt fails, so a driver can mark the row failed.
  *
- * `attempt` is 1-based (the count already consumed); `sleep` is injectable for tests.
+ * `attempt` is the count already consumed (0 = a fresh job, none run yet); `sleep` is
+ * injectable for tests.
  */
 export async function runJob(name, payload, { maxAttempts = 1, attempt = 0, sleep = defaultSleep } = {}) {
   const handler = getJob(name)
