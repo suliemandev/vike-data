@@ -88,6 +88,9 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 
 ## Structure
 
+> For the layering, the composition mechanism, and the runtime + codegen lifecycle, see
+> **[Architecture.md](Architecture.md)**. Per-package detail is in each package's README.
+
 | Package | Owns |
 |---|---|
 | **Data layer** | |
@@ -95,8 +98,10 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 | `universal-orm` (`@universal-orm/core`) | The neutral, narrow repository (`db.<table>.insert/find/findOne/upsert/update/delete`, paging + `count`) over the composed schema, plus the 6-op adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
 | `@universal-orm/memory` | In-process adapter over plain Maps. Zero database; for tests, demos, and the proof. |
 | `@universal-orm/drizzle` | Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (via PGlite). |
-| `vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
+| `@universal-orm/rudder` | Rudder adapter: runs the neutral calls against the `@rudderjs/database` native engine (snake_case keys pass straight through). |
+| `vike-schema` (`@vike-data/vike-schema`) | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
 | `vike-drizzle` | Vike binding: `registerDrizzle(db, schema)` makes your Drizzle connection the `universal-orm` adapter, so extensions write to your database with no manual `setAdapter` wiring. |
+| `vike-rudder` | Vike binding: `registerRudder({ driver, url })` makes the Rudder engine the `universal-orm` adapter (the twin of `vike-drizzle`). |
 | `vike-auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (universal middleware + `pageContext.user`). React UI + its `/login` + `/account` pages ship as the `vike-auth/react` subpath; `vike-auth/fr` + `/ar` are language subpaths. |
 | `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
 | `vike-rbac` | Roles & permissions: owns `roles` / `permissions` / `role_user` / `permission_role`, a cumulative `permissions` registry, and one `can(user, permission)` / `hasRole(user, role)` the app, vike-admin, and a Telefunc RPC seam (`vike-rbac/telefunc`) all share. Resolves onto the user via vike-auth's `resolveUser` seam. Self-installs vike-auth. |
@@ -106,7 +111,8 @@ tree-shake out of the bundle, and Vike never has to resolve a runtime-computed
 | `vike-themes` (+ `vike-themes/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
 | `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
 | `vike-layouts` (+ `vike-layouts/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin. |
+| `vike-toolbar` (+ `vike-toolbar/react`) | A fixed logo button + settings popover; a cumulative `toolbarItems` seam other extensions (e.g. the locale + theme pickers) teleport their controls into. |
+| `vike-i18n` (+ `vike-i18n/react`, `vike-i18n/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin; the `vike translate` CLI (tier-2 long-tail translations). |
 | **Apps** | |
 | `app` | Data-layer demo: the merged schema rendered + compiled to all three ORMs. |
 | `app-react` | UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel. |
@@ -193,8 +199,9 @@ Per-package design notes live in each package's README (see
   against real Postgres through `vike-drizzle`.
 - **Admin**: list / create / edit / delete, FK `<select>`s, sortable + searchable
   columns, pagination, and per-row `scope(user)` access all work today. A JSON / agent
-  query surface over the same `scope` guard (`/admin.json`, `?query=`) is designed and
-  next; richer field types are a follow-up.
+  query surface over the same `scope` guard (`/admin.json` + `/admin/<table>.json`,
+  `?query=`, and the write verbs POST/PATCH/DELETE) ships too; richer field types are a
+  follow-up.
 - **RBAC**: `vike-rbac` owns roles/permissions and a single `can(user, permission)` /
   `hasRole(user, role)`; the demo's admin `canView`/`canEdit` and session `scope`
   delegate to it. Resolution rides on a `resolveUser` seam in vike-auth (auth runs
@@ -209,8 +216,11 @@ Per-package design notes live in each package's README (see
   and adds the message-*composition* layer Vike leaves to userland, with zero-config
   `locales: [...]` auto-include via a Vite virtual module (tree-shaken per locale). RTL
   falls out of the active locale: vike-i18n drives `<html lang>` + `<html dir>`, so an
-  Arabic/Hebrew locale flips the whole document and every layout shell inherits it. An
-  AI-translate tier (`vike translate` for the long tail) is the next step.
+  Arabic/Hebrew locale flips the whole document and every layout shell inherits it. A
+  second tier handles the long tail: `vike translate` (a `vike-translate` CLI) reads each
+  extension's advertised `exports["texts"]`, AI-translates non-bundled locales into a
+  committed `translation.json`, and resolves it behind the same `t()` (committed override
+  → bundled pack → inline English), with a `--check` drift gate for CI.
 - **Event-sourcing** was dropped from billing (brillout's steer): a plain mutable
   table is the shape real apps use. It pressured the IR (no first-class *append-only*
   or *projection-of*), so it parks as a candidate IR shape to discuss, not baked in.
