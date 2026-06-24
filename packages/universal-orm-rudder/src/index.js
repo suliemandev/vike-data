@@ -16,7 +16,8 @@
 //
 // The one wrinkle: Rudder's BULK writes (`updateAll` / `upsert`) return an affected-row COUNT,
 // not the rows (only single-row `.create()` / `.update(id, ...)` return via RETURNING). The
-// contract wants the row(s) back, so for update/upsert we do a follow-up read.
+// contract wants the row(s) back, so update reads the matched rows first and returns them with
+// the patch applied, and upsert re-reads by the conflict key.
 import { normalizeOrderBy } from '@universal-orm/core'
 
 // universal-orm's orderBy direction is lower-case; Rudder's query builder wants 'ASC'/'DESC'.
@@ -27,10 +28,8 @@ const DIR = { asc: 'ASC', desc: 'DESC' }
  *
  * @param native     a `@rudderjs/database` NativeAdapter (`native.query(table)` returns a
  *                   fresh query builder per call).
- * @param options    `{ primaryKey }` — the single-column PK used to re-read updated rows
- *                   (default `'id'`; composite PKs are a follow-up, see #75).
  */
-export function createRudderAdapter(native, { primaryKey = 'id' } = {}) {
+export function createRudderAdapter(native) {
   if (!native || typeof native.query !== 'function') {
     throw new Error('@universal-orm/rudder: createRudderAdapter(native) expects a @rudderjs/database NativeAdapter (with .query(table))')
   }
@@ -83,16 +82,20 @@ export function createRudderAdapter(native, { primaryKey = 'id' } = {}) {
       return applyWhere(q(table), key).first()
     },
 
-    // UPDATE -> the updated rows. `updateAll` returns a count, so capture the matched primary
-    // keys FIRST, then re-read by them after the update — that way a patch which mutates a
-    // filtered column still returns the rows that were changed (the post-update filter wouldn't
-    // match them). Single-column PK assumed (see options.primaryKey).
+    // UPDATE -> the updated rows. Rudder's bulk `updateAll` returns only an affected-row COUNT
+    // (no RETURNING on a bulk write), so to honour the "return the rows" contract we read the
+    // matched rows FIRST, then return them with the patch applied. This is the same post-state
+    // the in-memory reference adapter returns (it assigns the patch onto each matched row), and
+    // unlike a re-read it needs NO primary key — so it is correct for any PK shape, including a
+    // non-`id` or composite primary key. (The previous version re-read by a hard-coded `id` and
+    // returned [] whenever the PK was not literally `id`, even though the write succeeded — #142.)
+    // A patch that mutates a filtered column is handled too: the captured row holds the
+    // pre-update values and the patch overrides exactly the columns it changes.
     async update(table, filter, patch) {
       const matched = await applyWhere(q(table), filter).get()
-      const ids = matched.map((r) => r[primaryKey])
-      if (!ids.length) return []
+      if (!matched.length) return []
       await applyWhere(q(table), filter).updateAll(patch)
-      return q(table).where(primaryKey, 'IN', ids).get()
+      return matched.map((row) => ({ ...row, ...patch }))
     },
 
     // DELETE -> number of rows deleted (`deleteAll` returns the affected-row count).
