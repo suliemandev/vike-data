@@ -54,22 +54,13 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
   const sessionCookie = (token, maxAgeSec) =>
     serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure: !dev })
 
-  // Idempotency guard. An extension that is self-installed by several others
-  // (vike-auth is pulled in by the app AND by vike-teams AND by vike-stripe)
-  // has its `middleware` collected once per install path, and universal
-  // middlewares all run even after one returns a Response (a Response only
-  // short-circuits route HANDLERS, not middlewares). Without this guard the
-  // second run would re-read the request body ("Body already read") and re-issue
-  // the magic link. We handle each request object exactly once; later duplicates
-  // no-op and the first Response stands. (Finding for Vike: dedupe the built-in
-  // `middleware` config by identity, mirroring schema's `_migrations` dedupe.)
-  const handled = new WeakSet()
-
+  // Vike dedupes identical `middleware` contributions by extension identity
+  // (vikejs/vike#3354, fixed in 0.4.259), so this runs once per request even when
+  // several extensions self-install vike-auth (the app + vike-teams + vike-stripe).
+  // No per-request idempotency guard is needed; reading the body once is safe.
   async function authMiddleware(request) {
     const url = new URL(request.url)
     if (!url.pathname.startsWith('/auth/')) return // fall through to Vike
-    if (handled.has(request)) return // a duplicate registration already handled it
-    handled.add(request)
 
     // --- issue a magic link -------------------------------------------------
     if (url.pathname === '/auth/request' && request.method === 'POST') {
