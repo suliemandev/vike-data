@@ -7,37 +7,20 @@
 //
 //   POST /stripe/subscription/webhook   subscription event -> db.subscriptions.upsert(...)
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
-import { stripe } from '../stripe.js'
+import { createWebhookMiddleware } from '../stripe.js'
 
 export const SUBSCRIPTION_WEBHOOK_PATH = '/stripe/subscription/webhook'
 
-const json = (status, body) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
-
-// Raw handler, exported for testing: `(request) => Response | undefined`. Returns
-// undefined for non-matching paths so the request falls through Vike's onion.
-export function subscriptionWebhookHandler(subscriptions, { provider = stripe } = {}) {
-  const handled = new WeakSet() // idempotency vs duplicate middleware registration
-
-  return async function subscriptionMiddleware(request) {
-    const url = new URL(request.url)
-    if (url.pathname !== SUBSCRIPTION_WEBHOOK_PATH) return // fall through to Vike
-    if (request.method !== 'POST') return json(405, { ok: false, error: 'method-not-allowed' })
-    if (handled.has(request)) return
-    handled.add(request)
-
-    let event
-    try {
-      const rawBody = await request.text()
-      const signature = request.headers.get('stripe-signature')
-      event = await provider.webhooks.constructEvent(rawBody, signature)
-    } catch {
-      return json(400, { ok: false, error: 'invalid-signature' })
-    }
-
-    const result = await subscriptions.applySubscriptionEvent(event)
-    return json(result.ok ? 200 : 400, result)
-  }
+// Raw handler, exported for testing: `(request) => Response | undefined`. The webhook
+// plumbing (path match, method check, RAW-body signature verification, idempotency) is
+// the shared `createWebhookMiddleware`; this model's only job is the post-verify core
+// call — `applySubscriptionEvent`, which UPSERTs the single subscriptions row.
+export function subscriptionWebhookHandler(subscriptions, { provider } = {}) {
+  return createWebhookMiddleware({
+    path: SUBSCRIPTION_WEBHOOK_PATH,
+    onEvent: (event) => subscriptions.applySubscriptionEvent(event),
+    provider, // undefined falls back to the shared default instance
+  })
 }
 
 export function createSubscriptionWebhook(subscriptions, opts) {

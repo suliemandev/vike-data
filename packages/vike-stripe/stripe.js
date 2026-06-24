@@ -107,3 +107,43 @@ export const stripe = createStripe({
   apiKey: process.env.STRIPE_API_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
 })
+
+const json = (status, body) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+// The shared webhook plumbing for every billing model. Both subpaths (purchase,
+// subscription) own a webhook that is byte-for-byte identical up to one line — read
+// the RAW body, verify the Stripe signature over it BEFORE any write, then hand the
+// parsed event to the model's core. Only the path and that final core call differ, so
+// the signature check lives in exactly ONE place here; a model supplies `onEvent`,
+// which runs only after verification succeeds.
+//
+//   path      the pathname this webhook owns; other paths fall through to Vike.
+//   onEvent   async (event) => { ok, ... } — the model's core write (insert/upsert).
+//
+// Returns the raw handler `(request) => Response | undefined`: undefined for a
+// non-matching path so the request continues through Vike's onion; 405 for non-POST;
+// 400 for a missing/forged signature (the request never reaches `onEvent`).
+export function createWebhookMiddleware({ path, onEvent, provider = stripe }) {
+  const handled = new WeakSet() // idempotency vs duplicate middleware registration
+
+  return async function stripeWebhookMiddleware(request) {
+    const url = new URL(request.url)
+    if (url.pathname !== path) return // fall through to Vike
+    if (request.method !== 'POST') return json(405, { ok: false, error: 'method-not-allowed' })
+    if (handled.has(request)) return
+    handled.add(request)
+
+    let event
+    try {
+      const rawBody = await request.text()
+      const signature = request.headers.get('stripe-signature')
+      event = await provider.webhooks.constructEvent(rawBody, signature)
+    } catch {
+      return json(400, { ok: false, error: 'invalid-signature' })
+    }
+
+    const result = await onEvent(event)
+    return json(result.ok ? 200 : 400, result)
+  }
+}
