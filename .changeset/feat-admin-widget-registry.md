@@ -1,0 +1,5 @@
+---
+'vike-admin': minor
+---
+
+vike-admin: derive form controls from a column's semantic type through an extensible field-widget registry. A column marked with universal-schema's `.as()` (`.as('email')`, `.as('longtext')`, `.as('enum', { values })`, `.as('date')`, `.as('json')`) now renders the matching control, with the enum's allowed values surfaced as static select options. The hardcoded type-to-input switch in `FormFields` becomes a dispatch over a registry keyed by the field's rendering `widget` token, and the registry is open: an extension registers its own control with `registerFieldWidget(token, Component)` (exported from `vike-admin/react/widgets`), so a column marked `.as('file')` will render an upload control once vike-storage provides one, with no bespoke admin code. The form view-model now carries a `widget` token (rendering) alongside the unchanged `type` token (coercion), so the write path is untouched and an unrecognized semantic falls back to a plain text input. React ships the full registry; the Vue `FormFields` reaches built-in parity (a Vue widget registry is a fast follow).

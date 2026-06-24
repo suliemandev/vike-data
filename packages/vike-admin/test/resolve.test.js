@@ -156,6 +156,58 @@ test('viewFields marks a foreign-key column as a select carrying its fk target',
   assert.deepEqual(userId.fk, { table: 'users', column: 'id' })
   // a non-FK column stays a plain input
   assert.equal(fields.find((f) => f.name === 'token').fk, undefined)
+  // an FK's widget is the select widget too
+  assert.equal(userId.widget, 'select')
+})
+
+// --- semantic widgets (#176 -> #177) ----------------------------------------------------
+
+const docsSchema = defineSchema('docs', (t) => {
+  t.uuid('id').primary()
+  t.string('contact').as('email')
+  t.text('body').as('longtext')
+  t.string('status').as('enum', { values: ['draft', 'published'] })
+  t.string('avatar').as('file') // a token no built-in widget owns
+  t.string('plain') // no semantic
+  t.integer('rank')
+})
+const docsConfig = (resources) => ({ schemas: [docsSchema], adminResources: resources })
+const docsTable = () => tableNamed(resolveAdminTables(docsConfig([])), 'docs')
+
+test('viewFields derives the widget from a column semantic, leaving the coercion type intact', () => {
+  const fields = viewFields(defineResource({ table: 'docs' }), docsTable())
+  const byName = Object.fromEntries(fields.map((f) => [f.name, f]))
+  // a string column marked .as('email') renders as email but still coerces as text
+  assert.equal(byName.contact.widget, 'email')
+  assert.equal(byName.contact.type, 'text')
+  assert.equal(byName.body.widget, 'longtext')
+  assert.equal(byName.status.widget, 'enum')
+  // an unknown semantic passes through as the widget token (FormFields falls back to text)
+  assert.equal(byName.avatar.widget, 'file')
+})
+
+test('a column without a semantic keeps widget === its coercion type (back-compat)', () => {
+  const byName = Object.fromEntries(viewFields(defineResource({ table: 'docs' }), docsTable()).map((f) => [f.name, f]))
+  assert.equal(byName.plain.widget, 'text')
+  assert.equal(byName.plain.type, 'text')
+  assert.equal(byName.rank.widget, 'integer')
+  assert.equal(byName.rank.type, 'integer')
+})
+
+test('an enum semantic surfaces its values as static select options', () => {
+  const status = viewFields(defineResource({ table: 'docs' }), docsTable()).find((f) => f.name === 'status')
+  assert.deepEqual(status.options, [
+    { value: 'draft', label: 'draft' },
+    { value: 'published', label: 'published' },
+  ])
+})
+
+test('an explicit field .type() override wins over the column semantic for both type and widget', () => {
+  const resource = defineResource({ table: 'docs', form: [field('contact').type('text')] })
+  const contact = viewFields(resource, docsTable())[0]
+  assert.equal(contact.type, 'text')
+  assert.equal(contact.widget, 'text')
+  assert.equal(contact.options, undefined)
 })
 
 test('recordTitleColumn honors a resource recordTitle, else falls back to a string column', () => {
