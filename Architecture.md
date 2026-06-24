@@ -38,12 +38,16 @@ top and chooses the concrete ORM.
         │     ├─ @universal-orm/drizzle  (real Postgres via PGlite in tests)
         │     └─ @universal-orm/rudder   (the @rudderjs/database native engine)
         │
-        └─ @vike-data/universal-schema   (schema IR + DSL + per-ORM compilers; zero deps)
+        ├─ @vike-data/universal-schema   (schema IR + DSL + per-ORM compilers; zero deps)
+        │
+        └─ @vike-data/kit   (createPort / createOutbox: the registry + dev-outbox primitives)
 ```
 
 **Three npm scopes, by role:**
 
-- `@vike-data/*` — the schema layer (`universal-schema`, `vike-schema`).
+- `@vike-data/*` - the schema layer (`universal-schema`, `vike-schema`) plus the
+  authoring `kit` (`createPort` / `createOutbox`, the provider-registry + dev-outbox
+  primitives the runtime ports are built on).
 - `@universal-orm/*` — the runtime data layer (`core` + the `memory` / `drizzle` /
   `rudder` adapters).
 - bare `vike-*` — the Vike extensions and ORM bindings.
@@ -69,9 +73,10 @@ export default {
 }
 
 // an extension contributes + self-installs its base
+// (the schema callback MUTATES t; each t.<type>(name) adds a column)
 export default {
   extends: ['import:@vike-data/vike-schema/config:default'],
-  schemas: [defineSchema('users', (t) => ({ id: t.id(), email: t.text() }))],
+  schemas: [defineSchema('users', (t) => { t.uuid('id').primary(); t.string('email').unique() })],
 }
 
 // the app picks + can override
@@ -147,9 +152,11 @@ the `middleware` config and run on every request:
   every auth/rbac/data hook runs, and returns `pageContext.data` as JSON — so the agent
   API inherits the exact same auth + `scope` guards as the UI, by construction.
 
-> Note: Vike does not bridge middleware context into `pageContext`, so per-request **user
-> resolution** happens in `onCreatePageContext` (below), not in the middleware. If Vike
-> adds that bridge, the two collapse (tracked in #128 for the Telefunc seam).
+> Note: per-request **user resolution** happens in `onCreatePageContext` (below), not in
+> the middleware, because that hook hosts the ordered `resolveUser` enricher seam (rbac
+> roles, teams org) that must run right after auth resolves `user`. Vike can now bridge a
+> context-returning universal middleware into `pageContext`, but a middleware can't host
+> that ordered seam, so resolution stays unified in the hook.
 
 ---
 
