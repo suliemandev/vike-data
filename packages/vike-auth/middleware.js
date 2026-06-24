@@ -17,6 +17,7 @@
 // README design note — if Vike bridges universal-middleware context into
 // pageContext, the two halves collapse into one hook.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
+import { sendMail } from 'vike-mail'
 import { SESSION_COOKIE } from './constants.js'
 import { parseCookies, serializeCookie } from './cookie.js'
 import { sanitizeNext } from './safe-redirect.js'
@@ -83,11 +84,25 @@ export function createAuthMiddleware(auth, { dev = false } = {}) {
       const next = sanitizeNext(form.get('next'))
       const nextParam = next ? `&next=${encodeURIComponent(next)}` : ''
       const link = `${url.origin}/auth/callback?token=${encodeURIComponent(result.token)}${nextParam}`
-      // No email provider in the proof: in dev we surface the link directly
-      // (the vike-dashboard pattern — dev logs the magic link to the console).
-      console.log(`[vike-auth] magic link for ${result.email}: ${link}`)
+      // Deliver the link through vike-mail's neutral PORT (queued via vike-queue).
+      // vike-auth depends only on the port, never a concrete provider (the same shape
+      // as depending on @universal-orm/core, not Drizzle): with no transport registered
+      // vike-mail's dev console/outbox transport records it, and an app that registers a
+      // real transport (Resend/SES) actually emails it. Delivery must not reveal whether
+      // the address exists, so a failure is swallowed and the neutral notice still shows.
+      try {
+        await sendMail({
+          to: result.email,
+          subject: 'Your sign-in link',
+          html: `<p>Click to sign in:</p><p><a href="${esc(link)}">${esc(link)}</a></p><p>This link expires shortly and can only be used once.</p>`,
+          text: `Sign in: ${link}`,
+        })
+      } catch (err) {
+        console.error('[vike-auth] failed to hand the magic link to vike-mail:', err)
+      }
+      // In dev we also surface the link inline for convenience (no inbox to open).
       const devLink = dev
-        ? `<p>Dev mode, no email is sent. Follow your magic link:</p><p><a href="${esc(link)}">${esc(link)}</a></p>`
+        ? `<p>Dev mode: the link was handed to vike-mail. For convenience:</p><p><a href="${esc(link)}">${esc(link)}</a></p>`
         : `<p>If that address has an account, a sign-in link is on its way.</p>`
       return html(200, `<h2>Check your inbox</h2>${devLink}<p><a href="/">Back</a></p>`)
     }
