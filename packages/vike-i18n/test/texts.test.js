@@ -22,10 +22,15 @@ function makeApp(spec) {
   return root
 }
 
-test('readTextsExport reads the string and conditional-object forms', () => {
+test('readTextsExport reads the "./texts" subpath, bare "texts", and object forms', () => {
+  // canonical subpath form (valid alongside other "./" subpaths)
+  assert.equal(readTextsExport({ exports: { '.': './index.js', './texts': './texts.json' } }), './texts.json')
+  // bare key (texts-only exports map)
   assert.equal(readTextsExport({ exports: { texts: './texts.json' } }), './texts.json')
-  assert.equal(readTextsExport({ exports: { texts: { default: './t.json' } } }), './t.json')
-  assert.equal(readTextsExport({ exports: { texts: { import: './i.json' } } }), './i.json')
+  // "./texts" wins when both are present
+  assert.equal(readTextsExport({ exports: { './texts': './a.json', texts: './b.json' } }), './a.json')
+  assert.equal(readTextsExport({ exports: { './texts': { default: './t.json' } } }), './t.json')
+  assert.equal(readTextsExport({ exports: { './texts': { import: './i.json' } } }), './i.json')
   assert.equal(readTextsExport({ exports: {} }), null)
   assert.equal(readTextsExport({}), null)
 })
@@ -35,11 +40,12 @@ test('discoverTextCatalogs enumerates installed extensions advertising texts', (
     app: { name: 'my-app', dependencies: { 'vike-auth': '*', 'vike-billing': '*', 'left-pad': '*' } },
     modules: {
       'vike-auth': {
-        packageJson: { name: 'vike-auth', exports: { texts: './texts.json' } },
+        // realistic: a "./texts" subpath alongside the package's other subpaths
+        packageJson: { name: 'vike-auth', exports: { '.': './index.js', './texts': './texts.json' } },
         texts: { 'auth.signIn': 'Sign in' },
       },
       'vike-billing': {
-        packageJson: { name: 'vike-billing', exports: { texts: './texts.json' } },
+        packageJson: { name: 'vike-billing', exports: { './texts': './texts.json' } },
         texts: { 'billing.pay': 'Pay' },
       },
       // a normal dep with no texts export — must be skipped, not crash

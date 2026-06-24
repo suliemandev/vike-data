@@ -56,8 +56,9 @@ up in PRs), and **deterministic**.
 An extension advertises its English source strings as plain JSON via package.json:
 
 ```jsonc
-// packages/vike-auth/package.json
-{ "exports": { "texts": "./texts.json" } }
+// packages/vike-auth/package.json — "./texts" sits alongside the package's other
+// subpaths (Node forbids mixing a bare "texts" key with "." subpath keys).
+{ "exports": { ".": "./index.js", "./texts": "./texts.json" } }
 ```
 
 ```jsonc

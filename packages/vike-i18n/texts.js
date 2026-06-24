@@ -16,14 +16,17 @@ import { readFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 
 /**
- * Pull the `texts` target out of a parsed package.json `exports` map. Supports the
- * plain string form (`"texts": "./texts.json"`) and the conditional-object form
- * (`"texts": { "default": "./texts.json" }`) — taking `default`/`import`/`require`
- * in that order — so it reads the same exotic exports maps Node's resolver accepts.
- * Returns the relative specifier, or null when the package advertises no texts.
+ * Pull the texts target out of a parsed package.json `exports` map. The canonical key
+ * is the SUBPATH `"./texts"` (Node forbids mixing a bare `"texts"` key with `"."`-style
+ * subpath keys in the same exports map, so an extension that already exports `"."`,
+ * `"./react"`, etc. must use `"./texts"`); a bare `"texts"` is also accepted for a
+ * package whose exports map is texts-only. Supports the plain string form and the
+ * conditional-object form (`{ "default": "./texts.json" }`), taking
+ * `default`/`import`/`require` in that order. Returns the relative specifier, or null.
  */
 export function readTextsExport(pkgJson) {
-  const entry = pkgJson && pkgJson.exports && pkgJson.exports.texts
+  const exp = (pkgJson && pkgJson.exports) || {}
+  const entry = exp['./texts'] != null ? exp['./texts'] : exp.texts
   if (!entry) return null
   if (typeof entry === 'string') return entry
   return entry.default || entry.import || entry.require || null
