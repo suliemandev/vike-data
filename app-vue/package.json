@@ -22,6 +22,7 @@
     "vike-auth": "workspace:*",
     "vike-i18n": "workspace:*",
     "vike-layouts": "workspace:*",
+    "vike-push": "workspace:*",
     "vike-rbac": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vike-themes": "workspace:*",

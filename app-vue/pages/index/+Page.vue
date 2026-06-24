@@ -1,5 +1,6 @@
 <script setup>
 import UserButton from 'vike-auth/vue/UserButton'
+import PushToggle from 'vike-push/vue/PushToggle'
 import { useUser } from 'vike-auth/vue/hooks'
 import { useTranslation } from 'vike-i18n/vue/hooks'
 
@@ -21,5 +22,9 @@ const { t } = useTranslation()
       {{ t('app.signInPrompt') }}
     </p>
     <p :style="{ color: 'var(--color-muted)', fontSize: '14px', lineHeight: 1.7 }">{{ t('app.blurb') }}</p>
+    <div v-if="user" :style="{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }">
+      <span :style="{ color: 'var(--color-muted)', fontSize: '14px' }">Web Push:</span>
+      <PushToggle />
+    </div>
   </div>
 </template>

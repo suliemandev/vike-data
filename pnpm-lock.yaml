@@ -82,6 +82,9 @@ importers:
       vike-layouts:
         specifier: workspace:*
         version: link:../packages/vike-layouts
+      vike-push:
+        specifier: workspace:*
+        version: link:../packages/vike-push
       vike-rbac:
         specifier: workspace:*
         version: link:../packages/vike-rbac
@@ -127,6 +130,9 @@ importers:
       vike-layouts:
         specifier: workspace:*
         version: link:../packages/vike-layouts
+      vike-push:
+        specifier: workspace:*
+        version: link:../packages/vike-push
       vike-rbac:
         specifier: workspace:*
         version: link:../packages/vike-rbac
@@ -336,12 +342,24 @@ importers:
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
+      react:
+        specifier: '>=18'
+        version: 18.3.1
       vike-auth:
         specifier: workspace:*
         version: link:../vike-auth
       vike-queue:
         specifier: workspace:*
         version: link:../vike-queue
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))
+      vike-vue:
+        specifier: '>=0.9'
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5))(vue@3.5.38)
+      vue:
+        specifier: '>=3'
+        version: 3.5.38
     devDependencies:
       '@universal-orm/memory':
         specifier: workspace:*

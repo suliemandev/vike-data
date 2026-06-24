@@ -2,6 +2,7 @@
 // config via vike-layouts/react; the theme from vike-themes/react; the strings from
 // vike-i18n/react (app keys here, auth keys from the extension). All composed.
 import { UserButton } from 'vike-auth/react/UserButton'
+import { PushToggle } from 'vike-push/react/PushToggle'
 import { useUser } from 'vike-auth/react/hooks'
 import { useTranslation } from 'vike-i18n/react/hooks'
 
@@ -26,6 +27,12 @@ export default function HomePage() {
         </p>
       )}
       <p style={{ color: 'var(--color-muted)', fontSize: 14, lineHeight: 1.7 }}>{t('app.blurb')}</p>
+      {user && (
+        <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ color: 'var(--color-muted)', fontSize: 14 }}>Web Push:</span>
+          <PushToggle />
+        </div>
+      )}
     </div>
   )
 }
