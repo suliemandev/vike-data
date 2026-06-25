@@ -87,6 +87,25 @@ function renderFor(notification, channelName, notifiable) {
   return typeof fn === 'function' ? fn(notifiable) : undefined
 }
 
+// The conventional routing field per channel for a User notifiable: mail delivers to an
+// address, push to a user id; anything else keys on the id.
+const ROUTE_FIELD = { mail: 'email', push: 'id', database: 'id' }
+
+/**
+ * Resolve a notifiable's route for a channel — the field a channel adapter delivers to
+ * (mail -> `.email`, push -> `.id`). This is the SINGLE seam channel adapters route
+ * through, instead of reading `notifiable.email` / `.id` inline, so a future non-User
+ * notifiable (a `routeNotificationFor(channel)` on the notifiable, or an on-demand
+ * `route({ mail, push })` target) becomes an additive change here, never a breaking one
+ * across every adapter (#206). Today it just returns the conventional user field.
+ */
+export function routeFor(notifiable, channel) {
+  // Future: if (typeof notifiable?.routeNotificationFor === 'function')
+  //           return notifiable.routeNotificationFor(channel)
+  const field = ROUTE_FIELD[channel] ?? 'id'
+  return notifiable?.[field]
+}
+
 // Turn the notify() target into a user row. An object is taken as the row already; a
 // string/number is a user id, hydrated from the users table (so callers can pass either).
 async function resolveNotifiable(notifiable) {

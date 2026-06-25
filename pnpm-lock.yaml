@@ -395,6 +395,15 @@ importers:
         specifier: workspace:*
         version: link:../universal-orm-memory
 
+  packages/vike-notifications-mail:
+    dependencies:
+      vike-mail:
+        specifier: workspace:*
+        version: link:../vike-mail
+      vike-notifications:
+        specifier: workspace:*
+        version: link:../vike-notifications
+
   packages/vike-push:
     dependencies:
       '@universal-middleware/core':
