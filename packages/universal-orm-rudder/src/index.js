@@ -18,7 +18,7 @@
 // not the rows (only single-row `.create()` / `.update(id, ...)` return via RETURNING). The
 // contract wants the row(s) back, so update reads the matched rows first and returns them with
 // the patch applied, and upsert re-reads by the conflict key.
-import { normalizeOrderBy } from '@universal-orm/core'
+import { normalizeOrderBy, isInCondition } from '@universal-orm/core'
 
 // universal-orm's orderBy direction is lower-case; Rudder's query builder wants 'ASC'/'DESC'.
 const DIR = { asc: 'ASC', desc: 'DESC' }
@@ -42,7 +42,7 @@ export function createRudderAdapter(native) {
   // filter adds no WHERE, so it matches every row. Returns the builder for chaining.
   const applyWhere = (b, filter) => {
     for (const [col, cond] of Object.entries(filter ?? {})) {
-      if (cond !== null && typeof cond === 'object' && Array.isArray(cond.in)) b.where(col, 'IN', cond.in)
+      if (isInCondition(cond)) b.where(col, 'IN', cond.in)
       else b.where(col, cond)
     }
     return b
