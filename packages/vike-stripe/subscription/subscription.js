@@ -9,6 +9,7 @@
 //
 // `segment` selects WHO the subject is — 'b2b' (organization) or 'b2c' (user) — and
 // thus which FK column the row is keyed on.
+import { emitSubscriptionEvent } from './events.js'
 
 const SUBJECT_COLUMN = { b2b: 'organization_id', b2c: 'user_id' }
 
@@ -26,6 +27,10 @@ export function createSubscriptions({ db, segment = 'b2b' } = {}) {
       const subjectId = event?.subject
       if (!subjectId) return { ok: false, error: 'missing-subject' }
 
+      // The prior row, so observers see a TRANSITION (e.g. into `past_due`), not just the
+      // new state. One extra read; the upsert itself is unchanged.
+      const previous = await db.subscriptions.findOne({ [subjectColumn]: subjectId })
+
       const row = {
         [subjectColumn]: subjectId,
         plan: event.plan ?? 'free',
@@ -37,6 +42,14 @@ export function createSubscriptions({ db, segment = 'b2b' } = {}) {
         updated_at: event.occurredAt ?? isoNow(),
       }
       const subscription = await db.subscriptions.upsert(row, { onConflict: subjectColumn })
+      // Notify observers (a bridge can react — e.g. a past_due -> notification — without
+      // vike-stripe depending on it). Isolated so an observer can't break the webhook.
+      await emitSubscriptionEvent({
+        subscription,
+        previousStatus: previous?.status ?? null,
+        subjectColumn,
+        subjectId,
+      })
       return { ok: true, subscription }
     },
 

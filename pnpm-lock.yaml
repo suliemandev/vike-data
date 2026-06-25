@@ -420,6 +420,28 @@ importers:
         specifier: workspace:*
         version: link:../universal-orm-memory
 
+  packages/vike-notifications-stripe:
+    dependencies:
+      vike-notifications:
+        specifier: workspace:*
+        version: link:../vike-notifications
+      vike-stripe:
+        specifier: workspace:*
+        version: link:../vike-stripe
+    devDependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+      vike-mail:
+        specifier: workspace:*
+        version: link:../vike-mail
+      vike-notifications-mail:
+        specifier: workspace:*
+        version: link:../vike-notifications-mail
+
   packages/vike-push:
     dependencies:
       '@universal-middleware/core':
