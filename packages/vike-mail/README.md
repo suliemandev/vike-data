@@ -13,7 +13,8 @@ await sendMail({ to: 'ada@example.com', subject: 'Hi', html: '<p>...</p>' })
 ```js
 // the app: register the transport once at server start
 import { setMailTransport } from 'vike-mail'
-setMailTransport(myResendTransport) // { send(message) -> Promise }
+import { resendTransport } from 'vike-mail/resend'
+setMailTransport(resendTransport({ apiKey: process.env.RESEND_API_KEY, from: 'Acme <hi@acme.com>' }))
 ```
 
 Sending goes through vike-queue, so it is background work by default. With the queue's inline driver (the dev default) it runs immediately; with a real queue driver + a worker it moves off the request path. No caller change either way.
@@ -30,4 +31,20 @@ const transport = {
 }
 ```
 
-Real transports (Resend, SES, SMTP) implement this and are registered by the app; vike-mail ships only the port and the dev default.
+Real transports (Resend, SES, SMTP) implement this and are registered by the app; vike-mail ships the port, the dev default, and one production transport.
+
+## Resend transport
+
+The first production transport, an opt-in subpath so nothing Resend-specific is pulled into the neutral port unless the app asks for it. Server-only (it carries the API key):
+
+```js
+import { setMailTransport } from 'vike-mail'
+import { resendTransport } from 'vike-mail/resend'
+
+setMailTransport(resendTransport({
+  apiKey: process.env.RESEND_API_KEY, // required
+  from: 'Acme <hi@acme.com>',          // default sender; a message's own `from` overrides it
+}))
+```
+
+It delivers over Resend's HTTP API and throws on a non-2xx, so vike-queue retries the send per `sendMail`'s `maxAttempts`. `opts.fetch` and `opts.baseUrl` are injectable for testing.
