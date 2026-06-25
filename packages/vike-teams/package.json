@@ -7,6 +7,9 @@
   "exports": {
     "./config": "./+config.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*"
