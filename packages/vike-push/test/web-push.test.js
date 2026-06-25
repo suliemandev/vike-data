@@ -108,14 +108,35 @@ test('send encrypts, signs, and POSTs to the endpoint with the Web Push headers'
   assert.deepEqual(result, { statusCode: 201 })
 })
 
-test('send throws on a non-2xx so the queue retries', async () => {
+test('send throws on a transient non-2xx (unflagged) so the queue retries', async () => {
   const { publicKey, privateKey } = await genVapid()
-  const t = webPushTransport({ subject: 'mailto:ops@acme.com', vapidPublicKey: publicKey, vapidPrivateKey: privateKey, fetch: fakeFetch(okRes(410)) })
+  const t = webPushTransport({ subject: 'mailto:ops@acme.com', vapidPublicKey: publicKey, vapidPrivateKey: privateKey, fetch: fakeFetch(okRes(500)) })
   await assert.rejects(
     () => t.send({ endpoint: 'https://push.example.com/x', keys: { p256dh: VECTOR.ua_public, auth: VECTOR.auth } }, {}),
-    /push service responded 410/,
+    (err) => {
+      assert.match(err.message, /push service responded 500/)
+      assert.equal(err.statusCode, 500)
+      assert.ok(!err.subscriptionGone) // transient: not a prune signal
+      return true
+    },
   )
 })
+
+for (const status of [404, 410]) {
+  test(`send flags a ${status} as subscriptionGone (a prune signal, not a retry)`, async () => {
+    const { publicKey, privateKey } = await genVapid()
+    const t = webPushTransport({ subject: 'mailto:ops@acme.com', vapidPublicKey: publicKey, vapidPrivateKey: privateKey, fetch: fakeFetch(okRes(status)) })
+    await assert.rejects(
+      () => t.send({ endpoint: 'https://push.example.com/x', keys: { p256dh: VECTOR.ua_public, auth: VECTOR.auth } }, {}),
+      (err) => {
+        assert.match(err.message, new RegExp(`subscription gone \\(${status}\\)`))
+        assert.equal(err.statusCode, status)
+        assert.equal(err.subscriptionGone, true)
+        return true
+      },
+    )
+  })
+}
 
 test('send rejects a subscription missing keys (never hits the network)', async () => {
   const { publicKey, privateKey } = await genVapid()

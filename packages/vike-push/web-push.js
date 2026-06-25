@@ -194,9 +194,19 @@ export function webPushTransport({ subject, vapidPublicKey, vapidPrivateKey, ttl
         body,
       })
       if (!res.ok) {
-        // 404/410 mean the subscription is gone (pruning the row is a sensible follow-up);
-        // every non-2xx throws so vike-queue retries per the job's maxAttempts.
-        throw new Error(`webPushTransport: push service responded ${res.status}`)
+        // A 404/410 means the subscription is permanently gone (the browser unsubscribed
+        // or it expired): flag it so vike-push prunes the dead row instead of retrying a
+        // send that can never succeed. Every other non-2xx throws unflagged, so vike-queue
+        // retries it per the job's maxAttempts (a transient push-service failure).
+        const gone = res.status === 404 || res.status === 410
+        const err = new Error(
+          gone
+            ? `webPushTransport: subscription gone (${res.status})`
+            : `webPushTransport: push service responded ${res.status}`,
+        )
+        err.statusCode = res.status
+        if (gone) err.subscriptionGone = true
+        throw err
       }
       return { statusCode: res.status }
     },
