@@ -110,6 +110,9 @@ export const setSink = (s) => sink.set(s)   // the app calls this once at server
 export const getSink = () => sink.get()     // your code reads the live provider here
 ```
 
+A port holds ONE provider. When you instead need MANY of a kind, each keyed by name and
+dispatched over (channels, jobs), reach for a runtime registry (seam 10), not a port.
+
 ### 4. Optional-runtime defaults
 
 A port's `default` makes the extension work with NO wiring: a dev/console/in-memory
@@ -230,6 +233,68 @@ every higher one: N consumers x M providers = NxM bridges). (Open follow-up: hav
 create-vike scaffolder auto-add `storageReactExt` when both extensions are selected, keeping
 the explicit `extends` entry as the manual path.)
 
+### 10. Runtime registries (many providers) + the app-wired adapter
+
+A runtime port (seam 3) holds ONE live provider. Some seams instead hold MANY, each
+keyed by name, and a dispatcher fans out over all of them: vike-queue's job registry,
+and vike-notifications' channel registry (`mail`, `push`, `database`, ...). The shape is
+a keyed registry rather than a single `set`/`get`:
+
+```js
+registerChannel({ name, send(notifiable, rendered) })   // add one of many
+getChannel(name) / getChannels()                        // read one / all
+```
+
+An official channel is a thin SIBLING package that self-registers on import, so the core
+stays closed for modification (adding a channel is a new package, never an edit). It
+depends on both the registry's package and the transport, and neither of those depends on
+it (the universal-orm adapter pattern). `vike-notifications-mail` is the whole shape:
+
+```js
+// vike-notifications-mail/index.js  - a separate package; importing it self-registers `mail`
+import { registerChannel, routeFor } from 'vike-notifications'
+import { sendMail } from 'vike-mail'
+
+export const mailChannel = {
+  name: 'mail',
+  // `rendered` is the notification's toMail(user) CONTENT; the recipient is resolved from
+  // the notifiable through routeFor (the routing seam), never read off the content.
+  async send(notifiable, rendered) {
+    return sendMail({ ...rendered, to: routeFor(notifiable, 'mail') })
+  },
+}
+registerChannel(mailChannel)   // self-register on import: install the package and `via: ['mail']` works
+```
+
+**The app-wired escape hatch.** `registerChannel` is the same seam whether a package or
+the app calls it, so a one-off channel an app does not want to package is a first-class
+path with no extra support: register it directly at server start (where the app registers
+its ORM adapter and queue driver), and it works exactly like an official one.
+
+```js
+// the app's server bootstrap (onCreateGlobalContext) - a custom Slack channel, no package
+import { registerChannel } from 'vike-notifications'
+
+registerChannel({
+  name: 'slack',
+  // matched by convention to the notification's toSlack(user) renderer; `via` must include 'slack'.
+  async send(notifiable, rendered) {
+    await fetch(process.env.SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rendered.text }),
+    })
+  },
+})
+```
+
+A notification opts a recipient into the channel by listing it in `via(user)` and renders
+for it with the matching `to<Name>(user)` method (`slack` -> `toSlack`); an unregistered or
+unrendered channel is skipped, not an error. **Package it** when the channel is reusable
+across apps (publish a sibling adapter like the mail/push ones); **app-wire it** for an
+app-specific one-off. Same seam either way, so the choice is about distribution, not
+capability.
+
 ## The decision that matters most: config vs port
 
 | Use a **cumulative config point** when... | Use a **runtime port** when... |
@@ -240,7 +305,9 @@ the explicit `extends` entry as the manual path.)
 
 Most "extensions contribute, the app picks" cases are config. Most "the app plugs in a
 backend" cases are a port. When unsure: is it data that composes (config) or a single
-live thing the app supplies (port)?
+live thing the app supplies (port)? When it is live but the app (or a sibling) plugs in
+MANY of a kind keyed by name, it is a runtime registry (seam 10), the `many` variant of a
+port.
 
 ## A minimal worked example
 
