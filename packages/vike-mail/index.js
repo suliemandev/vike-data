@@ -18,37 +18,25 @@
 // console/outbox transport runs, so sendMail works zero-config (and reproduces the old
 // console.log magic-link behaviour, now routed through the seam).
 import { registerJob, getJob, dispatch } from 'vike-queue'
-import { createPort, createOutbox } from '@vike-data/kit'
+import { createPort, createDevTransport } from '@vike-data/kit'
 
 const JOB = 'vike-mail:send'
 
-// The dev outbox: every message the default transport "sends", kept so tests and a dev
-// UI can inspect what would have gone out.
-const outbox = createOutbox('vike-mail')
+// The zero-config default transport: records each message to a dev outbox and logs a one-liner,
+// so mail works with nothing wired (the "memory adapter" of mail). JSON.stringify guards against
+// a `to`/`subject` newline forging a log line (the values are user-influenced).
+const dev = createDevTransport({
+  name: 'vike-mail',
+  entry: (message) => message,
+  line: (message) =>
+    `[vike-mail] (dev, no transport) to=${JSON.stringify(message.to)} subject=${JSON.stringify(message.subject)}`,
+})
 
 /** Messages captured by the default console/outbox transport (dev/test inspection). */
-export function getOutbox() {
-  return outbox.get()
-}
+export const getOutbox = dev.getOutbox
 
 /** Clear the dev outbox (tests). */
-export function clearOutbox() {
-  outbox.clear()
-}
-
-// The zero-config default transport: records to the outbox and logs a one-liner. This
-// is the "memory adapter" of mail: present so nothing has to be wired in dev.
-function defaultTransport() {
-  return {
-    async send(message) {
-      outbox.record(message)
-      // JSON.stringify both fields so a `to`/`subject` containing a newline cannot forge
-      // a log line (log injection); the values are user-influenced.
-      // eslint-disable-next-line no-console
-      console.log(`[vike-mail] (dev, no transport) to=${JSON.stringify(message.to)} subject=${JSON.stringify(message.subject)}`)
-    },
-  }
-}
+export const clearOutbox = dev.clearOutbox
 
 // The transport registry (the set/get/clear provider port), over @vike-data/kit so the
 // globalThis-Symbol caching + default fallback live in one audited place. A transport is
@@ -60,7 +48,7 @@ const transportPort = createPort({
       throw new Error('setMailTransport: expected a transport with a send(message) method')
     }
   },
-  default: defaultTransport,
+  default: () => dev.transport,
 })
 
 /** Register the app's mail transport. */
