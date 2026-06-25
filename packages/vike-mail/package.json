@@ -5,7 +5,8 @@
   "type": "module",
   "description": "The mail PORT: sendMail() + a swappable transport contract/registry (console/outbox in dev, Resend/SES/SMTP in prod), sending through vike-queue. Framework-agnostic and provider-neutral, the mail twin of @universal-orm/core: producers (vike-auth, vike-stripe, ...) depend on this port; the app registers the concrete transport.",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./resend": "./resend.js"
   },
   "scripts": {
     "test": "node --test"
