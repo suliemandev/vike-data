@@ -1,0 +1,21 @@
+{
+  "name": "vike-notifications-push",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The push channel adapter for vike-notifications: registers a `push` channel that delivers a notification's toPush() through vike-push's sendPush. A separate package so the notifications core stays closed for modification.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "vike-notifications": "workspace:*",
+    "vike-push": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*"
+  }
+}
