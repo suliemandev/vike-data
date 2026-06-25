@@ -1,8 +1,9 @@
-// Demo of the schema-driven file field (#176 -> #177 -> #178). The app extends vike-auth's
-// `users` table with an `avatar` column declared `.as('file')`. That semantic flows through
-// the composed schema to vike-admin, which - because vike-storage registered a `file` widget
-// (storageAdminExt below) - renders the Users form's avatar field as an upload control. No
-// bespoke admin code: a column says it holds a file, and the right control appears.
+// Demo of the schema-driven file field (#176 -> #177 -> #178 -> #185). The app extends
+// vike-auth's `users` table with an `avatar` column declared `.as('file')`. That semantic flows
+// through the composed schema to vike-admin, which - because vike-storage registered a `file`
+// widget into the shared field-widget registry (storageReactExt below) - renders the Users
+// form's avatar field as an upload control. No bespoke admin code: a column says it holds a
+// file, and the right control appears.
 //
 // Contributed through the cumulative `schemas` config in +config.js. extendSchema adds to a
 // table ANOTHER extension created, the same cross-extension seam vike-teams uses on `users`.

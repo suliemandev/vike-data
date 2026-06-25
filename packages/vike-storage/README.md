@@ -55,16 +55,16 @@ import { FileUpload } from 'vike-storage/react/FileUpload'
 <FileUpload @uploaded="onUploaded" />
 ```
 
-## vike-admin file widget
+## The `file` field widget
 
-Install the bridge alongside vike-admin and a column declared `.as('file')` renders an uploader in the admin form, with no bespoke admin code:
+Install the React surface and a column declared `.as('file')` renders an uploader in any consumer that reads the shared field-widget registry (vike-admin today), with no bespoke code:
 
 ```js
-import storageAdminExt from 'vike-storage/react-admin'
-export default { extends: [/* ... */ storageExt, storageAdminExt] }
+import storageReactExt from 'vike-storage/react'
+export default { extends: [/* ... */ storageExt, storageReactExt] }
 ```
 
-The bridge registers a `file` widget into vike-admin's field-widget registry (proving the registry is third-party-extensible). The control uploads the chosen file and submits the returned URL as the column value. React today; the Vue admin widget follows once vike-admin ships a Vue widget registry (the standalone `vike-storage/vue/FileUpload` works now).
+`vike-storage/react` registers a `file` widget into `@vike-data/kit`'s shared field-widget registry (Option D, #185), so vike-storage depends only on kit and never on vike-admin: neither core knows about the other, and a new consumer gets `.as('file')` for free. The control uploads the chosen file and submits the returned URL as the column value. React today; the Vue widget follows once a Vue field-widget registry exists (the standalone `vike-storage/vue/FileUpload` works now).
 
 ## Not yet (follow-ups)
 

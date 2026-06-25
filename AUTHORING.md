@@ -180,47 +180,55 @@ every admin install (users, orders, settings, no file column anywhere) to pull s
 headless (avatars, attachments, an API). So the integration is **opt-in** and lives in a
 **leaf** that depends on both, never in either core.
 
-The leaf is a separate subpath (a Vike `+config.js`, because an `extends` target must be
-one) that contributes a passthrough `Layout` whose module performs the registration as an
-import side effect. Routing it through the cumulative `Layout` seam puts it in BOTH the
-SSR and the client bundle, so the contributed capability is present on the server and
-after hydration (no mismatch).
+The way to satisfy that rule without coupling cores is **dependency inversion through a
+shared registry in `@vike-data/kit`**: neither side imports the other; both depend on kit.
+The provider registers its capability into kit's registry; the consumer reads from the same
+registry. `@vike-data/kit` exposes `createFieldWidgetRegistry(name)` for exactly this (a
+per-framework, token to component map, holding components as opaque values the way
+`createPort` holds opaque providers). A column declared `.as('file')` renders an uploader in
+EVERY consumer of that registry (vike-admin today; a future `vike-landing` /
+`vike-email-editor`), with no per-consumer bridge.
+
+The registration must run in the page bundle in BOTH envs, so the provider exposes it as a
+passthrough `Layout` and contributes it through the cumulative `Layout` seam (an `extends`
+target must be a `+config.js`, so the leaf is a tiny config in the provider's framework
+subpath, never in its core):
 
 ```js
-// vike-storage/react-admin/+config.js  - the leaf; pulled in by one `extends` entry
+// vike-storage/react/+config.js  - the leaf; pulled in by one `extends` entry (storageReactExt)
 export default {
-  name: 'vike-storage-admin',
-  Layout: 'import:vike-storage/react/AdminFileRegister:default',
+  name: 'vike-storage-react',
+  Layout: 'import:vike-storage/react/FieldWidgetRegister:default',
 }
 
-// vike-storage/react/AdminFileRegister.jsx  - registers on import, renders children unchanged
-import { registerFieldWidget } from 'vike-admin/react/widgets'
+// vike-storage/react/FieldWidgetRegister.jsx  - registers on import, renders children unchanged
+import { createFieldWidgetRegistry } from '@vike-data/kit'
 import { FileField } from './FileField.jsx'
-registerFieldWidget('file', FileField)            // the side effect that wires the two
-export default function AdminFileRegister({ children }) { return children }
+createFieldWidgetRegistry('react').register('file', FileField)   // into the SHARED registry
+export default function FieldWidgetRegister({ children }) { return children }
 ```
 
-vike-admin lists the other side (vike-storage) nowhere; vike-storage lists vike-admin as
-an **optional peer**, pulled only if the app installs the bridge. An app opts in with one
-`extends: [storageAdminExt]`.
+```js
+// the consumer (vike-admin/react/widget-registry.js) reads the SAME registry
+import { createFieldWidgetRegistry } from '@vike-data/kit'
+const registry = createFieldWidgetRegistry('react')   // same name -> same map (kit keys it on globalThis)
+export const getFieldWidget = (token) => registry.get(token)
+```
 
-**Don't multiply the bridge.** This subpath-bridge is correct for the *first* cross-
-extension integration. But if a second consumer wants the same `.as('file')` widget (a
-`vike-cms`, a `vike-forms`), do NOT add a second bridge (`vike-storage/react-cms` + another
-optional peer) inside the foundational package - that makes the lowest layer accumulate
-knowledge of every higher one (N consumers x M providers = NxM bridges). The fix is
-**dependency inversion**: promote the widget registry (today vike-admin's `widget-registry.js`,
-written JSX-free on purpose so it can move) into `@vike-data/kit`. Then every consumer
-READS widgets from the shared registry and vike-storage registers `file` ONCE against kit
-(already a dep) - no per-consumer bridge, no core-to-core peer. kit would hold components
-as opaque values, exactly as `createPort` holds opaque providers; the framework-specific
-built-ins and the both-envs registration stay in the framework packages.
+vike-storage depends only on kit (already a dep); it lists vike-admin nowhere, and vike-admin
+lists vike-storage nowhere. A new consumer gets `.as('file')` for free, and a new field kind
+(rich-text, map, color) registers once and every consumer sees it. The framework-specific
+built-in widgets and the both-envs registration stay in the framework packages; kit holds only
+the mechanism.
 
-The target is the kit-hosted registry; the trigger is a real second consumer. Until one
-exists, the single subpath-bridge above is the convention - promoting now would be
-speculative, the same discipline that delayed `createPort` until it had repeated. (Open
-follow-up: have the create-vike scaffolder auto-add the bridge when both extensions are
-selected, keeping the explicit `extends` entry as the manual path.)
+This registry was promoted into kit from vike-admin (#185) once a second consumer of the
+schema became foreseeable - the trigger for extracting a shared mechanism, the same discipline
+that delayed `createPort` until it had repeated. **Don't anticipate the next one speculatively,
+and never reach for a per-consumer bridge** (`vike-storage/react-cms` + a vike-admin peer) when
+the shared registry already covers it (that path makes the lowest layer accumulate knowledge of
+every higher one: N consumers x M providers = NxM bridges). (Open follow-up: have the
+create-vike scaffolder auto-add `storageReactExt` when both extensions are selected, keeping
+the explicit `extends` entry as the manual path.)
 
 ## The decision that matters most: config vs port
 
@@ -293,5 +301,5 @@ with no change to the call site. That is the whole model in ~30 lines.
 - [ ] Endpoints as a universal middleware on the cumulative `middleware` config.
 - [ ] Per-framework UI in `react/` + `vue/` subpaths; the core stays framework-agnostic.
 - [ ] Authorization through vike-rbac's `can()` (pages and RPCs alike).
-- [ ] Cross-extension integration in an opt-in leaf that depends on both cores; neither core depends on the other; don't multiply the bridge (promote the registry to kit when a second consumer appears).
+- [ ] Cross-extension integration through a shared `@vike-data/kit` registry (provider registers, consumer reads); neither core depends on the other; no per-consumer bridge.
 - [ ] A small config surface; eject for the long tail.

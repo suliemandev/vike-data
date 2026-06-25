@@ -10,10 +10,10 @@
     "./schema": "./schema.js",
     "./middleware": "./middleware.js",
     "./client": "./client.js",
+    "./react": "./react/+config.js",
     "./react/FileUpload": "./react/FileUpload.jsx",
     "./react/FileField": "./react/FileField.jsx",
-    "./react/AdminFileRegister": "./react/AdminFileRegister.jsx",
-    "./react-admin": "./react-admin/+config.js",
+    "./react/FieldWidgetRegister": "./react/FieldWidgetRegister.jsx",
     "./vue/FileUpload": "./vue/FileUpload.vue"
   },
   "scripts": {
@@ -33,14 +33,12 @@
     "react": ">=18",
     "vike-react": ">=0.6",
     "vue": ">=3",
-    "vike-vue": ">=0.9",
-    "vike-admin": "workspace:*"
+    "vike-vue": ">=0.9"
   },
   "peerDependenciesMeta": {
     "react": { "optional": true },
     "vike-react": { "optional": true },
     "vue": { "optional": true },
-    "vike-vue": { "optional": true },
-    "vike-admin": { "optional": true }
+    "vike-vue": { "optional": true }
   }
 }
