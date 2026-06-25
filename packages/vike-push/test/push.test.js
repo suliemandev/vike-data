@@ -4,7 +4,7 @@ import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
 import {
-  sendPush, saveSubscription, removeSubscription,
+  sendPush, saveSubscription, removeSubscription, pruneSubscription,
   getPushOutbox, clearPushOutbox, setPushTransport, clearPushTransport,
 } from '../index.js'
 import { createPushMiddleware } from '../middleware.js'
@@ -239,6 +239,61 @@ test('a known route with the wrong method is 404', async () => {
   const mw = createPushMiddleware()
   const res = await mw(new Request('http://localhost/push/subscribe', { method: 'GET' }))
   assert.equal(res.status, 404)
+})
+
+test('a send that throws subscriptionGone prunes the dead row and does not retry', async () => {
+  const adapter = setup()
+  await saveSubscription('u-1', sub('https://push/gone'))
+  await saveSubscription('u-1', sub('https://push/live'))
+
+  let calls = 0
+  setPushTransport({
+    async send(subscription) {
+      calls++
+      if (subscription.endpoint === 'https://push/gone') {
+        const err = new Error('subscription gone (410)')
+        err.subscriptionGone = true
+        throw err
+      }
+    },
+  })
+
+  // Inline driver runs the jobs immediately; sendPush resolves without throwing even though
+  // one endpoint was gone (the handler swallows it after pruning).
+  await sendPush('u-1', { title: 'Hi' })
+
+  assert.equal(calls, 2) // one attempt each, NOT retried for the gone endpoint (maxAttempts 3)
+  const rows = await adapter.find('push_subscriptions', {})
+  assert.deepEqual(rows.map((r) => r.endpoint), ['https://push/live']) // the dead row is gone
+})
+
+test('a transient send error is NOT pruned and is retried', async () => {
+  const adapter = setup()
+  await saveSubscription('u-1', sub('https://push/flaky'))
+
+  let calls = 0
+  setPushTransport({
+    async send() {
+      calls++
+      throw new Error('webPushTransport: push service responded 500') // unflagged = transient
+    },
+  })
+
+  // sendPush dispatches per-subscription; the inline driver surfaces the final failure.
+  await assert.rejects(() => sendPush('u-1', { title: 'Hi' }), /push service responded 500/)
+  assert.equal(calls, 3) // retried up to maxAttempts (3), not pruned after the first failure
+  const rows = await adapter.find('push_subscriptions', {})
+  assert.equal(rows.length, 1) // the row survives a transient failure
+})
+
+test('pruneSubscription deletes by endpoint regardless of owner', async () => {
+  const adapter = setup()
+  await saveSubscription('u-1', sub('https://push/aaa'))
+  await saveSubscription('u-2', sub('https://push/bbb'))
+  const deleted = await pruneSubscription('https://push/aaa')
+  assert.equal(deleted, 1)
+  const rows = await adapter.find('push_subscriptions', {})
+  assert.deepEqual(rows.map((r) => r.endpoint), ['https://push/bbb'])
 })
 
 test('saveSubscription normalizes a missing/partial keys object to null columns', async () => {

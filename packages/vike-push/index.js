@@ -119,10 +119,34 @@ export async function removeSubscription(userId, endpoint) {
   return adapter.delete(TABLE, { endpoint, user_id: userId })
 }
 
+/**
+ * Delete a subscription by its (unique) endpoint regardless of owner. Used internally when
+ * the push service reports a subscription is permanently gone (a 404/410, surfaced as a
+ * transport error flagged `subscriptionGone`). Unlike removeSubscription this is a trusted
+ * system path, not a user request, so it is not user-scoped. Returns the rows deleted.
+ */
+export async function pruneSubscription(endpoint) {
+  const adapter = requireAdapter()
+  return adapter.delete(TABLE, { endpoint })
+}
+
 // The send job: one delivery per subscription. Resolves the transport at RUN time so a
 // transport registered after dispatch but before the worker runs is still honoured.
+//
+// A transport may flag a send error with `subscriptionGone` (a 404/410 from the push
+// service): the subscription is permanently gone, so prune the dead row and return without
+// rethrowing - retrying it would only fail forever. Any other error propagates so vike-queue
+// retries the job per its maxAttempts (a transient push-service failure).
 const sendHandler = async ({ subscription, payload }) => {
-  await getPushTransport().send(subscription, payload)
+  try {
+    await getPushTransport().send(subscription, payload)
+  } catch (err) {
+    if (err && err.subscriptionGone && subscription?.endpoint) {
+      await pruneSubscription(subscription.endpoint)
+      return
+    }
+    throw err
+  }
 }
 function ensureSendJob() {
   if (!getJob(JOB)) registerJob(JOB, sendHandler)

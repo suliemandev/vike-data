@@ -80,7 +80,9 @@ setPushTransport(webPushTransport({
 }))
 ```
 
-It encrypts the payload (RFC 8291, the aes128gcm encoding of RFC 8188), signs a VAPID JWT (RFC 8292, ES256), and POSTs to the subscription's endpoint. The encryption is verified against the RFC 8291 Appendix A test vector. It throws on a non-2xx, so `vike-queue` retries per the send job's `maxAttempts`; a `404`/`410` means the subscription has expired (pruning the row is a sensible follow-up). `fetch` is injectable for testing.
+It encrypts the payload (RFC 8291, the aes128gcm encoding of RFC 8188), signs a VAPID JWT (RFC 8292, ES256), and POSTs to the subscription's endpoint. The encryption is verified against the RFC 8291 Appendix A test vector. A transient non-2xx (e.g. `500`/`429`) throws, so `vike-queue` retries per the send job's `maxAttempts`. A `404`/`410` means the subscription is permanently gone (the browser unsubscribed or it expired): the transport flags the error `subscriptionGone`, and vike-push prunes the dead row instead of retrying. `fetch` is injectable for testing.
+
+A custom transport can opt into the same pruning by throwing an error with `err.subscriptionGone = true` when its provider reports a subscription is permanently gone.
 
 ## Transport contract
 
