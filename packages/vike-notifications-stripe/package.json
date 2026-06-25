@@ -1,0 +1,23 @@
+{
+  "name": "vike-notifications-stripe",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The billing->notifications bridge: when a user subscription transitions into past_due, notify the user (your payment failed) through vike-notifications. Depends on vike-stripe + vike-notifications; neither depends on it.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "vike-notifications": "workspace:*",
+    "vike-stripe": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*",
+    "vike-mail": "workspace:*",
+    "vike-notifications-mail": "workspace:*"
+  }
+}

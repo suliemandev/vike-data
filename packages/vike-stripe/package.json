@@ -9,6 +9,7 @@
     "./subscription": "./subscription/+config.js",
     "./subscription/schemas": "./subscription/schemas.js",
     "./subscription/middleware": "./subscription/vike-middleware.js",
+    "./subscription/events": "./subscription/events.js",
     "./purchase": "./purchase/+config.js",
     "./purchase/schemas": "./purchase/schemas.js",
     "./purchase/middleware": "./purchase/vike-middleware.js"

@@ -10,6 +10,7 @@ import { createMemoryAdapter } from '@universal-orm/memory'
 import subscriptionSchemas from '../subscription/schemas.js'
 import { createSubscriptions } from '../subscription/subscription.js'
 import { subscriptionWebhookHandler, SUBSCRIPTION_WEBHOOK_PATH } from '../subscription/middleware.js'
+import { onSubscriptionEvent, clearSubscriptionObservers } from '../subscription/events.js'
 import { createStripe, signWebhook } from '../stripe.js'
 
 const tableOf = (frags, name) => frags.find((f) => f.table === name)
@@ -122,4 +123,46 @@ test('webhook falls through on other paths, 405 on non-POST', async () => {
   const handle = handler(makeSubscriptions().subscriptions)
   assert.equal(await handle(new Request('http://localhost/elsewhere')), undefined)
   assert.equal((await handle(new Request(`http://localhost${SUBSCRIPTION_WEBHOOK_PATH}`, { method: 'GET' }))).status, 405)
+})
+
+// ---------------------------------------------------------------- event seam
+test('applySubscriptionEvent emits to observers with the prior status (the transition)', async () => {
+  clearSubscriptionObservers()
+  const { subscriptions } = makeSubscriptions('b2c')
+  const seen = []
+  onSubscriptionEvent((payload) => seen.push(payload))
+
+  await subscriptions.applySubscriptionEvent({ subject: 'user1', plan: 'pro', status: 'active' })
+  await subscriptions.applySubscriptionEvent({ subject: 'user1', plan: 'pro', status: 'past_due' })
+
+  assert.equal(seen.length, 2)
+  assert.equal(seen[0].previousStatus, null) // first apply: no prior row
+  assert.equal(seen[0].subscription.status, 'active')
+  assert.equal(seen[1].previousStatus, 'active') // the transition active -> past_due
+  assert.equal(seen[1].subscription.status, 'past_due')
+  assert.equal(seen[1].subjectColumn, 'user_id')
+  clearSubscriptionObservers()
+})
+
+test('an observer that throws does not break applySubscriptionEvent', async () => {
+  clearSubscriptionObservers()
+  const { subscriptions, db } = makeSubscriptions('b2c')
+  onSubscriptionEvent(() => { throw new Error('observer boom') })
+
+  const res = await subscriptions.applySubscriptionEvent({ subject: 'user1', status: 'active' })
+  assert.equal(res.ok, true) // the upsert still succeeded
+  assert.equal((await db.subscriptions.findOne({ user_id: 'user1' })).status, 'active')
+  clearSubscriptionObservers()
+})
+
+test('onSubscriptionEvent returns an unsubscribe', async () => {
+  clearSubscriptionObservers()
+  const { subscriptions } = makeSubscriptions('b2c')
+  let count = 0
+  const off = onSubscriptionEvent(() => { count++ })
+  await subscriptions.applySubscriptionEvent({ subject: 'user1', status: 'active' })
+  off()
+  await subscriptions.applySubscriptionEvent({ subject: 'user1', status: 'past_due' })
+  assert.equal(count, 1)
+  clearSubscriptionObservers()
 })
