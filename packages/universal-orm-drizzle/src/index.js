@@ -16,7 +16,7 @@
 // Filters/where-clauses are built from the column OBJECTS, so they are dialect-correct.
 
 import { getTableColumns, getTableName, eq, inArray, and, asc, desc, count } from 'drizzle-orm'
-import { normalizeOrderBy } from '@universal-orm/core'
+import { normalizeOrderBy, isInCondition } from '@universal-orm/core'
 
 // Per-table name<->property maps + the column objects used to build WHERE clauses.
 function metaOf(table) {
@@ -75,7 +75,7 @@ export function createDrizzleAdapter(db, tables) {
     const conds = []
     for (const [name, cond] of Object.entries(filter ?? {})) {
       const col = columnOf(meta, name)
-      conds.push(cond !== null && typeof cond === 'object' && Array.isArray(cond.in) ? inArray(col, cond.in) : eq(col, cond))
+      conds.push(isInCondition(cond) ? inArray(col, cond.in) : eq(col, cond))
     }
     return conds.length ? and(...conds) : undefined
   }

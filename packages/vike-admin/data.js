@@ -9,6 +9,7 @@
 // composed schema.
 import { randomUUID } from 'node:crypto'
 import { redirect } from 'vike/abort'
+import { isInCondition } from '@universal-orm/core'
 import { readFormRequest } from './request.js'
 import { parseListQuery, QueryError } from './query.js'
 import {
@@ -125,7 +126,7 @@ function applyScopeOwnership(obj, scope) {
   for (const [col, val] of Object.entries(scope)) {
     if (val !== null && typeof val !== 'object') {
       obj[col] = val // scalar scope: force the owner column
-    } else if (val && Array.isArray(val.in)) {
+    } else if (isInCondition(val)) {
       // An `in`-style scope (e.g. `organization_id: { in: user.orgIds }`) has no single
       // value to force, but a submitted value MUST be inside the allowed set — otherwise a
       // scoped user could CREATE a row owned by, or REASSIGN a row to, a tenant they don't
