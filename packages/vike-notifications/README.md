@@ -1,0 +1,76 @@
+# vike-notifications
+
+The multi-channel notifications layer: `notify(user, notification)` informs a user about one intent and fans it out to the channels they should hear it on (email, push, an in-app feed), per the notification's own `via()`. It sits **on top of** the channel packages (`vike-mail`, `vike-push`), not parallel to them: a channel adapter's `send()` ultimately calls that channel's own sender. The Laravel `Notification` value (one intent, many channels) for the Vike stack.
+
+This is the **director** over the channels. Reach for it only when you have the multi-channel / fan-out case. A single transactional send (a magic link, a receipt) does not need it: call `sendMail` / `sendPush` directly.
+
+This package is the neutral **core** and is **closed for modification** — adding a channel never edits it. It ships: `notify()`, a runtime channel registry, the built-in **database** channel, the owned `notifications` table, the session-scoped feed endpoint, and a per-framework bell. The concrete mail/push channels live in their own adapter packages (`vike-notifications-mail`, `vike-notifications-push`).
+
+## Usage
+
+```js
+// a producer: inform a user, however they should be informed
+import { notify } from 'vike-notifications'
+await notify(user, paymentFailed(invoice))
+```
+
+A **notification** is a plain-object factory: a `via()` choosing channels, plus a `to<Channel>()` renderer per channel.
+
+```js
+export const paymentFailed = (invoice) => ({
+  via: (user) => ['mail', 'database'],            // also 'push', or a custom channel
+  toMail: (user) => ({ to: user.email, subject: 'Payment failed', html: render(invoice) }),
+  toDatabase: (user) => ({ type: 'payment_failed', data: { title: 'Payment failed', body: invoice.number } }),
+})
+```
+
+`notify()` resolves `via()` and dispatches **one `vike-queue` job per selected channel**, so one bad channel can't block the others. The first argument is the user row `{ id, email, ... }`; pass a bare user id and it is hydrated from the `users` table. Each channel reads the routing field it needs (mail by `.email`, push by `.id`).
+
+A selected channel that is not registered (e.g. no mail adapter wired) is skipped, not an error — so the in-app feed always works even before the other channels are installed.
+
+## Channels
+
+A channel is `{ name, send(notifiable, rendered) }`, registered at runtime:
+
+```js
+import { registerChannel } from 'vike-notifications'
+registerChannel({ name: 'mail', async send(user, rendered) { /* rendered = notification.toMail(user) */ } })
+```
+
+The built-in **`database`** channel is always registered (this package owns the table). Official mail/push adapters self-register from their own packages — `import 'vike-notifications-mail'` etc. — so adding a channel is a new package, never a change here. Apps can also register a one-off custom channel directly (the same `registerChannel` seam).
+
+## The in-app feed
+
+`vike-notifications` owns the `notifications` table (FK to `users`, the Stem pattern) and a session-scoped endpoint:
+
+| route | method | does |
+|---|---|---|
+| `/notifications`      | GET  | the signed-in user's feed (newest first) + unread count |
+| `/notifications/read` | POST | mark `{ ids }` read, or all read when `ids` is omitted |
+
+Both resolve the current user from the session cookie (vike-auth's server seam) and scope every read/write to that user, so a client only ever sees and marks its own. `getFeed` / `unreadCount` / `markRead` are also exported for programmatic use.
+
+### The bell
+
+```jsx
+// React
+import { NotificationsBell } from 'vike-notifications/react/Bell'
+<NotificationsBell pollMs={30000} />
+
+// Vue
+import NotificationsBell from 'vike-notifications/vue/Bell'
+<NotificationsBell :pollMs="30000" />
+```
+
+A bell with an unread badge that opens the feed and can mark everything read. The framework-agnostic client helpers are at `vike-notifications/client` (`fetchFeed`, `markRead`); the bells are thin wrappers and import nothing server-side. It is the app's own UI (mounted in the layout/nav), not a `vike-toolbar` item — the toolbar is strictly settings.
+
+## When NOT to use this
+
+Sending one thing through one channel does not need a notifications layer:
+
+```js
+import { sendMail } from 'vike-mail'
+await sendMail({ to, subject, html })   // a magic link, a receipt — single channel, direct
+```
+
+`notify()` is the high-level intent that *uses* those low-level sends, the same way Laravel's `Notification::send()` sits on `Mail::send()`. Both exist; one is layered on the other.
