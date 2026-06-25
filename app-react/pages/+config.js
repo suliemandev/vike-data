@@ -21,7 +21,7 @@ import toolbarExt from 'vike-toolbar/react'
 import rbacExt from 'vike-rbac/config'
 import pushExt from 'vike-push/config'
 import storageExt from 'vike-storage/config'
-import storageAdminExt from 'vike-storage/react-admin'
+import storageReactExt from 'vike-storage/react'
 import { defineTheme } from 'vike-themes'
 import { appMessages } from '../messages.js'
 import { usersAvatar } from './avatar.schema.js'
@@ -55,13 +55,13 @@ const acme = defineTheme({
 })
 
 export default {
-  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt, pushExt, storageExt, storageAdminExt],
+  extends: [vikeReact, authExt, adminExt, themesExt, toolbarExt, layoutsExt, emeraldExt, i18nExt, rbacExt, pushExt, storageExt, storageReactExt],
 
-  // storage: install vike-storage (adds the `uploads` table + the /uploads endpoint) and the
-  // storage-to-admin bridge (storageAdminExt registers a `file` widget in vike-admin). The app
-  // then extends `users` with an `avatar` column declared `.as('file')` (avatar.schema.js), so
-  // the Users admin form renders an uploader for it - the proof that the widget registry is
-  // third-party-extensible. Contributed to the cumulative `schemas` point.
+  // storage: install vike-storage (adds the `uploads` table + the /uploads endpoint) and its
+  // React surface (storageReactExt registers a `file` widget into the shared field-widget
+  // registry). The app then extends `users` with an `avatar` column declared `.as('file')`
+  // (avatar.schema.js), so the Users admin form renders an uploader for it - the proof that the
+  // shared registry is third-party-extensible. Contributed to the cumulative `schemas` point.
   schemas: [usersAvatar],
 
   // push: install vike-push (adds the push_subscriptions table + the /push/subscribe

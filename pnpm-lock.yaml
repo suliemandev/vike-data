@@ -219,6 +219,9 @@ importers:
       '@universal-orm/memory':
         specifier: workspace:*
         version: link:../universal-orm-memory
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
@@ -471,9 +474,6 @@ importers:
       react:
         specifier: '>=18'
         version: 18.3.1
-      vike-admin:
-        specifier: workspace:*
-        version: link:../vike-admin
       vike-auth:
         specifier: workspace:*
         version: link:../vike-auth

@@ -1,7 +1,8 @@
-// <FileField> - the vike-admin form widget for a column declared `.as('file')` (#176/#177).
-// It is the proof that vike-admin's widget registry is third-party-extensible: vike-storage
-// registers this under the `file` token (see ./AdminFileRegister.jsx), so any `.as('file')`
-// column renders an uploader with NO bespoke admin code.
+// <FileField> - the form widget for a column declared `.as('file')` (#176/#177/#185). It is the
+// proof that the shared field-widget registry is third-party-extensible: vike-storage registers
+// this under the `file` token in `@vike-data/kit`'s registry (see ./FieldWidgetRegister.jsx), so
+// any `.as('file')` column renders an uploader in any consumer (vike-admin today) with NO
+// bespoke code.
 //
 // The control submits a string column value: it uploads the chosen file to /uploads and keeps
 // the returned URL in a hidden input named for the field, so the admin form posts that URL as

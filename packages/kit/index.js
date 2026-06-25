@@ -68,3 +68,52 @@ export function createOutbox(name) {
     },
   }
 }
+
+/**
+ * A field-widget registry: the token -> component lookup a schema-driven UI uses to map a
+ * column's rendering token (derived from its `.as()` semantic) to the control that renders
+ * it. This is the shared MECHANISM behind the schema-driven UI epic: a consumer (vike-admin
+ * today; a future vike-landing / vike-email-editor) creates its own per-framework registry by
+ * name and reads widgets from it, and an extension teaches EVERY consumer of that framework a
+ * new field kind by registering once (e.g. vike-storage registers a `file` upload control), so
+ * neither side has to depend on the other.
+ *
+ * Components are held as OPAQUE values (exactly as createPort holds opaque providers), so kit
+ * never renders them and this stays JSX-free and framework-agnostic. Kept on globalThis under a
+ * Symbol(name) key so module duplication can't fork the map. A token a registry doesn't know
+ * returns undefined, so the caller falls back instead of throwing.
+ *
+ * @param {string} name  Per-framework key, e.g. 'react' or 'vue'. Two registries created with
+ *                       the same name share the same slot.
+ * @returns {{ register:(token:string, component:Function)=>Function, get:(token:string)=>Function|undefined, tokens:()=>string[] }}
+ */
+export function createFieldWidgetRegistry(name) {
+  if (typeof name !== 'string' || !name) {
+    throw new Error('createFieldWidgetRegistry: a non-empty string `name` is required')
+  }
+  const KEY = Symbol.for(`vike-data.fieldWidgets:${name}`)
+  const map = () => (globalThis[KEY] ??= new Map())
+  return {
+    // Register (or override) the control for a token. Idempotent: a later call wins, so an app
+    // can swap a built-in. Validated so a typo'd token or a non-component fails loudly at
+    // registration, not silently at render.
+    register(token, component) {
+      if (typeof token !== 'string' || token === '') {
+        throw new Error('registerFieldWidget(token, component): token must be a non-empty string')
+      }
+      if (typeof component !== 'function') {
+        throw new Error(`registerFieldWidget(${JSON.stringify(token)}, component): component must be a function`)
+      }
+      map().set(token, component)
+      return component
+    },
+    // The control for a token, or undefined when none is registered (the caller falls back).
+    get(token) {
+      return map().get(token)
+    },
+    // The registered tokens, for introspection and tests.
+    tokens() {
+      return [...map().keys()]
+    },
+  }
+}

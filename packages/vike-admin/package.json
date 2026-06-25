@@ -32,6 +32,7 @@
     "@universal-middleware/core": "^0.4.18",
     "@universal-orm/core": "workspace:*",
     "@universal-orm/memory": "workspace:*",
+    "@vike-data/kit": "workspace:*",
     "@vike-data/vike-schema": "workspace:*"
   },
   "peerDependencies": {
