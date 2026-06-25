@@ -404,6 +404,22 @@ importers:
         specifier: workspace:*
         version: link:../vike-notifications
 
+  packages/vike-notifications-push:
+    dependencies:
+      vike-notifications:
+        specifier: workspace:*
+        version: link:../vike-notifications
+      vike-push:
+        specifier: workspace:*
+        version: link:../vike-push
+    devDependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+
   packages/vike-push:
     dependencies:
       '@universal-middleware/core':
