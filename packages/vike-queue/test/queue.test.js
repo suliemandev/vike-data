@@ -74,6 +74,109 @@ test('setQueueDriver swaps the active driver; clearQueue restores inline', () =>
   assert.notEqual(getQueueDriver(), custom)
 })
 
+test('dispatch coerces maxAttempts: non-finite / <= 0 -> 1, a float is floored', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  setQueueDriver(createDatabaseDriver()) // enqueue-only, so the row records max_attempts
+  registerJob('j', async () => {})
+
+  await dispatch('j', null)                       // no opts -> 1
+  await dispatch('j', null, { maxAttempts: 0 })   // <= 0 -> 1
+  await dispatch('j', null, { maxAttempts: -5 })  // negative -> 1
+  await dispatch('j', null, { maxAttempts: NaN }) // non-finite -> 1
+  await dispatch('j', null, { maxAttempts: 3.9 }) // floored -> 3
+
+  const got = (await adapter.find('jobs', {})).map((r) => r.max_attempts)
+  assert.deepEqual(got, [1, 1, 1, 1, 3])
+})
+
+test('database driver: work() is a no-op when nothing is pending', async () => {
+  reset()
+  setAdapter(createMemoryAdapter())
+  const driver = createDatabaseDriver()
+  assert.deepEqual(await driver.work(), { processed: 0, done: 0, failed: 0, rescheduled: 0 })
+})
+
+test('database driver: work() drains several ready jobs in one pass', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  setQueueDriver(createDatabaseDriver())
+  const seen = []
+  registerJob('many', async (p) => { seen.push(p) })
+
+  await dispatch('many', { n: 1 })
+  await dispatch('many', { n: 2 })
+  await dispatch('many', { n: 3 })
+
+  const s = await getQueueDriver().work()
+  assert.deepEqual(s, { processed: 3, done: 3, failed: 0, rescheduled: 0 })
+  assert.equal(seen.length, 3)
+  assert.equal((await adapter.find('jobs', { status: 'done' })).length, 3)
+})
+
+test('database driver: work({ max }) caps how many are processed per pass', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  const driver = createDatabaseDriver()
+  setQueueDriver(driver)
+  registerJob('capped', async () => {})
+
+  await dispatch('capped', null)
+  await dispatch('capped', null)
+  await dispatch('capped', null)
+
+  const s = await driver.work({ max: 2 })
+  assert.equal(s.processed, 2)
+  assert.equal(s.done, 2)
+  // the third row is untouched, still pending for a later pass
+  assert.equal((await adapter.find('jobs', { status: 'pending' })).length, 1)
+})
+
+test('database driver: work() skips a job whose run_at is in the future', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  // a fixed clock so "the future" is unambiguous relative to work()'s now
+  const driver = createDatabaseDriver({ now: () => '2026-01-01T00:00:00.000Z' })
+  setQueueDriver(driver)
+  let ran = false
+  registerJob('later', async () => { ran = true })
+
+  await adapter.insert('jobs', {
+    id: 'j-future', name: 'later', payload: 'null', status: 'pending',
+    attempts: 0, max_attempts: 1, run_at: '2026-01-01T01:00:00.000Z', // an hour out
+    created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+  })
+
+  const s = await driver.work()
+  assert.deepEqual(s, { processed: 0, done: 0, failed: 0, rescheduled: 0 })
+  assert.equal(ran, false)
+  assert.equal((await adapter.find('jobs', { id: 'j-future' }))[0].status, 'pending')
+})
+
+test('database driver: work() treats a null run_at as ready', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  const driver = createDatabaseDriver()
+  setQueueDriver(driver)
+  let ran = false
+  registerJob('immediate', async () => { ran = true })
+
+  const ts = '2026-01-01T00:00:00.000Z'
+  await adapter.insert('jobs', {
+    id: 'j-null', name: 'immediate', payload: 'null', status: 'pending',
+    attempts: 0, max_attempts: 1, run_at: null, created_at: ts, updated_at: ts,
+  })
+
+  const s = await driver.work()
+  assert.deepEqual(s, { processed: 1, done: 1, failed: 0, rescheduled: 0 })
+  assert.equal(ran, true)
+})
+
 test('database driver: enqueue inserts a pending row; work() runs it to done', async () => {
   reset()
   const adapter = createMemoryAdapter()
