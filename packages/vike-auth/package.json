@@ -8,6 +8,8 @@
     ".": "./index.js",
     "./texts": "./texts.json",
     "./config": "./+config.js",
+    "./schemas": "./schemas.js",
+    "./subject": "./subject.js",
     "./middleware": "./vike-middleware.js",
     "./onCreatePageContext": "./oncreate.js",
     "./server": "./server.js",

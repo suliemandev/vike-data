@@ -39,6 +39,31 @@ export default {
 | `sessions`     | id, user_id, token (unique), expires_at, timestamps                    |
 | `login_tokens` | id, email, token (unique), expires_at, consumed_at, timestamps         |
 
+### Renaming the subject + tables
+
+By default the subject is `User` over `users` / `sessions` / `login_tokens`. An app
+that wants different names sets them once, through env, and **both** the schema and
+the runtime store pick the rename up from the same source:
+
+```bash
+VIKE_AUTH_SUBJECT=Account              # the subject label (default: User)
+VIKE_AUTH_USERS_TABLE=accounts         # default: users  (re-points the sessions/login_tokens FK)
+VIKE_AUTH_SESSIONS_TABLE=account_sessions        # default: sessions
+VIKE_AUTH_LOGIN_TOKENS_TABLE=account_login_tokens # default: login_tokens
+```
+
+Env, not a `+config` value, is the knob on purpose: the runtime store is built at
+module import with no access to the resolved config, so routing both halves through
+env keeps the override a **single source** they can never disagree on (the
+vike-stripe `BILLING_SEGMENT` precedent). With nothing set, behaviour is byte-for-byte
+the default. The FK **column** stays `user_id`; only its target table follows the rename.
+
+> Single-instance only. Using vike-auth for two subjects at once (a `User` guard **and**
+> a `Client` guard), and letting downstream extensions (teams/push/billing) bind to a
+> renamed subject, are later phases (see the epic). A downstream package that hardcodes
+> `users` (e.g. vike-teams' FK) still targets `users`, so renaming the subject is for a
+> standalone vike-auth today.
+
 ## Server tier
 
 vike-auth is not schema-only: it ships a working **passwordless, magic-link**

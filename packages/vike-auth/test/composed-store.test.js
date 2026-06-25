@@ -86,3 +86,27 @@ test('two store instances share one source of truth via the adapter', async () =
   await auth.createUser({ email: 'one@truth.io' })
   assert.ok(await other.findUserByEmail('one@truth.io'), 'the second reader sees the signup')
 })
+
+// ------------------------------------------------- the configurable subject ----
+
+test('a renamed subject targets the renamed tables on the adapter path', async () => {
+  // The store resolves its table names from the subject knob at build time (resolveSubject
+  // reads env), so a rename must route reads/writes to the renamed tables, the SAME tables
+  // schemas.js declares, not the literal `users` / `sessions` / `login_tokens`.
+  const saved = process.env.VIKE_AUTH_USERS_TABLE
+  process.env.VIKE_AUTH_USERS_TABLE = 'accounts'
+  try {
+    const adapter = createMemoryAdapter()
+    setAdapter(adapter)
+    const store = createStore()
+    const u = await store.createUser({ email: 'renamed@example.com' })
+    // The write landed in `accounts`, what the rest of the app would read.
+    assert.equal((await adapter.find('accounts', { email: 'renamed@example.com' }))[0]?.id, u.id)
+    assert.deepEqual(await adapter.find('users', { email: 'renamed@example.com' }), [])
+    // And the store reads back from the renamed table.
+    assert.equal((await store.findUserByEmail('renamed@example.com')).id, u.id)
+  } finally {
+    if (saved === undefined) delete process.env.VIKE_AUTH_USERS_TABLE
+    else process.env.VIKE_AUTH_USERS_TABLE = saved
+  }
+})

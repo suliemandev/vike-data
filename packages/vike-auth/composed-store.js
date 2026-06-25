@@ -16,13 +16,17 @@
 import { getAdapter } from '@universal-orm/core'
 import { newId, isoIn } from './tokens.js'
 import { createMemoryStore } from './store.js'
-
-const USERS = 'users'
-const SESSIONS = 'sessions'
-const LOGIN_TOKENS = 'login_tokens'
+import { resolveSubject } from './subject.js'
 
 export function createStore() {
   const memory = createMemoryStore()
+
+  // The tables this store reads/writes. Resolved from the SAME subject knob the schema
+  // reads (subject.js), so the store always targets the tables the schema actually
+  // created, defaulting to `users` / `sessions` / `login_tokens`. Resolved here at
+  // store-build time (instance.js builds the store once, after the app's env is in
+  // place). The memory fallback is keyless, so the names only matter on the adapter path.
+  const { users: USERS, sessions: SESSIONS, loginTokens: LOGIN_TOKENS } = resolveSubject()
 
   // Run `viaAdapter(adapter)` when an adapter is registered, else `viaMemory()`.
   const dispatch = (viaMemory, viaAdapter) => {
