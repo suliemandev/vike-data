@@ -169,6 +169,59 @@ Expose only the few coarse choices an app makes constantly; make everything fine
 an **eject** (copy the source into the app and own it), rather than a config knob per edge
 case. See [CUSTOMIZATION.md](CUSTOMIZATION.md).
 
+### 9. Cross-extension integration (one extension teaches another a new capability)
+
+Sometimes one extension wants to plug a capability into another: vike-storage teaches
+vike-admin to render `.as('file')` columns as an uploader. The glue imports from BOTH
+packages, so *something* must depend on both. The rule: **neither core may depend on the
+other.** A hard dep either way over-couples. `vike-admin -> vike-storage` would force
+every admin install (users, orders, settings, no file column anywhere) to pull storage's
+`uploads` table + endpoint; `vike-storage -> vike-admin` would stop storage being usable
+headless (avatars, attachments, an API). So the integration is **opt-in** and lives in a
+**leaf** that depends on both, never in either core.
+
+The leaf is a separate subpath (a Vike `+config.js`, because an `extends` target must be
+one) that contributes a passthrough `Layout` whose module performs the registration as an
+import side effect. Routing it through the cumulative `Layout` seam puts it in BOTH the
+SSR and the client bundle, so the contributed capability is present on the server and
+after hydration (no mismatch).
+
+```js
+// vike-storage/react-admin/+config.js  - the leaf; pulled in by one `extends` entry
+export default {
+  name: 'vike-storage-admin',
+  Layout: 'import:vike-storage/react/AdminFileRegister:default',
+}
+
+// vike-storage/react/AdminFileRegister.jsx  - registers on import, renders children unchanged
+import { registerFieldWidget } from 'vike-admin/react/widgets'
+import { FileField } from './FileField.jsx'
+registerFieldWidget('file', FileField)            // the side effect that wires the two
+export default function AdminFileRegister({ children }) { return children }
+```
+
+vike-admin lists the other side (vike-storage) nowhere; vike-storage lists vike-admin as
+an **optional peer**, pulled only if the app installs the bridge. An app opts in with one
+`extends: [storageAdminExt]`.
+
+**Don't multiply the bridge.** This subpath-bridge is correct for the *first* cross-
+extension integration. But if a second consumer wants the same `.as('file')` widget (a
+`vike-cms`, a `vike-forms`), do NOT add a second bridge (`vike-storage/react-cms` + another
+optional peer) inside the foundational package - that makes the lowest layer accumulate
+knowledge of every higher one (N consumers x M providers = NxM bridges). The fix is
+**dependency inversion**: promote the widget registry (today vike-admin's `widget-registry.js`,
+written JSX-free on purpose so it can move) into `@vike-data/kit`. Then every consumer
+READS widgets from the shared registry and vike-storage registers `file` ONCE against kit
+(already a dep) - no per-consumer bridge, no core-to-core peer. kit would hold components
+as opaque values, exactly as `createPort` holds opaque providers; the framework-specific
+built-ins and the both-envs registration stay in the framework packages.
+
+The target is the kit-hosted registry; the trigger is a real second consumer. Until one
+exists, the single subpath-bridge above is the convention - promoting now would be
+speculative, the same discipline that delayed `createPort` until it had repeated. (Open
+follow-up: have the create-vike scaffolder auto-add the bridge when both extensions are
+selected, keeping the explicit `extends` entry as the manual path.)
+
 ## The decision that matters most: config vs port
 
 | Use a **cumulative config point** when... | Use a **runtime port** when... |
@@ -240,4 +293,5 @@ with no change to the call site. That is the whole model in ~30 lines.
 - [ ] Endpoints as a universal middleware on the cumulative `middleware` config.
 - [ ] Per-framework UI in `react/` + `vue/` subpaths; the core stays framework-agnostic.
 - [ ] Authorization through vike-rbac's `can()` (pages and RPCs alike).
+- [ ] Cross-extension integration in an opt-in leaf that depends on both cores; neither core depends on the other; don't multiply the bridge (promote the registry to kit when a second consumer appears).
 - [ ] A small config surface; eject for the long tail.
