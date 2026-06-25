@@ -161,3 +161,94 @@ test('POST /push/unsubscribe cannot remove another signed-in user\'s subscriptio
   assert.equal(rows.length, 1)
   assert.equal(rows[0].user_id, owner.id)
 })
+
+test('POST /push/unsubscribe removes the caller\'s own subscription', async () => {
+  const adapter = setup()
+  const cookie = await openSessionCookie('owner@example.com')
+  const owner = (await adapter.find('users', { email: 'owner@example.com' }))[0]
+  await saveSubscription(owner.id, sub('https://push/own'))
+
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/unsubscribe', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ endpoint: 'https://push/own' }),
+  }))
+
+  assert.equal(res.status, 200)
+  assert.equal((await adapter.find('push_subscriptions', {})).length, 0)
+})
+
+test('POST /push/subscribe with no endpoint is 400', async () => {
+  const adapter = setup()
+  const cookie = await openSessionCookie('a@example.com')
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/subscribe', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ keys: { p256dh: 'x', auth: 'y' } }), // missing endpoint
+  }))
+  assert.equal(res.status, 400)
+  assert.deepEqual(await res.json(), { error: 'invalid-subscription' })
+  assert.equal((await adapter.find('push_subscriptions', {})).length, 0)
+})
+
+test('POST /push/unsubscribe with no endpoint is 400', async () => {
+  setup()
+  const cookie = await openSessionCookie('a@example.com')
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/unsubscribe', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  }))
+  assert.equal(res.status, 400)
+  assert.deepEqual(await res.json(), { error: 'invalid-endpoint' })
+})
+
+test('a malformed JSON body is 400, not a 500', async () => {
+  setup()
+  const cookie = await openSessionCookie('a@example.com')
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/subscribe', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: '{ not json',
+  }))
+  assert.equal(res.status, 400)
+  assert.deepEqual(await res.json(), { error: 'invalid-subscription' })
+})
+
+test('a non-/push/ path falls through to Vike (returns undefined)', async () => {
+  setup()
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/some/other/path', { method: 'POST' }))
+  assert.equal(res, undefined)
+})
+
+test('an unknown /push/ route is 404', async () => {
+  setup()
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/nope', { method: 'POST' }))
+  assert.equal(res.status, 404)
+  assert.deepEqual(await res.json(), { error: 'unknown-push-route' })
+})
+
+test('a known route with the wrong method is 404', async () => {
+  setup()
+  const mw = createPushMiddleware()
+  const res = await mw(new Request('http://localhost/push/subscribe', { method: 'GET' }))
+  assert.equal(res.status, 404)
+})
+
+test('saveSubscription normalizes a missing/partial keys object to null columns', async () => {
+  const adapter = setup()
+  await saveSubscription('u-1', { endpoint: 'https://push/nokeys' }) // no keys at all
+  await saveSubscription('u-1', { endpoint: 'https://push/partial', keys: { p256dh: 'only-pub' } })
+  const rows = await adapter.find('push_subscriptions', {})
+  const byEndpoint = Object.fromEntries(rows.map((r) => [r.endpoint, r]))
+  assert.equal(byEndpoint['https://push/nokeys'].p256dh, null)
+  assert.equal(byEndpoint['https://push/nokeys'].auth_secret, null)
+  assert.equal(byEndpoint['https://push/partial'].p256dh, 'only-pub')
+  assert.equal(byEndpoint['https://push/partial'].auth_secret, null)
+})
