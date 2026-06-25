@@ -21,6 +21,7 @@
     "vike-auth": "workspace:*",
     "vike-i18n": "workspace:*",
     "vike-layouts": "workspace:*",
+    "vike-mail": "workspace:*",
     "vike-push": "workspace:*",
     "vike-storage": "workspace:*",
     "vike-rbac": "workspace:*",

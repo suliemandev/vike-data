@@ -162,6 +162,12 @@ open the magic link. Delivery goes through the `vike-mail` port; with no transpo
 registered, the dev console/outbox records it and shows the link inline. Once signed in,
 `/admin` lists and edits the composed tables.
 
+To deliver for real, copy `app-react/.env.example` (or `app-vue/.env.example`) to `.env`
+and fill it in: `RESEND_API_KEY` registers the Resend mail transport, and a `VAPID_PUBLIC_KEY`
++ `VAPID_PRIVATE_KEY` pair registers the Web Push transport. The demo reads them once per
+server in `+onCreateGlobalContext.js`; with them unset it stays on the dev outbox, so nothing
+else changes.
+
 Run the package tests with `pnpm -r test`.
 
 ---

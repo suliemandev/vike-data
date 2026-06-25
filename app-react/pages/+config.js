@@ -65,10 +65,13 @@ export default {
   schemas: [usersAvatar],
 
   // push: install vike-push (adds the push_subscriptions table + the /push/subscribe
-  // endpoint). The VAPID public key the subscribe control hands to PushManager; the
-  // matching private key would live server-side in the app's push transport (here the
-  // dev console/outbox transport is used, so no private key is needed). Demo keypair.
-  vapidPublicKey: 'BDNJY5tBAEFdFWQFeZjDA0JoEm0MscKeDo5JpxJ1QCm2hv56lroZiHk0a3NEvq6sPJsIBGXOIsyKaf4BRP4aEG4',
+  // endpoint). The VAPID public key the subscribe control hands to PushManager; the matching
+  // private key lives server-side in the app's push transport (+onCreateGlobalContext.js
+  // registers the real Web Push transport when VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY are set,
+  // otherwise the dev console/outbox transport, which needs no private key). Set
+  // VAPID_PUBLIC_KEY to use your own keypair (it must match the private key); the fallback is
+  // a demo public key, so subscribing works out of the box but real delivery does not.
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || 'BDNJY5tBAEFdFWQFeZjDA0JoEm0MscKeDo5JpxJ1QCm2hv56lroZiHk0a3NEvq6sPJsIBGXOIsyKaf4BRP4aEG4',
   title: 'vike-data React UI tier',
 
   // admin: install vike-admin/react — one import brings the /admin/* pages and the
