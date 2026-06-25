@@ -70,6 +70,38 @@ export function createOutbox(name) {
 }
 
 /**
+ * The zero-config "console + outbox" transport a channel falls back to when no real transport
+ * is registered: it records each delivery to an in-memory outbox (for tests + a dev UI) and
+ * logs a one-line summary. Bundles createOutbox with the record-and-log pattern mail/push had
+ * each duplicated; register `transport` as a port's `default` and re-export `getOutbox` /
+ * `clearOutbox` under the channel's own names.
+ *
+ * `send` is variadic so it fits either transport contract (mail's `send(message)`, push's
+ * `send(subscription, payload)`): `entry` maps the send args to the outbox record, `line` maps
+ * them to the log string (stringify user-influenced values so a newline can't forge a log line).
+ *
+ * @param {object} opts
+ * @param {string} opts.name               Outbox key (e.g. 'vike-mail').
+ * @param {(...args:any[])=>any} opts.entry What to record in the outbox for one send().
+ * @param {(...args:any[])=>string} opts.line The one-line log summary for one send().
+ * @returns {{ getOutbox:()=>any[], clearOutbox:()=>void, transport:{ send:(...args:any[])=>Promise<void> } }}
+ */
+export function createDevTransport({ name, entry, line } = {}) {
+  const outbox = createOutbox(name) // validates `name`
+  return {
+    getOutbox: () => outbox.get(),
+    clearOutbox: () => outbox.clear(),
+    transport: {
+      async send(...args) {
+        outbox.record(entry(...args))
+        // eslint-disable-next-line no-console
+        console.log(line(...args))
+      },
+    },
+  }
+}
+
+/**
  * A field-widget registry: the token -> component lookup a schema-driven UI uses to map a
  * column's rendering token (derived from its `.as()` semantic) to the control that renders
  * it. This is the shared MECHANISM behind the schema-driven UI epic: a consumer (vike-admin

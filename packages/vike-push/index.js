@@ -20,32 +20,25 @@
 import { randomUUID } from 'node:crypto'
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
-import { createPort, createOutbox } from '@vike-data/kit'
+import { createPort, createDevTransport } from '@vike-data/kit'
 
 const JOB = 'vike-push:send'
 const TABLE = 'push_subscriptions'
 
-const outbox = createOutbox('vike-push')
+// The zero-config default transport: records each delivery to a dev outbox and logs a one-liner,
+// so the seam is provable without real Web Push/VAPID crypto.
+const dev = createDevTransport({
+  name: 'vike-push',
+  entry: (subscription, payload) => ({ subscription, payload }),
+  line: (subscription, payload) =>
+    `[vike-push] (dev, no transport) endpoint=${JSON.stringify(subscription.endpoint)} payload=${JSON.stringify(payload)}`,
+})
 
 /** Deliveries captured by the default console/outbox transport (dev/test inspection). */
-export function getPushOutbox() {
-  return outbox.get()
-}
+export const getPushOutbox = dev.getOutbox
 
 /** Clear the dev outbox (tests). */
-export function clearPushOutbox() {
-  outbox.clear()
-}
-
-function defaultTransport() {
-  return {
-    async send(subscription, payload) {
-      outbox.record({ subscription, payload })
-      // eslint-disable-next-line no-console
-      console.log(`[vike-push] (dev, no transport) endpoint=${JSON.stringify(subscription.endpoint)} payload=${JSON.stringify(payload)}`)
-    },
-  }
-}
+export const clearPushOutbox = dev.clearOutbox
 
 // The transport registry (the set/get/clear provider port), over @vike-data/kit. A
 // transport is `{ send(subscription, payload) }`, subscription `{ endpoint, keys }`.
@@ -56,7 +49,7 @@ const transportPort = createPort({
       throw new Error('setPushTransport: expected a transport with a send(subscription, payload) method')
     }
   },
-  default: defaultTransport,
+  default: () => dev.transport,
 })
 
 /** Register the app's push transport. */
