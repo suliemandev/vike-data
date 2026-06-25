@@ -85,6 +85,9 @@ importers:
       vike-layouts:
         specifier: workspace:*
         version: link:../packages/vike-layouts
+      vike-mail:
+        specifier: workspace:*
+        version: link:../packages/vike-mail
       vike-push:
         specifier: workspace:*
         version: link:../packages/vike-push
@@ -136,6 +139,9 @@ importers:
       vike-layouts:
         specifier: workspace:*
         version: link:../packages/vike-layouts
+      vike-mail:
+        specifier: workspace:*
+        version: link:../packages/vike-mail
       vike-push:
         specifier: workspace:*
         version: link:../packages/vike-push
@@ -153,14 +159,17 @@ importers:
         version: link:../packages/vike-toolbar
       vike-vue:
         specifier: ^0.9.11
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
+      vite:
+        specifier: ^7.1.0
+        version: 7.3.5(@types/node@26.0.0)
       vue:
         specifier: ^3.5.0
         version: 3.5.38
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.0.0
-        version: 5.2.4(vue@3.5.38)
+        version: 5.2.4(vite@7.3.5(@types/node@26.0.0))(vue@3.5.38)
 
   packages/kit: {}
 
@@ -236,7 +245,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -285,7 +294,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3.5'
         version: 3.5.38
@@ -332,7 +341,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -347,7 +356,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -386,7 +395,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -470,7 +479,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -573,7 +582,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -653,7 +662,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -671,7 +680,7 @@ importers:
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-vue:
         specifier: '>=0.9'
-        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38)
+        version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
       vue:
         specifier: '>=3'
         version: 3.5.38
@@ -3594,8 +3603,9 @@ snapshots:
       - hono
       - srvx
 
-  '@vitejs/plugin-vue@5.2.4(vue@3.5.38)':
+  '@vitejs/plugin-vue@5.2.4(vite@7.3.5(@types/node@26.0.0))(vue@3.5.38)':
     dependencies:
+      vite: 7.3.5(@types/node@26.0.0)
       vue: 3.5.38
 
   '@vue/compiler-core@3.5.38':
@@ -4526,7 +4536,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       vike-react: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
 
-  vike-vue@0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17))(vue@3.5.38):
+  vike-vue@0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38):
     dependencies:
       magic-string: 0.30.21
       oxc-parser: 0.104.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)

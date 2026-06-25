@@ -5,6 +5,7 @@ dist/
 .DS_Store
 .env
 .env.*
+!.env.example
 
 # Generated schema artifacts (app/prisma, app/drizzle, app/database/migrations)
 # are intentionally COMMITTED, not ignored: they carry a "generated, don't edit"
