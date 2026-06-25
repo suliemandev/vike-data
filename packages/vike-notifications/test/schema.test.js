@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { notificationsSchema } from '../schema.js'
+import { notificationsSchema, notificationsSchemaFor } from '../schema.js'
 
 // The `notifications` table vike-notifications owns (the Stem pattern). Pins the fragment
 // the database channel + feed read helpers depend on, so the user_id FK + read_at contract
@@ -40,4 +40,12 @@ test('timestamps() adds created_at + updated_at defaulting to now', () => {
     ['created_at', 'updated_at'].map((n) => [col(n)?.type, col(n)?.default]),
     [['timestamp', 'now'], ['timestamp', 'now']],
   )
+})
+
+test('the FK target follows a renamed vike-auth subject table (the FK column stays user_id)', () => {
+  // vike-auth's subject table is configurable (VIKE_AUTH_USERS_TABLE); the FK target has to
+  // follow it or the migration points at a users table that was never created.
+  const renamed = notificationsSchemaFor('members')
+  const fk = renamed.columns.find((c) => c.name === 'user_id')
+  assert.deepEqual(fk.references, { table: 'members', column: 'id' })
 })

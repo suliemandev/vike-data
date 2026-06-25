@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pushSubscriptionsSchema } from '../schema.js'
+import { pushSubscriptionsSchema, pushSubscriptionsSchemaFor } from '../schema.js'
 
 // The push_subscriptions table vike-push owns (the Stem pattern). These pin the
 // fragment shape the merge/derive layers read, so the columns + the user_id FK +
@@ -44,4 +44,12 @@ test('timestamps() adds created_at + updated_at defaulting to now', () => {
     ['created_at', 'updated_at'].map((n) => [col(n)?.type, col(n)?.default]),
     [['timestamp', 'now'], ['timestamp', 'now']],
   )
+})
+
+test('the FK target follows a renamed vike-auth subject table (the FK column stays user_id)', () => {
+  // vike-auth's subject table is configurable (VIKE_AUTH_USERS_TABLE); the FK target has to
+  // follow it or the migration points at a users table that was never created.
+  const renamed = pushSubscriptionsSchemaFor('members')
+  const fk = renamed.columns.find((c) => c.name === 'user_id')
+  assert.deepEqual(fk.references, { table: 'members', column: 'id' })
 })

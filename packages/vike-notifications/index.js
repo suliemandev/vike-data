@@ -23,11 +23,15 @@
 // vike-notifications/client and the bell UI in /react, /vue; they import none of this.
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
+import { resolveSubject } from 'vike-auth/subject'
 import { databaseChannel } from './database-channel.js'
 
 const CHANNELS_KEY = Symbol.for('vike-notifications.channels')
 const JOB = 'vike-notifications:deliver'
-const USERS_TABLE = 'users'
+// Hydrate a bare user id from vike-auth's subject table, following its configurable name
+// (subject.js) so a renamed users table is read from the same single source the schema and
+// the auth store use. Defaults to `users`.
+const USERS_TABLE = resolveSubject().users
 
 // The channel registry — a keyed Map (many channels), like vike-queue's job registry,
 // not a single-value port. Cached on globalThis so duplicate module evaluation (pointer
