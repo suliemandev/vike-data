@@ -1,0 +1,23 @@
+{
+  "name": "vike-ai-gemstack",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "GemStack provider for vike-ai: registers @gemstack/ai-sdk behind the neutral vike-ai port via setAiProvider. The AI twin of @universal-orm/<provider> — app code keeps calling generate()/chat()/stream() on vike-ai; this adapter routes those to the GemStack AI engine (an Agent over claude/gemini/openai/...). The app wires GemStack's own AiRegistry (provider + key); this package is the thin bridge.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "vike-ai": "workspace:*"
+  },
+  "peerDependencies": {
+    "@gemstack/ai-sdk": ">=0.2.0"
+  },
+  "devDependencies": {
+    "@gemstack/ai-sdk": "^0.2.0"
+  }
+}
