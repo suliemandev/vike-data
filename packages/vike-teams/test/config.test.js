@@ -6,7 +6,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mergeSchemas } from '@vike-data/vike-schema/schema'
 import teamsConfig from '../+config.js'
-import authConfig from 'vike-auth/config'
+// auth's schema is a COMPUTED contribution (a factory wired as a pointer-import in its
+// +config), so resolve it the way vike-schema does at build, by calling the factory,
+// rather than reading the unresolved `schemas` pointer string off the config.
+import authSchemas from 'vike-auth/schemas'
 
 const fragment = (table, mode = 'create') =>
   teamsConfig.schemas.find((s) => s.table === table && s.mode === mode)
@@ -52,7 +55,7 @@ test('extends auth users with a nullable SET NULL FK back to organizations (the 
 })
 
 test('composition proof: teams merges onto auth with zero conflicts (the Stem Vision)', () => {
-  const { tables, conflicts } = mergeSchemas([...authConfig.schemas, ...teamsConfig.schemas])
+  const { tables, conflicts } = mergeSchemas([...authSchemas(), ...teamsConfig.schemas])
   assert.deepEqual(conflicts, [])
   const names = tables.map((t) => t.table)
   for (const t of ['users', 'organizations', 'memberships']) {

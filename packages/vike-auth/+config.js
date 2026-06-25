@@ -21,7 +21,11 @@
 // Both are pointer-import strings (live code can't be inlined into a serialized
 // config), wired to the default in-memory auth instance. See vike-middleware.js
 // and oncreate.js.
-import { defineSchema } from '@vike-data/vike-schema/schema'
+//
+// SUBJECT: the tables it declares are no longer hardcoded. `schemas` is a COMPUTED
+// contribution (schemas.js) whose `users` / `sessions` / `login_tokens` names follow
+// the subject knob (subject.js), defaulting to today's names. It is a pointer-import
+// because a computed schema is a function, which a serialized config can't inline.
 
 export default {
   name: 'vike-auth',
@@ -42,33 +46,5 @@ export default {
   // value after hydration instead of flipping to signed-out. Cumulative — merges
   // with the host's other passToClient keys.
   passToClient: ['user'],
-  schemas: [
-    defineSchema('users', (t) => {
-      t.uuid('id').primary()
-      t.string('email').unique()
-      t.string('name').nullable()
-      t.string('password_hash').nullable()
-      t.boolean('email_verified').default(false)
-      t.boolean('active').default(true)
-      t.timestamps()
-    }),
-    defineSchema('sessions', (t) => {
-      t.uuid('id').primary()
-      t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
-      t.string('token').unique()
-      t.timestamp('expires_at')
-      t.timestamps()
-    }),
-    // Pending magic links. The server tier needs somewhere to keep single-use,
-    // short-lived sign-in tokens, so it adds a table through the same DSL — the
-    // schema grows with the behaviour, still derived to every ORM.
-    defineSchema('login_tokens', (t) => {
-      t.uuid('id').primary()
-      t.string('email')
-      t.string('token').unique()
-      t.timestamp('expires_at')
-      t.timestamp('consumed_at').nullable()
-      t.timestamps()
-    }),
-  ],
+  schemas: 'import:vike-auth/schemas:default',
 }
