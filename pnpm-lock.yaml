@@ -238,6 +238,12 @@ importers:
         specifier: '>=3'
         version: 3.5.38
 
+  packages/vike-ai:
+    dependencies:
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
+
   packages/vike-auth:
     dependencies:
       '@universal-middleware/core':

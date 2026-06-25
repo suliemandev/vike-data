@@ -1,0 +1,16 @@
+{
+  "name": "vike-ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The AI PORT: generate() / chat() / stream() + a swappable provider contract/registry (an echo provider in dev, Rudder AI / Vercel AI SDK / a direct Anthropic provider in prod). Framework-agnostic, provider-neutral, server-only, the AI twin of @universal-orm/core: app code depends on this port; the app registers the concrete provider. Multi-vendor (claude/gemini/openai) lives inside the provider via a per-call model/provider selector, not in this seam.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@vike-data/kit": "workspace:*"
+  }
+}
