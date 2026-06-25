@@ -1,0 +1,17 @@
+{
+  "name": "vike-notifications-mail",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The mail channel adapter for vike-notifications: registers a `mail` channel that delivers a notification's toMail() through vike-mail's sendMail. A separate package so the notifications core stays closed for modification.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "vike-mail": "workspace:*",
+    "vike-notifications": "workspace:*"
+  }
+}

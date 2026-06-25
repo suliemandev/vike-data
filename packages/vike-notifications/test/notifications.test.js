@@ -4,7 +4,7 @@ import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { clearQueue } from 'vike-queue'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
-import { notify, registerChannel, getChannel, getChannels, clearChannels } from '../index.js'
+import { notify, registerChannel, getChannel, getChannels, clearChannels, routeFor } from '../index.js'
 import { getFeed, unreadCount, markRead } from '../database-channel.js'
 import { createNotificationsMiddleware } from '../middleware.js'
 
@@ -42,6 +42,15 @@ test('the built-in database channel is always registered', () => {
   setup()
   assert.equal(getChannel('database')?.name, 'database')
   assert.ok(getChannels().some((c) => c.name === 'database'))
+})
+
+test('routeFor resolves the conventional user field per channel (the #206 seam)', () => {
+  const user = { id: 'u-1', email: 'a@b.c' }
+  assert.equal(routeFor(user, 'mail'), 'a@b.c') // mail -> address
+  assert.equal(routeFor(user, 'push'), 'u-1') // push -> user id
+  assert.equal(routeFor(user, 'database'), 'u-1') // keyed on id
+  assert.equal(routeFor(user, 'slack'), 'u-1') // unknown channel falls back to id
+  assert.equal(routeFor(null, 'mail'), undefined) // tolerant of a missing notifiable
 })
 
 test('registerChannel validates the channel', () => {
