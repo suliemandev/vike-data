@@ -13,7 +13,7 @@
 import { getVikeConfig } from 'vike/plugin'
 import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { resolveSchemas, orderFragments, mergeSchemas, generateArtifacts } from '@vike-data/universal-schema'
+import { resolveOrm, resolveMode, generateFromConfig } from './generate.js'
 
 export function vikeSchema(options = {}) {
   let root = process.cwd()
@@ -31,23 +31,21 @@ export function vikeSchema(options = {}) {
       ctx.warn?.('[vike-schema] no `schemas` found in the Vike config; nothing to generate.')
       return
     }
-    const orm = (options.orm || process.env.VIKE_DATA_ORM || 'drizzle').toLowerCase()
+    const orm = resolveOrm(options.orm)
     // `check` mode is the CI drift gate: generate in memory, compare to disk,
     // fail if anything is stale or missing — never write.
-    const mode = options.mode || (process.env.VIKE_DATA_GEN === 'check' ? 'check' : 'write')
+    const mode = resolveMode(options.mode)
 
-    // Resolve + dedupe, then order by FK dependency so Rudder migrations are
-    // emitted in a runnable order regardless of Vike's (non-dependency-aware)
-    // contribution order.
-    const fragments = orderFragments(resolveSchemas(config.schemas, config))
-    const { tables, conflicts } = mergeSchemas(fragments)
+    // Resolve + dedupe + order (by FK dependency, so Rudder migrations are emitted
+    // in a runnable order), merge, and derive per-ORM artifacts. The conflict gate
+    // lives in generateFromConfig: a conflicting schema yields no files.
+    const { tables, conflicts, files } = generateFromConfig(config, orm)
     if (conflicts.length) {
       const lines = conflicts.map((c) => `  - ${c.kind}: ${c.table}${c.column ? '.' + c.column : ''}`)
       ctx.error(`[vike-schema] refusing to generate, ${conflicts.length} schema conflict(s):\n${lines.join('\n')}`)
       return
     }
 
-    const files = generateArtifacts({ tables, fragments }, orm)
     const drift = []
     for (const f of files) {
       const abs = join(root, f.path)
