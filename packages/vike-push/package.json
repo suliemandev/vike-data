@@ -6,6 +6,7 @@
   "description": "Web Push channel: sendPush(userId, payload) over stored subscriptions, a swappable push transport (console/outbox in dev, Web Push/VAPID in prod), a subscribe endpoint, and a per-framework client control + service worker. The second channel after vike-mail; sends through vike-queue.",
   "exports": {
     ".": "./index.js",
+    "./web-push": "./web-push.js",
     "./config": "./+config.js",
     "./schema": "./schema.js",
     "./middleware": "./middleware.js",
