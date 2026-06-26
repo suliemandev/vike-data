@@ -15,7 +15,7 @@
 // name, and build the maps to translate rows in (name -> prop) and out (prop -> name).
 // Filters/where-clauses are built from the column OBJECTS, so they are dialect-correct.
 
-import { getTableColumns, getTableName, eq, inArray, and, asc, desc, count } from 'drizzle-orm'
+import { getTableColumns, getTableName, eq, isNull, inArray, and, asc, desc, count } from 'drizzle-orm'
 import { normalizeOrderBy, isInCondition } from '@universal-orm/core'
 
 // Per-table name<->property maps + the column objects used to build WHERE clauses.
@@ -71,11 +71,15 @@ export function createDrizzleAdapter(db, tables) {
 
   // Build a WHERE clause from a neutral filter. Equality + `in` only — the same
   // narrow surface the memory adapter honours. Empty filter => no WHERE (all rows).
+  // `{ col: null }` is IS NULL, not `col = NULL` (which is UNKNOWN and matches no
+  // row): the in-process matcher treats `null` as equality against a null column,
+  // so the SQL adapters must too, or the soft-delete read `find({ deleted_at: null })`
+  // silently returns zero rows here while working on memory/rudder.
   const whereOf = (filter, meta) => {
     const conds = []
     for (const [name, cond] of Object.entries(filter ?? {})) {
       const col = columnOf(meta, name)
-      conds.push(isInCondition(cond) ? inArray(col, cond.in) : eq(col, cond))
+      conds.push(isInCondition(cond) ? inArray(col, cond.in) : cond === null ? isNull(col) : eq(col, cond))
     }
     return conds.length ? and(...conds) : undefined
   }
