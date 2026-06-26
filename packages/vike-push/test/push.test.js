@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
+import { setQueueDriver, clearQueue } from 'vike-queue'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
 import {
   sendPush, saveSubscription, removeSubscription, pruneSubscription,
@@ -11,6 +12,7 @@ import { createPushMiddleware } from '../middleware.js'
 
 function setup() {
   clearAdapter()
+  clearQueue() // reset the queue driver to the default inline one (a prior test may have swapped it)
   clearPushTransport()
   clearPushOutbox()
   const adapter = createMemoryAdapter()
@@ -53,6 +55,25 @@ test('sendPush delivers one payload per subscription the user has', async () => 
   assert.deepEqual(out[0].payload, { title: 'Hi', body: 'yo' })
   // the subscription is reconstructed with its keys
   assert.equal(out[0].subscription.keys.p256dh, 'pub-https://push/aaa')
+})
+
+test('the dispatched job payload carries the subscription id, never its keys (#229)', async () => {
+  setup()
+  await saveSubscription('u-1', sub('https://push/aaa'))
+
+  // Capture what sendPush hands the driver — exactly what the DB driver would persist.
+  const enqueued = []
+  setQueueDriver({ enqueue: (job) => { enqueued.push(job); return Promise.resolve() } })
+  await sendPush('u-1', { title: 'Hi' })
+
+  assert.equal(enqueued.length, 1)
+  const { payload } = enqueued[0]
+  assert.ok(payload.subscriptionId, 'the subscription id is dispatched')
+  assert.equal('subscription' in payload, false) // no inline subscription object
+  // The auth secret / public key never appear in the persisted payload.
+  const serialized = JSON.stringify(payload)
+  assert.equal(serialized.includes('sec-https://push/aaa'), false) // the auth_secret value
+  assert.equal(serialized.includes('pub-https://push/aaa'), false) // the p256dh value
 })
 
 test('sendPush is a no-op for a user with no subscriptions', async () => {

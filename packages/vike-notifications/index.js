@@ -95,6 +95,23 @@ function renderFor(notification, channelName, notifiable) {
 // address, push to a user id; anything else keys on the id.
 const ROUTE_FIELD = { mail: 'email', push: 'id', database: 'id' }
 
+// The distinct fields any channel routes on (the values of ROUTE_FIELD, plus the `id`
+// fallback routeFor uses for an unknown channel). The notifiable is projected to ONLY these
+// before dispatch — see routableNotifiable.
+const ROUTABLE_FIELDS = [...new Set([...Object.values(ROUTE_FIELD), 'id'])]
+
+// Project a resolved user row down to just the fields a channel routes on. notify() dispatches
+// one vike-queue job per channel and the driver PERSISTS the payload (JSON in the jobs table),
+// so handing it the whole user row would write password_hash and any other secret column to
+// durable storage where it lingers after delivery (#229). Channels only ever read the route
+// field via routeFor(), so this is all they need; rendering already happened against the full
+// user before dispatch.
+function routableNotifiable(user) {
+  const out = {}
+  for (const f of ROUTABLE_FIELDS) if (user?.[f] !== undefined) out[f] = user[f]
+  return out
+}
+
 /**
  * Resolve a notifiable's route for a channel — the field a channel adapter delivers to
  * (mail -> `.email`, push -> `.id`). This is the SINGLE seam channel adapters route
@@ -149,7 +166,8 @@ export async function notify(notifiable, notification, opts = {}) {
     if (!getChannel(channel)) continue // not wired (e.g. no mail adapter) — skip, don't throw
     const rendered = renderFor(notification, channel, user)
     if (rendered === undefined) continue // the notification doesn't render for this channel
-    jobs.push(dispatch(JOB, { channel, notifiable: user, rendered }, { maxAttempts: opts.maxAttempts ?? 3 }))
+    // Dispatch only the routable fields, never the full user row (#229) — the payload is persisted.
+    jobs.push(dispatch(JOB, { channel, notifiable: routableNotifiable(user), rendered }, { maxAttempts: opts.maxAttempts ?? 3 }))
   }
   return Promise.all(jobs)
 }
