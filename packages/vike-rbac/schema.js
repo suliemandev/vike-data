@@ -12,6 +12,13 @@
 // org-scoped roles (multi-tenancy) are a later column on role_user, gated on the
 // teams/org model. Kept deliberately flat for the first tier.
 import { defineSchema } from '@vike-data/vike-schema/schema'
+import { resolveSubject } from 'vike-auth/subject'
+
+// role_user FKs into auth's subject table, so it must FOLLOW a renamed subject
+// (VIKE_AUTH_USERS_TABLE) the same way the other downstream extensions do (PR #215),
+// not hardcode the literal 'users'. Default resolves to 'users', so the zero-config
+// app is unchanged. Resolved once at module-eval (env is build-time data).
+const USERS = resolveSubject().users
 
 export const rbacSchemas = [
   defineSchema('roles', (t) => {
@@ -26,12 +33,12 @@ export const rbacSchemas = [
     t.string('label').nullable()
     t.timestamps()
   }),
-  // A user's roles. FK into auth's `users` table (a cross-extension reference;
-  // merge.js validates `users` exists). Deleting a user clears their grants.
+  // A user's roles. FK into auth's subject table (a cross-extension reference;
+  // merge.js validates the table exists). Deleting a user clears their grants.
   defineSchema('role_user', (t) => {
     t.uuid('id').primary()
     t.uuid('role_id').references('roles.id', { onDelete: 'cascade' })
-    t.uuid('user_id').references('users.id', { onDelete: 'cascade' })
+    t.uuid('user_id').references(`${USERS}.id`, { onDelete: 'cascade' })
     t.timestamps()
   }),
   // A role's permissions.
