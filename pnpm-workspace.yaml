@@ -1,7 +1,6 @@
 packages:
-  - app
-  - app-react
-  - app-vue
+  - examples/*
+  - fixtures/*
   - packages/*
 
 # pnpm 11 requires build scripts to be explicitly approved via `allowBuilds`;
