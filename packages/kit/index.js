@@ -149,3 +149,42 @@ export function createFieldWidgetRegistry(name) {
     },
   }
 }
+
+/**
+ * A configurable-SUBJECT resolver: the shared mechanism behind an extension's "rename my
+ * table(s)/column(s) by config" knob. vike-auth (`resolveSubject`) and vike-teams
+ * (`resolveTeamSubject`) both resolve a fixed set of named fields with identical rules, so
+ * the precedence + blank-guard lives here once instead of being re-handwritten per package.
+ *
+ * Resolution per field: explicit `overrides[field]` > `env[envKeys[field]]` > `defaults[field]`.
+ * A blank/whitespace-only override or env value is treated as UNSET (falls through), so an
+ * empty `FOO_TABLE=` in a .env never produces a nameless table. A field with NO entry in
+ * `envKeys` is resolved from override/default only (never env) - the way a reserved column map
+ * is carried for shape stability without shipping an env var that silently does nothing.
+ *
+ * @param {Record<string,string>} defaults  The field -> default-value map (and the set of
+ *                                           fields the resolver returns). Frozen internally.
+ * @param {Record<string,string>} [envKeys] The field -> env-var-name map. Fields absent here
+ *                                           are default/override-only.
+ * @returns {(overrides?:Record<string,string>, env?:Record<string,string|undefined>)=>Record<string,string>}
+ */
+export function createSubjectResolver(defaults, envKeys = {}) {
+  if (defaults == null || typeof defaults !== 'object') {
+    throw new Error('createSubjectResolver(defaults, envKeys): `defaults` must be an object')
+  }
+  const frozen = Object.freeze({ ...defaults })
+  return function resolve(overrides = {}, env = (typeof process !== 'undefined' ? process.env : {})) {
+    const out = {}
+    for (const field of Object.keys(frozen)) {
+      const override = overrides[field]
+      if (override != null && String(override).trim() !== '') {
+        out[field] = String(override).trim()
+        continue
+      }
+      const envKey = envKeys[field]
+      const fromEnv = envKey ? env[envKey] : undefined
+      out[field] = fromEnv != null && String(fromEnv).trim() !== '' ? String(fromEnv).trim() : frozen[field]
+    }
+    return out
+  }
+}
