@@ -1,0 +1,26 @@
+{
+  "name": "app-two-audience",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 skeleton for the two-audience reference app (epic #255). A React app on the memory adapter (zero DB) with vike-auth's default user guard as the SINGLE audience for now, themed and laid out. Proves the harness builds + runs; the second guard / org ownership / Vue twin land in later phases.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vike": "^0.4.0",
+    "vike-react": "^0.6.0",
+    "vike-auth": "workspace:*",
+    "vike-i18n": "workspace:*",
+    "vike-layouts": "workspace:*",
+    "vike-themes": "workspace:*",
+    "vike-theme-emerald": "workspace:*",
+    "vite": "^7.1.0"
+  }
+}
