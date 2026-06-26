@@ -4,7 +4,7 @@ import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { clearQueue, setQueueDriver } from 'vike-queue'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
-import { notify, registerChannel, getChannel, getChannels, clearChannels, routeFor } from '../index.js'
+import { notify, registerChannel, getChannel, getChannels, clearChannels, routeFor, route } from '../index.js'
 import { getFeed, unreadCount, markRead } from '../database-channel.js'
 import { createNotificationsMiddleware } from '../middleware.js'
 
@@ -51,6 +51,56 @@ test('routeFor resolves the conventional user field per channel (the #206 seam)'
   assert.equal(routeFor(user, 'database'), 'u-1') // keyed on id
   assert.equal(routeFor(user, 'slack'), 'u-1') // unknown channel falls back to id
   assert.equal(routeFor(null, 'mail'), undefined) // tolerant of a missing notifiable
+})
+
+test('routeFor consults an explicit routes map before the user-field convention (#206)', () => {
+  const onDemand = { routes: { mail: 'x@y.z', push: 'device-9' } }
+  assert.equal(routeFor(onDemand, 'mail'), 'x@y.z') // explicit route, no user fields present
+  assert.equal(routeFor(onDemand, 'push'), 'device-9')
+  assert.equal(routeFor(onDemand, 'slack'), undefined) // no explicit route + no user field -> nothing to route to
+
+  // On a User row, an explicit route overrides JUST that channel; the rest keep the convention.
+  const user = { id: 'u-1', email: 'default@x.c', routes: { mail: 'billing@x.c' } }
+  assert.equal(routeFor(user, 'mail'), 'billing@x.c') // explicit wins over .email
+  assert.equal(routeFor(user, 'push'), 'u-1') // no explicit push route -> .id convention
+})
+
+test('route() builds an on-demand notifiable and validates its argument', () => {
+  assert.deepEqual(route({ mail: 'a@b.c', push: 'dev-1' }), { routes: { mail: 'a@b.c', push: 'dev-1' } })
+  assert.throws(() => route(), /channel: address/)
+  assert.throws(() => route('a@b.c'), /channel: address/)
+  assert.throws(() => route(['a@b.c']), /channel: address/) // an array is not a { channel: address } map
+})
+
+test('notify(route(...)) delivers to an explicit address with no user hydration and no feed row', async () => {
+  const adapter = setup()
+  const sent = []
+  // The channel routes through routeFor against the projected (post-queue) notifiable.
+  registerChannel({ name: 'mail', send: async (notifiable) => { sent.push(routeFor(notifiable, 'mail')) } })
+
+  // A guest-checkout receipt: no users-table row exists, the target IS the address.
+  const res = await notify(route({ mail: 'guest@checkout.io' }), {
+    via: () => ['mail', 'database'], // database is selected but on-demand has no feed...
+    toMail: () => ({ subject: 'Receipt', html: 'Thanks' }),
+    // ...and no toDatabase(), so the feed channel renders nothing and is skipped — never errors.
+  })
+
+  assert.equal(sent[0], 'guest@checkout.io') // routed through the queue projection to the explicit address
+  assert.equal(res.length, 1) // only mail delivered; the feed did not (no toDatabase)
+  assert.equal((await adapter.find('notifications', {})).length, 0) // on-demand writes no feed row
+})
+
+test('notify carries an explicit routes map through the queue payload (survives serialization)', async () => {
+  setup()
+  const enqueued = []
+  setQueueDriver({ enqueue: (job) => { enqueued.push(job); return Promise.resolve() } })
+  registerChannel({ name: 'mail', send: async () => {} })
+
+  await notify(route({ mail: 'ops@x.c' }), { via: () => ['mail'], toMail: () => ({ subject: 'Alert' }) })
+
+  const { notifiable } = enqueued[0].payload
+  assert.deepEqual(notifiable, { routes: { mail: 'ops@x.c' } }) // only the route data, nothing else
+  assert.equal(routeFor(notifiable, 'mail'), 'ops@x.c') // and the worker can still resolve it
 })
 
 test('notify dispatches only the routable fields, never the full user row (#229)', async () => {
