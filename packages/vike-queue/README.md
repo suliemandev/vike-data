@@ -34,6 +34,10 @@ Install the extension (`extends: ['import:vike-queue/config:default']`) to contr
 
 The database (and any production) driver needs a worker, but Vike apps are request/response. The worker model (a `vike-queue work` CLI, a serverless cron/HTTP-pull drain, or delegating to a broker's native worker) is deliberately left open; the inline default means dev and the demo need no worker. See issue #151.
 
+## Concurrent workers
+
+`work()` claims each row **atomically** — a `pending` row is moved to `running` with a compare-and-swap (`update ... WHERE id=? AND status='pending'`) and only the worker whose update matched the row runs the handler, so two workers (or two overlapping drains) never run the same job twice. On a real ORM that filtered `UPDATE` is atomic at the DB level (on SQLite, pair it with `BEGIN IMMEDIATE` + WAL). A `running` row abandoned by a crashed worker is returned to `pending` after a **visibility timeout** (`visibilityTimeoutMs`, default 5 min) so it retries; set it longer than your slowest handler, or a still-running job could be reclaimed and run twice.
+
 ## Retries
 
 `dispatch(name, payload, { maxAttempts })` caps attempts (default 1 = no retry). Backoff grows 100ms, 200ms, 400ms ... capped at 30s. The inline driver retries in process; the database driver reschedules `run_at`.
