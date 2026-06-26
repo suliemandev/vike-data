@@ -47,6 +47,21 @@ The stored mime is browser-supplied, so `GET` never trusts it to render arbitrar
 
 **Upload size.** `POST` caps a single upload at `getMaxUploadBytes()` (default 10 MiB; set with `setMaxUploadBytes(n)` or the `VIKE_STORAGE_MAX_UPLOAD_BYTES` env var). An over-size `Content-Length` is rejected with `413` before the body is buffered; a missing/understated `Content-Length` is caught by re-checking the parsed file size. A hard streaming cap against a *lying* `Content-Length` belongs at your reverse proxy's body-size limit.
 
+## Which subject owns uploads (`storageGuard`)
+
+By default uploads are owned by the default vike-auth subject (`users`). An app running [named guards](../vike-auth/README.md#named-guards-multi-instance) can own uploads by a different audience instead — bind storage to a guard and a file is owned by that guard's subject, resolved from that guard's session cookie:
+
+```js
+// +config.js — build-time: the uploads.user_id FK targets the admin guard's subject (`admins`)
+storageGuard: 'admin',
+```
+```bash
+# runtime: the /uploads endpoint resolves the owner from the admin session cookie
+VIKE_STORAGE_GUARD=admin
+```
+
+Two knobs, one per half (schema vs request), the same config/env split vike-stripe uses for `segment`/`BILLING_SEGMENT`; keep them pointed at the same guard. The FK **column** stays `user_id`, only its **target table** follows the guard. Leave both unset and storage owns uploads by the default `users` subject, byte-for-byte. An unknown guard name degrades to the default subject rather than minting an FK to a table no guard owns. See the [two-audience example](../../examples/two-audience) for a worked staff-owned upload.
+
 ## Upload controls
 
 Framework-agnostic helpers (`vike-storage/client`): `uploadFile(file)` and `deleteUpload(id)`. Thin React and Vue controls wrap them:

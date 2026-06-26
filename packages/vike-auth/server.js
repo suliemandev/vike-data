@@ -29,3 +29,26 @@ export function resolveSessionUser(request) {
   const cookieHeader = request?.headers?.get ? request.headers.get('cookie') : request?.headers?.cookie
   return resolveSessionUserFromCookie(cookieHeader)
 }
+
+// The guard-aware twin (the named-guards seam, #267 / #207 P3): resolve the user for a
+// SPECIFIC guard descriptor — read THAT guard's own session cookie (`guard.cookieName`) and
+// authenticate against its own subject tables (`guard.instance`), returning the same plain
+// `{ id, email, name }` view, or null. Passing the default guard (getDefaultGuard()) is
+// exactly resolveSessionUser; passing a named guard binds resolution to that audience.
+// A downstream extension that owns rows by a non-default subject (vike-storage's
+// `storageGuard`, #278) resolves the owner through this, so its notion of "the signed-in
+// owner" can't drift from vike-auth's.
+export async function resolveGuardUserFromCookie(cookieHeader, guard) {
+  if (!guard) return null
+  const token = parseCookies(cookieHeader)[guard.cookieName]
+  if (!token) return null
+  const resolved = await guard.instance.authenticate(token)
+  return resolved ? { id: resolved.user.id, email: resolved.user.email, name: resolved.user.name } : null
+}
+
+// The `Request` form of resolveGuardUserFromCookie (reads its `cookie` header), mirroring
+// resolveSessionUser.
+export function resolveGuardUser(request, guard) {
+  const cookieHeader = request?.headers?.get ? request.headers.get('cookie') : request?.headers?.cookie
+  return resolveGuardUserFromCookie(cookieHeader, guard)
+}

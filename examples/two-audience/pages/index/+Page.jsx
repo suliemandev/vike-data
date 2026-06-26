@@ -3,7 +3,10 @@
 // `pageContext.guards.admin.user` / `.client.user`) — each from its own cookie, with no
 // cross-talk. Sign into the staff and client guards in the same browser and both show as
 // signed in; log one out and the other is untouched.
+import { useState } from 'react'
 import { usePageContext } from 'vike-react/usePageContext'
+import { useData } from 'vike-react/useData'
+import { FileUpload } from 'vike-storage/react/FileUpload'
 
 const card = {
   border: '1px solid var(--color-border)',
@@ -52,9 +55,62 @@ function GuardCard({ title, user, loginHref, logoutAction }) {
   )
 }
 
+// The #278 / #207 P3 proof: vike-storage is bound to the staff (admin) guard
+// (storageGuard: 'admin'), so an upload made here is owned by the `admins` subject — the
+// endpoint resolves the uploader from the ADMIN session cookie, and the row's `user_id` FKs
+// into `admins`, not the default `users`. The uploader is staff-only; the list is the signed-in
+// admin's own files (loaded server-side in +data.js). A client (or the default user) signing in
+// sees a prompt, never another audience's files.
+function AdminUploads({ admin, initialUploads }) {
+  const [uploads, setUploads] = useState(initialUploads)
+  if (!admin) {
+    return (
+      <div style={card}>
+        <strong style={{ color: 'var(--color-text)' }}>Staff uploads</strong>
+        <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 14 }}>
+          Sign into <a href="/admin/login" style={{ color: 'var(--color-primary)' }}>staff</a> to upload a
+          file. Files are owned by the <code>admins</code> subject, not the default user.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+        <strong style={{ color: 'var(--color-text)' }}>Staff uploads</strong>
+        <FileUpload
+          label="Upload as staff"
+          onUploaded={(saved) =>
+            setUploads((prev) => [{ id: saved.id, filename: saved.filename, mime: saved.mime, size: saved.size, url: saved.url }, ...prev])
+          }
+        />
+      </div>
+      <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 14 }}>
+        Owned by <strong style={{ color: 'var(--color-text)' }}>{admin.email}</strong> via the{' '}
+        <code>admin</code> guard — the <code>uploads.user_id</code> FK targets <code>admins</code>.
+      </p>
+      {uploads.length === 0 ? (
+        <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 13 }}>No files yet.</p>
+      ) : (
+        <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.1rem', color: 'var(--color-muted)', fontSize: 13 }}>
+          {uploads.map((f) => (
+            <li key={f.id}>
+              <a href={f.url} target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)' }}>
+                {f.filename || f.url}
+              </a>{' '}
+              <span>({f.mime || 'file'}, {f.size ?? 0} bytes)</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const pageContext = usePageContext()
   const guards = pageContext.guards || {}
+  const { adminUploads } = useData()
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ marginTop: 0 }}>Two-audience reference app</h1>
@@ -82,6 +138,8 @@ export default function HomePage() {
         loginHref="/login"
         logoutAction="/auth/logout"
       />
+
+      <AdminUploads admin={guards.admin?.user} initialUploads={adminUploads} />
 
       <p style={{ color: 'var(--color-muted)', fontSize: 13, lineHeight: 1.7, marginTop: '1.5rem' }}>
         Seeded sign-ins (magic link printed to the dev console): staff{' '}
