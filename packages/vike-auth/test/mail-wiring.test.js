@@ -73,3 +73,28 @@ test('an invalid email never reaches the mailer', async () => {
   assert.equal(res.status, 400)
   assert.equal(getOutbox().length, 0)
 })
+
+// Drive a full magic-link login through the middleware and return the Set-Cookie
+// value the callback sets, so we can assert on the session cookie's flags.
+async function loginCookie(mw, email) {
+  const { token } = await auth.requestMagicLink(email)
+  const res = await mw(new Request(`http://localhost/auth/callback?token=${token}`, { method: 'GET' }))
+  return res.headers.get('set-cookie')
+}
+
+test('the session cookie is Secure by default (fail closed)', async () => {
+  clearMailTransport()
+  const mw = createAuthMiddleware(auth, {}) // no secure opt-out, no dev
+  const cookie = await loginCookie(mw, 'secure-default@example.com')
+  assert.match(cookie, /vike_auth_session=/)
+  assert.match(cookie, /; Secure/)
+  assert.match(cookie, /; HttpOnly/)
+})
+
+test('secure can be explicitly opted out for local http dev', async () => {
+  clearMailTransport()
+  const mw = createAuthMiddleware(auth, { dev: true, secure: false })
+  const cookie = await loginCookie(mw, 'insecure-dev@example.com')
+  assert.match(cookie, /vike_auth_session=/)
+  assert.ok(!/; Secure/.test(cookie), 'no Secure flag when opted out for http://localhost')
+})

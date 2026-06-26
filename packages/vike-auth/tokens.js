@@ -18,4 +18,11 @@ export function newToken() {
 
 export const nowMs = () => Date.now()
 export const isoIn = (ms, base = Date.now()) => new Date(base + ms).toISOString()
-export const isExpired = (iso, base = Date.now()) => new Date(iso).getTime() <= base
+// Fails closed: an unparseable/null `iso` yields NaN, and `NaN <= base` is false,
+// which would treat the row as NOT expired (never cleaned up). Our own writes always
+// emit valid ISO via `isoIn`, but a corrupted row or a custom store could not, so a
+// non-finite timestamp is treated as already expired.
+export const isExpired = (iso, base = Date.now()) => {
+  const t = new Date(iso).getTime()
+  return !Number.isFinite(t) || t <= base
+}

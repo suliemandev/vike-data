@@ -50,9 +50,14 @@ const navigate = (to, cookie) => {
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-export function createAuthMiddleware(auth, { dev = false } = {}) {
+// `secure` defaults to true (fail closed): the session cookie carries `; Secure`
+// unless the caller explicitly opts out for local http dev. `dev` only controls
+// the inline magic-link convenience; it no longer governs the Secure flag, so a
+// deployment that forgets `NODE_ENV=production` cannot silently ship the cookie
+// over plain HTTP. See vike-middleware.js for how the default wiring derives both.
+export function createAuthMiddleware(auth, { dev = false, secure = true } = {}) {
   const sessionCookie = (token, maxAgeSec) =>
-    serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure: !dev })
+    serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure })
 
   // Vike dedupes identical `middleware` contributions by extension identity
   // (vikejs/vike#3354, fixed in 0.4.259), so this runs once per request even when
