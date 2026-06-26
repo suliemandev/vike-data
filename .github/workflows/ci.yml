@@ -30,7 +30,7 @@ jobs:
       # Drift gate: committed artifacts must match what generation would emit,
       # for every target ORM.
       - name: Artifact drift gate
-        working-directory: app
+        working-directory: fixtures/codegen
         run: |
           VIKE_DATA_ORM=drizzle pnpm gen:check
           VIKE_DATA_ORM=prisma pnpm gen:check

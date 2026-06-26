@@ -127,10 +127,10 @@ bundle entirely.
 <tr><td><code>vike-layouts</code><br><code>vike-layouts/react</code></td><td>Shell selection + slot config; the <code>&lt;CenteredShell&gt;</code> / <code>&lt;TopbarShell&gt;</code> / <code>&lt;SidebarShell&gt;</code>.</td></tr>
 <tr><td><code>vike-toolbar</code><br><code>vike-toolbar/react</code></td><td>A fixed logo button + settings popover; a cumulative <code>toolbarItems</code> seam other extensions (e.g. the locale + theme pickers) teleport their controls into.</td></tr>
 <tr><td><code>vike-i18n</code><br><code>vike-i18n/react</code><br><code>vike-i18n/plugin</code></td><td>Cumulative <code>messages</code> + <code>locale</code>; <code>useTranslation()</code> to <code>t()</code> + a locale picker; the zero-config <code>locales</code> plugin; the <code>vike translate</code> CLI (tier-2 long-tail translations).</td></tr>
-<tr><td colspan="2"><strong>Apps</strong></td></tr>
-<tr><td><code>app</code></td><td>Data-layer demo: the merged schema rendered + compiled to all three ORMs.</td></tr>
-<tr><td><code>app-react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
-<tr><td><code>app-vue</code></td><td>The Vue twin of <code>app-react</code>: the same composition over the <code>vike-*/vue</code> subpaths.</td></tr>
+<tr><td colspan="2"><strong>Examples &amp; fixtures</strong></td></tr>
+<tr><td><code>examples/react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
+<tr><td><code>examples/vue</code></td><td>The Vue twin of <code>examples/react</code>: the same composition over the <code>vike-*/vue</code> subpaths.</td></tr>
+<tr><td><code>fixtures/codegen</code></td><td>Data-layer fixture (no UI): the merged schema rendered + compiled to all three ORMs; the CI drift gate.</td></tr>
 </tbody>
 </table>
 
@@ -145,24 +145,24 @@ the same package. One package per concern, the framework as a subpath.
 ```bash
 pnpm install
 
-# Data-layer demo: schema merged + compiled to an ORM (default drizzle)
-cd app && pnpm dev            # http://localhost:4000
+# Data-layer fixture: schema merged + compiled to an ORM (default drizzle)
+cd fixtures/codegen && pnpm dev   # http://localhost:4000
 pnpm dev:prisma               # or dev:drizzle / dev:rudder
 pnpm gen:prisma               # write the per-ORM artifacts (gen:drizzle / gen:rudder)
 pnpm gen:check                # CI drift gate: fail if committed artifacts are stale
 
 # UI-tier demo: themed + localized login + admin panel
-cd app-react && pnpm dev      # http://localhost:4100
-cd app-vue && pnpm dev        # http://localhost:4200 (the Vue twin)
+cd examples/react && pnpm dev     # http://localhost:4100
+cd examples/vue && pnpm dev       # http://localhost:4200 (the Vue twin)
 ```
 
-In `app-react` (and its Vue twin `app-vue`), switch **Language** (bottom-left) and
+In `examples/react` (and its Vue twin `examples/vue`), switch **Language** (bottom-left) and
 **Appearance / Theme** (bottom-right) live. Login is passwordless: submit an email, then
 open the magic link. Delivery goes through the `vike-mail` port; with no transport
 registered, the dev console/outbox records it and shows the link inline. Once signed in,
 `/admin` lists and edits the composed tables.
 
-To deliver for real, copy `app-react/.env.example` (or `app-vue/.env.example`) to `.env`
+To deliver for real, copy `examples/react/.env.example` (or `examples/vue/.env.example`) to `.env`
 and fill it in: `RESEND_API_KEY` registers the Resend mail transport, and a `VAPID_PUBLIC_KEY`
 + `VAPID_PRIVATE_KEY` pair registers the Web Push transport. The demo reads them once per
 server in `+onCreateGlobalContext.js`; with them unset it stays on the dev outbox, so nothing
@@ -202,7 +202,7 @@ rather than exposing a setting for every edge case (the Vike
 [eject](https://vike.dev/eject) escape hatch). The rule: expose the few coarse choices an
 app makes constantly, and make everything finer-grained an eject. See
 [CUSTOMIZATION.md](CUSTOMIZATION.md) for the model, an eject recipe, and a worked proof
-(`app-react/ejected/vike-toolbar`).
+(`examples/react/ejected/vike-toolbar`).
 
 ---
 

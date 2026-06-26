@@ -11,56 +11,17 @@ importers:
 
   .: {}
 
-  app:
-    dependencies:
-      '@electric-sql/pglite':
-        specifier: ^0.5.3
-        version: 0.5.3
-      '@rudderjs/database':
-        specifier: ^1.5.5
-        version: 1.5.5(better-sqlite3@12.11.1)
-      '@vike-data/vike-schema':
-        specifier: workspace:*
-        version: link:../packages/vike-schema
-      better-sqlite3:
-        specifier: ^12.0.0
-        version: 12.11.1
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@electric-sql/pglite@0.5.3)(better-sqlite3@12.11.1)
-      vike:
-        specifier: 0.4.259-commit-f6ecfb2
-        version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))
-      vike-auth:
-        specifier: workspace:*
-        version: link:../packages/vike-auth
-      vike-drizzle:
-        specifier: workspace:*
-        version: link:../packages/vike-drizzle
-      vike-rudder:
-        specifier: workspace:*
-        version: link:../packages/vike-rudder
-      vike-stripe:
-        specifier: workspace:*
-        version: link:../packages/vike-stripe
-      vike-teams:
-        specifier: workspace:*
-        version: link:../packages/vike-teams
-      vite:
-        specifier: ^7.1.0
-        version: 7.3.5(@types/node@26.0.0)
-
-  app-react:
+  examples/react:
     dependencies:
       '@universal-orm/core':
         specifier: workspace:*
-        version: link:../packages/universal-orm
+        version: link:../../packages/universal-orm
       '@universal-orm/memory':
         specifier: workspace:*
-        version: link:../packages/universal-orm-memory
+        version: link:../../packages/universal-orm-memory
       '@vike-data/vike-schema':
         specifier: workspace:*
-        version: link:../packages/vike-schema
+        version: link:../../packages/vike-schema
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -75,52 +36,52 @@ importers:
         version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))
       vike-admin:
         specifier: workspace:*
-        version: link:../packages/vike-admin
+        version: link:../../packages/vike-admin
       vike-auth:
         specifier: workspace:*
-        version: link:../packages/vike-auth
+        version: link:../../packages/vike-auth
       vike-i18n:
         specifier: workspace:*
-        version: link:../packages/vike-i18n
+        version: link:../../packages/vike-i18n
       vike-layouts:
         specifier: workspace:*
-        version: link:../packages/vike-layouts
+        version: link:../../packages/vike-layouts
       vike-mail:
         specifier: workspace:*
-        version: link:../packages/vike-mail
+        version: link:../../packages/vike-mail
       vike-push:
         specifier: workspace:*
-        version: link:../packages/vike-push
+        version: link:../../packages/vike-push
       vike-rbac:
         specifier: workspace:*
-        version: link:../packages/vike-rbac
+        version: link:../../packages/vike-rbac
       vike-react:
         specifier: ^0.6.0
         version: 0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))
       vike-storage:
         specifier: workspace:*
-        version: link:../packages/vike-storage
+        version: link:../../packages/vike-storage
       vike-theme-emerald:
         specifier: workspace:*
-        version: link:../packages/vike-theme-emerald
+        version: link:../../packages/vike-theme-emerald
       vike-themes:
         specifier: workspace:*
-        version: link:../packages/vike-themes
+        version: link:../../packages/vike-themes
       vike-toolbar:
         specifier: file:./ejected/vike-toolbar
-        version: file:app-react/ejected/vike-toolbar(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike-react@0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))))
+        version: file:examples/react/ejected/vike-toolbar(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike-react@0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))))
       vite:
         specifier: ^7.1.0
         version: 7.3.5(@types/node@26.0.0)
 
-  app-vue:
+  examples/vue:
     dependencies:
       '@universal-orm/core':
         specifier: workspace:*
-        version: link:../packages/universal-orm
+        version: link:../../packages/universal-orm
       '@universal-orm/memory':
         specifier: workspace:*
-        version: link:../packages/universal-orm-memory
+        version: link:../../packages/universal-orm-memory
       telefunc:
         specifier: ^0.2.20
         version: 0.2.20(@babel/core@7.29.7)(@babel/parser@7.29.7)(@babel/types@7.29.7)(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(vite@7.3.5(@types/node@26.0.0))
@@ -129,34 +90,34 @@ importers:
         version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))
       vike-admin:
         specifier: workspace:*
-        version: link:../packages/vike-admin
+        version: link:../../packages/vike-admin
       vike-auth:
         specifier: workspace:*
-        version: link:../packages/vike-auth
+        version: link:../../packages/vike-auth
       vike-i18n:
         specifier: workspace:*
-        version: link:../packages/vike-i18n
+        version: link:../../packages/vike-i18n
       vike-layouts:
         specifier: workspace:*
-        version: link:../packages/vike-layouts
+        version: link:../../packages/vike-layouts
       vike-mail:
         specifier: workspace:*
-        version: link:../packages/vike-mail
+        version: link:../../packages/vike-mail
       vike-push:
         specifier: workspace:*
-        version: link:../packages/vike-push
+        version: link:../../packages/vike-push
       vike-rbac:
         specifier: workspace:*
-        version: link:../packages/vike-rbac
+        version: link:../../packages/vike-rbac
       vike-theme-emerald:
         specifier: workspace:*
-        version: link:../packages/vike-theme-emerald
+        version: link:../../packages/vike-theme-emerald
       vike-themes:
         specifier: workspace:*
-        version: link:../packages/vike-themes
+        version: link:../../packages/vike-themes
       vike-toolbar:
         specifier: workspace:*
-        version: link:../packages/vike-toolbar
+        version: link:../../packages/vike-toolbar
       vike-vue:
         specifier: ^0.9.11
         version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))(vue@3.5.38)
@@ -170,6 +131,45 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^5.0.0
         version: 5.2.4(vite@7.3.5(@types/node@26.0.0))(vue@3.5.38)
+
+  fixtures/codegen:
+    dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.3
+        version: 0.5.3
+      '@rudderjs/database':
+        specifier: ^1.5.5
+        version: 1.5.5(better-sqlite3@12.11.1)
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../../packages/vike-schema
+      better-sqlite3:
+        specifier: ^12.0.0
+        version: 12.11.1
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@electric-sql/pglite@0.5.3)(better-sqlite3@12.11.1)
+      vike:
+        specifier: 0.4.259-commit-f6ecfb2
+        version: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))
+      vike-auth:
+        specifier: workspace:*
+        version: link:../../packages/vike-auth
+      vike-drizzle:
+        specifier: workspace:*
+        version: link:../../packages/vike-drizzle
+      vike-rudder:
+        specifier: workspace:*
+        version: link:../../packages/vike-rudder
+      vike-stripe:
+        specifier: workspace:*
+        version: link:../../packages/vike-stripe
+      vike-teams:
+        specifier: workspace:*
+        version: link:../../packages/vike-teams
+      vite:
+        specifier: ^7.1.0
+        version: 7.3.5(@types/node@26.0.0)
 
   packages/kit: {}
 
@@ -2554,8 +2554,8 @@ packages:
       react-dom: '>=19'
       vike: 0.4.259-commit-f6ecfb2
 
-  vike-toolbar@file:app-react/ejected/vike-toolbar:
-    resolution: {directory: app-react/ejected/vike-toolbar, type: directory}
+  vike-toolbar@file:examples/react/ejected/vike-toolbar:
+    resolution: {directory: examples/react/ejected/vike-toolbar, type: directory}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -4536,7 +4536,7 @@ snapshots:
       react-streaming: 0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       vike: 0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0))
 
-  vike-toolbar@file:app-react/ejected/vike-toolbar(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike-react@0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))):
+  vike-toolbar@file:examples/react/ejected/vike-toolbar(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike-react@0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)))):
     optionalDependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

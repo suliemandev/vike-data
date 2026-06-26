@@ -23,7 +23,7 @@ Vike-agnostic (zero Vike imports); the `vike-*` layer binds it to Vike; the app 
 top and chooses the concrete ORM.
 
 ```
- app  /  app-react                         ← picks ORM + options, composes extensions
+ examples/react  ·  fixtures/codegen                         ← picks ORM + options, composes extensions
    │
    ├─ ORM bindings:  vike-drizzle · vike-rudder      ← register one adapter at startup
    │
@@ -117,7 +117,7 @@ Extensions never import an ORM. They call the neutral repository from
 a live database connection enters the system (it can't live in serialized config).
 
 ```js
-// app/pages/+onCreateGlobalContext.js  (runs once per server)
+// fixtures/codegen/pages/+onCreateGlobalContext.js  (runs once per server)
 import { registerDrizzle } from 'vike-drizzle'
 import { registerRudder } from 'vike-rudder'
 
