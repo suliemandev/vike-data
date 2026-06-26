@@ -90,6 +90,28 @@ test('delete removes matching rows and returns the count', async () => {
   assert.deepEqual((await db.users.find()).map((r) => r.email), ['a@b.com'])
 })
 
+// `{ col: null }` must mean IS NULL, not `col = NULL` (which matches no row in SQL).
+// This is the soft-delete read `find({ deleted_at: null })` — it has to return the
+// same rows here as on the memory/rudder adapters, not silently zero.
+test('`{ col: null }` filters by IS NULL across find/count/update/delete', async () => {
+  await db.users.insert({ id: ID, email: 'a@b.com', name: 'A', active: true })
+  await db.users.insert({ id: '00000000-0000-0000-0000-000000000002', email: 'b@b.com', name: null, active: true })
+
+  // find: the null row matches IS NULL; the named row matches equality (no false positive).
+  assert.deepEqual((await db.users.find({ name: null })).map((r) => r.email), ['b@b.com'])
+  assert.deepEqual((await db.users.find({ name: 'A' })).map((r) => r.email), ['a@b.com'])
+  // count honours the same null filter.
+  assert.equal(await db.users.count({ name: null }), 1)
+  // update reaches the null row.
+  const patched = await db.users.update({ name: null }, { name: 'filled' })
+  assert.deepEqual(patched.map((r) => r.email), ['b@b.com'])
+  assert.equal(await db.users.count({ name: null }), 0)
+  // delete reaches it too.
+  await db.users.update({ email: 'b@b.com' }, { name: null })
+  assert.equal(await db.users.delete({ name: null }), 1)
+  assert.deepEqual((await db.users.find()).map((r) => r.email), ['a@b.com'])
+})
+
 test('an unregistered table is a clear error', async () => {
   await assert.rejects(createDrizzleAdapter(drizzle(client), []).insert('ghost', {}), /no Drizzle table registered for "ghost"/)
 })
