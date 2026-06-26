@@ -45,6 +45,16 @@ test('isExpired is true at or before the base, false after', () => {
   assert.equal(isExpired('2026-01-01T00:00:01.000Z', base), false) // future
 })
 
+test('isExpired fails closed on an unparseable/null expiry', () => {
+  const base = Date.parse('2026-01-01T00:00:00.000Z')
+  // NaN <= base is false, which used to read as "not expired" (fail open). A
+  // corrupted row or custom store must be treated as already expired instead.
+  assert.equal(isExpired('not-a-date', base), true)
+  assert.equal(isExpired(null, base), true)
+  assert.equal(isExpired(undefined, base), true)
+  assert.equal(isExpired('', base), true)
+})
+
 test('nowMs is a millisecond timestamp', () => {
   const t = nowMs()
   assert.equal(typeof t, 'number')
