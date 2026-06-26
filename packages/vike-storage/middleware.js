@@ -17,6 +17,25 @@ import { storeUpload, readUpload, deleteUpload } from './index.js'
 const json = (status, obj) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
 
+// Stored bytes carry a browser-supplied mime (the multipart `file.type`), so the served
+// Content-Type is attacker-controlled. Serving `text/html` (or a sniffable payload) from the
+// app's own origin would execute script in that origin. We only ever render a small allowlist
+// of inert image types inline; everything else is forced to `application/octet-stream` and
+// downloaded as an attachment. SVG is deliberately excluded - it can carry script. Every
+// response also gets `X-Content-Type-Options: nosniff` so the browser can't sniff past us.
+const INLINE_MIMES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'])
+
+function serveHeaders(meta, byteLength) {
+  const mime = (meta?.mime || '').toLowerCase().split(';', 1)[0].trim()
+  const inline = INLINE_MIMES.has(mime)
+  return {
+    'Content-Type': inline ? mime : 'application/octet-stream',
+    'Content-Length': String(meta?.size ?? byteLength ?? 0),
+    'Content-Disposition': inline ? 'inline' : 'attachment',
+    'X-Content-Type-Options': 'nosniff',
+  }
+}
+
 export function createStorageMiddleware() {
   // Vike dedupes identical `middleware` contributions by extension identity
   // (vikejs/vike#3354), so this runs once per request even when several extensions
@@ -52,10 +71,7 @@ export function createStorageMiddleware() {
       if (!obj) return json(404, { error: 'not-found' })
       return new Response(obj.bytes, {
         status: 200,
-        headers: {
-          'Content-Type': obj.meta?.mime || 'application/octet-stream',
-          'Content-Length': String(obj.meta?.size ?? obj.bytes.byteLength ?? 0),
-        },
+        headers: serveHeaders(obj.meta, obj.bytes.byteLength),
       })
     }
 

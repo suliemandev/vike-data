@@ -113,11 +113,67 @@ test('POST /uploads binds the upload to the signed-in user', async () => {
   assert.equal(rows.length, 1)
   assert.equal(rows[0].user_id, user.id)
 
-  // the returned url serves the bytes back
+  // the returned url serves the bytes back - as a hardened download, not inline text/plain
   const get = await mw(new Request(`http://localhost${out.url}`, { method: 'GET' }))
   assert.equal(get.status, 200)
-  assert.equal(get.headers.get('content-type'), 'text/plain')
+  assert.equal(get.headers.get('content-type'), 'application/octet-stream')
+  assert.equal(get.headers.get('content-disposition'), 'attachment')
+  assert.equal(get.headers.get('x-content-type-options'), 'nosniff')
   assert.deepEqual([...new Uint8Array(await get.arrayBuffer())], [72, 73])
+})
+
+test('GET neutralizes an attacker-supplied text/html mime (no same-origin XSS)', async () => {
+  const adapter = setup()
+  const owner = await openSessionCookie('xss@example.com')
+  const user = (await adapter.find('users', { email: 'xss@example.com' }))[0]
+  const saved = await storeUpload(user.id, {
+    filename: 'evil.html',
+    mime: 'text/html',
+    bytes: new TextEncoder().encode('<script>alert(1)</script>'),
+  })
+  const mw = createStorageMiddleware()
+
+  const get = await mw(new Request(`http://localhost/uploads/${saved.key}`, { method: 'GET' }))
+  assert.equal(get.status, 200)
+  // forced to octet-stream + attachment + nosniff so it downloads instead of executing
+  assert.equal(get.headers.get('content-type'), 'application/octet-stream')
+  assert.equal(get.headers.get('content-disposition'), 'attachment')
+  assert.equal(get.headers.get('x-content-type-options'), 'nosniff')
+})
+
+test('GET serves an allowlisted image type inline (with nosniff)', async () => {
+  const adapter = setup()
+  await openSessionCookie('img@example.com')
+  const user = (await adapter.find('users', { email: 'img@example.com' }))[0]
+  const saved = await storeUpload(user.id, {
+    filename: 'pic.png',
+    mime: 'image/png',
+    bytes: new Uint8Array([1, 2, 3]),
+  })
+  const mw = createStorageMiddleware()
+
+  const get = await mw(new Request(`http://localhost/uploads/${saved.key}`, { method: 'GET' }))
+  assert.equal(get.status, 200)
+  assert.equal(get.headers.get('content-type'), 'image/png')
+  assert.equal(get.headers.get('content-disposition'), 'inline')
+  assert.equal(get.headers.get('x-content-type-options'), 'nosniff')
+})
+
+test('GET does not serve an SVG inline (script-capable image type)', async () => {
+  const adapter = setup()
+  await openSessionCookie('svg@example.com')
+  const user = (await adapter.find('users', { email: 'svg@example.com' }))[0]
+  const saved = await storeUpload(user.id, {
+    filename: 'x.svg',
+    mime: 'image/svg+xml',
+    bytes: new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+  })
+  const mw = createStorageMiddleware()
+
+  const get = await mw(new Request(`http://localhost/uploads/${saved.key}`, { method: 'GET' }))
+  assert.equal(get.status, 200)
+  assert.equal(get.headers.get('content-type'), 'application/octet-stream')
+  assert.equal(get.headers.get('content-disposition'), 'attachment')
 })
 
 test('POST /uploads is 401 without a session', async () => {
