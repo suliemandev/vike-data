@@ -13,7 +13,9 @@
 //
 // The channels route differently (mail by `.email`, push by `.id`), so the NOTIFIABLE is
 // the user row `{ id, email, ... }`; a bare user id is hydrated from the `users` table.
-// Each channel reads the routing field it needs off the notifiable.
+// Each channel reads the address it needs through routeFor() — the single routing seam, so
+// a non-User notifiable works too: an on-demand `route({ mail, push })` target, or an entity
+// that carries its own `routes` map, resolves ahead of the user-field convention (#206).
 //
 // notify() is layered ON TOP of the channels, not parallel to them: a channel adapter's
 // send() ultimately calls the channel package's own sender (sendMail / sendPush). No
@@ -106,29 +108,63 @@ const ROUTABLE_FIELDS = [...new Set([...Object.values(ROUTE_FIELD), 'id'])]
 // durable storage where it lingers after delivery (#229). Channels only ever read the route
 // field via routeFor(), so this is all they need; rendering already happened against the full
 // user before dispatch.
+//
+// An explicit `routes` map (a non-User or on-demand notifiable — see route()) is carried
+// through too, since routeFor() runs AFTER dispatch, in the worker, against THIS projection.
+// It is plain data, so it survives the JSON payload (a method could not — the reason the
+// route seam is data, not a Laravel-style `routeNotificationFor()` method). Only the channel
+// addresses are kept, nothing secret.
 function routableNotifiable(user) {
   const out = {}
   for (const f of ROUTABLE_FIELDS) if (user?.[f] !== undefined) out[f] = user[f]
+  if (user?.routes && typeof user.routes === 'object') out.routes = { ...user.routes }
   return out
 }
 
 /**
- * Resolve a notifiable's route for a channel — the field a channel adapter delivers to
- * (mail -> `.email`, push -> `.id`). This is the SINGLE seam channel adapters route
- * through, instead of reading `notifiable.email` / `.id` inline, so a future non-User
- * notifiable (a `routeNotificationFor(channel)` on the notifiable, or an on-demand
- * `route({ mail, push })` target) becomes an additive change here, never a breaking one
- * across every adapter (#206). Today it just returns the conventional user field.
+ * Resolve a notifiable's route for a channel — the address a channel adapter delivers to
+ * (mail -> an email, push -> a user id). This is the SINGLE seam channel adapters route
+ * through, instead of reading `notifiable.email` / `.id` inline, so a non-User notifiable is
+ * handled in ONE place, never a breaking change across every adapter (#206).
+ *
+ * Resolution order:
+ *   1. An explicit per-channel route on the notifiable (`notifiable.routes[channel]`) — set by
+ *      an on-demand `route({ mail, push })` target, or by an entity that carries its own
+ *      routes (a Team's billing address). This is plain DATA, not a method: the notifiable is
+ *      serialized into the vike-queue payload before delivery, so a `routeNotificationFor()`
+ *      method (the Laravel shape) would be stripped by the queue boundary. A data map survives.
+ *   2. The conventional User field (mail -> `.email`, push/unknown -> `.id`).
+ * Order matters: an explicit route always wins, so a User row can override one channel (e.g. a
+ * separate `notification_email`) by carrying `routes: { mail: ... }` without losing the rest.
  */
 export function routeFor(notifiable, channel) {
-  // Future: if (typeof notifiable?.routeNotificationFor === 'function')
-  //           return notifiable.routeNotificationFor(channel)
+  const explicit = notifiable?.routes?.[channel]
+  if (explicit !== undefined) return explicit
   const field = ROUTE_FIELD[channel] ?? 'id'
   return notifiable?.[field]
 }
 
-// Turn the notify() target into a user row. An object is taken as the row already; a
-// string/number is a user id, hydrated from the users table (so callers can pass either).
+/**
+ * An ON-DEMAND (anonymous) notifiable: a target that is nothing but its per-channel routes,
+ * with no stored user and no in-app feed row. `route({ mail: 'a@b.c', push: deviceId })`
+ * notifies an address directly — a guest-checkout receipt, a contact-form auto-reply, an
+ * alert to an ops inbox. Pass the result straight to notify(); routeFor() reads the explicit
+ * route, so no users-table hydration happens.
+ *
+ * The in-app `database` feed is user-scoped BY DESIGN (a feed only means something for a
+ * person's inbox), so an on-demand target naturally uses the delivery channels, not the feed
+ * — its notification's via() simply doesn't select `database`.
+ */
+export function route(routes) {
+  if (!routes || typeof routes !== 'object' || Array.isArray(routes)) {
+    throw new Error('route(): expected a { channel: address } map, e.g. route({ mail: "a@b.c" })')
+  }
+  return { routes: { ...routes } }
+}
+
+// Turn the notify() target into a notifiable. An object is taken as-is (a user row, or an
+// on-demand `route()` target carrying `routes`); a string/number is a user id, hydrated from
+// the users table (so callers can pass either).
 async function resolveNotifiable(notifiable) {
   if (notifiable && typeof notifiable === 'object') return notifiable
   const adapter = requireAdapter()

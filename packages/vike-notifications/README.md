@@ -39,6 +39,22 @@ registerChannel({ name: 'mail', async send(user, rendered) { /* rendered = notif
 
 The built-in **`database`** channel is always registered (this package owns the table). Official mail/push adapters self-register from their own packages — `import 'vike-notifications-mail'` etc. — so adding a channel is a new package, never a change here. Apps can also register a one-off custom channel directly (the same `registerChannel` seam).
 
+## Who you notify
+
+`notify(notifiable, …)` usually takes a **user** — a row `{ id, email, … }`, or a bare user id hydrated from the `users` table. Each channel resolves the address it delivers to through one seam, `routeFor(notifiable, channel)`: mail → `.email`, push → `.id`.
+
+A notifiable can also carry an explicit **`routes`** map to override a channel, or to be routed with no stored user at all. `route({ … })` builds an **on-demand** target — useful for a guest-checkout receipt, a contact-form auto-reply, or an alert to an ops inbox, where there is no user row:
+
+```js
+import { notify, route } from 'vike-notifications'
+
+await notify(route({ mail: 'guest@checkout.io' }), orderReceipt(order))
+```
+
+`routeFor` consults `routes[channel]` first, then falls back to the user-field convention, so an explicit route always wins for that one channel while the rest stay conventional (a User can carry `routes: { mail: billingAddress }` to send invoices somewhere other than `.email`). The route is plain **data**, not a method: the notifiable is serialized into the vike-queue delivery payload, so a method would not survive the queue — a data map does.
+
+The in-app `database` **feed stays user-scoped by design** (a feed only means something for a person's inbox), so an on-demand target simply uses the delivery channels — its notification's `via()` does not select `database`. To notify a group (a team/org), resolve it to a list and call `notify` per member; that is a fan-out over notifiables, not a single polymorphic target.
+
 ## The in-app feed
 
 `vike-notifications` owns the `notifications` table (FK to `users`, the Stem pattern) and a session-scoped endpoint:
