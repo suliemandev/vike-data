@@ -41,6 +41,24 @@ test('a random salt + ephemeral key produce a different body each time (but vali
   assert.equal(a.readUInt8(21), 0x04)
 })
 
+test('the single-record size guard accounts for the 16-byte GCM tag (rs ciphertext <= 4096)', async () => {
+  // record = plaintext + 1 delimiter byte; ciphertext = record + 16 (tag). The largest
+  // plaintext that fits rs=4096 is 4096 - 1 - 16 = 4079 bytes.
+  const maxPlaintext = 4096 - 1 - 16
+
+  const ok = await encryptPayload(Buffer.alloc(maxPlaintext, 0x61), VECTOR.ua_public, VECTOR.auth)
+  assert.ok(ok.length > 0)
+  // header (16+4+1+65 = 86) + ciphertext (record 4080 + tag 16 = 4096) = 4182, the cap.
+  assert.equal(ok.length, 86 + 4096)
+
+  // one more plaintext byte would push the ciphertext to 4097 (> rs) — rejected up front,
+  // where the old `> RECORD_SIZE` check on the plaintext let it through.
+  await assert.rejects(
+    () => encryptPayload(Buffer.alloc(maxPlaintext + 1, 0x61), VECTOR.ua_public, VECTOR.auth),
+    /payload too large/,
+  )
+})
+
 // A fresh VAPID keypair (P-256) for the signing tests.
 async function genVapid() {
   const kp = await subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])

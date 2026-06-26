@@ -108,8 +108,12 @@ export async function encryptPayload(payload, p256dh, auth, opts = {}) {
   const { cek, nonce } = await deriveKeys({ uaPublicRaw, authSecret, as, salt })
 
   // RFC 8188 single record: plaintext || 0x02 (the last-record delimiter), then AES-128-GCM.
+  // The emitted CIPHERTEXT is `record.length + 16` (the 128-bit GCM tag), and RFC 8188
+  // requires the ciphertext record to be <= rs (the advertised RECORD_SIZE). So bound the
+  // plaintext at RECORD_SIZE - 16, not RECORD_SIZE, or a payload in (rs-16, rs] would pass
+  // here yet emit a record over rs that a conformant push service rejects.
   const record = Buffer.concat([payload, Buffer.from([0x02])])
-  if (record.length > RECORD_SIZE) throw new Error('web-push: payload too large for a single record')
+  if (record.length + 16 > RECORD_SIZE) throw new Error('web-push: payload too large for a single record')
   const aesKey = await subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt'])
   const sealed = Buffer.from(await subtle.encrypt({ name: 'AES-GCM', iv: nonce, tagLength: 128 }, aesKey, record))
 
