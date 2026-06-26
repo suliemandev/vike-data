@@ -84,3 +84,26 @@ a pointer-import, since a runtime config value can't be an inline function), so 
 subject FK lands in `organizations` (`b2b`) or `users` (`b2c`). That needs no vike-data
 core change — it is the normal Vike options pattern plus a computed schema
 contribution. `BILLING_SEGMENT` switches it in the demo.
+
+### Following a renamed subject
+
+vike-stripe deliberately does **not** import `vike-auth` / `vike-teams` — billing
+stays decoupled. So if an app renames the subject table (vike-auth's
+`VIKE_AUTH_USERS_TABLE`, or vike-teams' `VIKE_TEAMS_ORGANIZATIONS_TABLE`), stripe
+can't resolve that itself. Pass the resolved table name through the optional
+`subjectTable` config; the FK **column** stays segment-derived
+(`user_id` / `organization_id`), only its **target table** follows:
+
+```js
+import subscription from 'vike-stripe/subscription'
+import { resolveSubject } from 'vike-auth/subject'
+
+export default {
+  extends: [subscription],
+  segment: 'b2c',
+  subjectTable: resolveSubject().users, // b2c -> the (possibly renamed) auth table
+}
+```
+
+Unset = the segment default (`users` / `organizations`), byte-for-byte today. The
+coupling to auth/teams lives in the **app**, not in vike-stripe.

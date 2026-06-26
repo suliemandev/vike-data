@@ -40,6 +40,18 @@ test('segment re-points the unique subject FK (b2b -> organizations, b2c -> user
   assert.equal(colOf(u, 'organization_id'), undefined)
 })
 
+test('subjectTable overrides the FK target table; the column stays segment-derived (#259)', () => {
+  // b2c renamed subject: app passes the resolved table name, FK column unchanged.
+  const b2c = tableOf(subscriptionSchemas({ segment: 'b2c', subjectTable: 'accounts' }), 'subscriptions')
+  assert.deepEqual(colOf(b2c, 'user_id').references, { table: 'accounts', column: 'id' })
+  // b2b renamed subject (e.g. organizations -> teams).
+  const b2b = tableOf(subscriptionSchemas({ segment: 'b2b', subjectTable: 'teams' }), 'subscriptions')
+  assert.deepEqual(colOf(b2b, 'organization_id').references, { table: 'teams', column: 'id' })
+  // blank/whitespace override falls back to the segment default.
+  const def = tableOf(subscriptionSchemas({ segment: 'b2c', subjectTable: '  ' }), 'subscriptions')
+  assert.deepEqual(colOf(def, 'user_id').references, { table: 'users', column: 'id' })
+})
+
 test('the subject FK is unique => one-to-one relation when merged', () => {
   const subjectTables = [
     defineSchema('users', (t) => t.uuid('id').primary()),

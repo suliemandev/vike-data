@@ -13,6 +13,10 @@ export default {
   extends: ['import:vike-teams/config:default'],
   meta: {
     segment: { env: { config: true, server: true } },
+    // Optional override for the subject FK's TARGET table (the app passes a renamed
+    // subject table here; unset = the segment default, users/organizations). Build-time
+    // only, like the schema itself.
+    subjectTable: { env: { config: true, server: true } },
   },
   segment: 'b2b',
   schemas: 'import:vike-stripe/purchase/schemas:default',
