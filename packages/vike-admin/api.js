@@ -28,6 +28,7 @@
 // are a separate follow-up.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { renderPage } from 'vike/server'
+import { projectRow } from './project.js'
 
 // Map a GET `/admin*.json` path to the admin PAGE route it mirrors, or null when it isn't a
 // readable admin JSON endpoint (so the request falls through to Vike untouched).
@@ -70,16 +71,8 @@ function headerOf(pageContext, name) {
   return found?.[1] ?? null
 }
 
-// Narrow a row to the columns the resource exposes (its list columns) plus the primary key,
-// so the JSON never leaks a column the admin hides — a password hash, an unlisted secret.
-function projectRow(row, { columns = [], pk } = {}) {
-  const keys = new Set([pk, ...columns.map((c) => c.name)].filter(Boolean))
-  const out = {}
-  for (const k of keys) if (k in row) out[k] = row[k]
-  return out
-}
-
 // The list response: rows projected to their visible columns, plus the paging/sort state.
+// (`projectRow` is the shared allow-list in ./project.js, also used by the HTML data hooks.)
 export function projectRows(data) {
   return {
     table: data.table,
