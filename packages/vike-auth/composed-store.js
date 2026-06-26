@@ -18,15 +18,17 @@ import { newId, isoIn } from './tokens.js'
 import { createMemoryStore } from './store.js'
 import { resolveSubject } from './subject.js'
 
-export function createStore() {
+export function createStore(subject = resolveSubject()) {
   const memory = createMemoryStore()
 
-  // The tables this store reads/writes. Resolved from the SAME subject knob the schema
+  // The tables this store reads/writes. Defaults to the SAME subject knob the schema
   // reads (subject.js), so the store always targets the tables the schema actually
-  // created, defaulting to `users` / `sessions` / `login_tokens`. Resolved here at
-  // store-build time (instance.js builds the store once, after the app's env is in
-  // place). The memory fallback is keyless, so the names only matter on the adapter path.
-  const { users: USERS, sessions: SESSIONS, loginTokens: LOGIN_TOKENS, emailColumn: EMAIL } = resolveSubject()
+  // created (`users` / `sessions` / `login_tokens`). A NAMED guard (#267) passes its own
+  // resolved subject instead, so the guard's store targets `admins` / `admin_sessions` /
+  // ... — the same store code over a different audience's tables. Resolved once at
+  // store-build time (the instance builds the store after the app's env is in place). The
+  // memory fallback is keyless, so the names only matter on the adapter path.
+  const { users: USERS, sessions: SESSIONS, loginTokens: LOGIN_TOKENS, emailColumn: EMAIL } = subject
 
   // Run `viaAdapter(adapter)` when an adapter is registered, else `viaMemory()`.
   const dispatch = (viaMemory, viaAdapter) => {

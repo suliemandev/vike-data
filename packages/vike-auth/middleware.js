@@ -1,7 +1,7 @@
 // The Vike binding's request handler: a universal middleware (server-agnostic,
 // runs on Hono / Express / Cloudflare / the Vike dev server alike). It owns the
 // auth ENDPOINTS and the session cookie; it does not render the login UI (that
-// is the app's, or a future vike-auth/react's, job).
+// is the app's, or vike-auth/react's, job).
 //
 // As a universal middleware it runs on every request inside Vike's onion. For
 // non-/auth/ paths it returns nothing and the request falls through to Vike's
@@ -10,6 +10,11 @@
 //   POST /auth/request   form `email`  -> issue a magic link (dev: show the link)
 //   GET  /auth/callback?token=...       -> verify, open a session, set cookie, redirect /
 //   POST /auth/logout                   -> destroy the session, clear cookie, redirect /
+//
+// The ENDPOINT base (`/auth`) and the COOKIE name (`vike_auth_session`) are
+// parameters, defaulting to today's values. A NAMED guard (#267) runs the SAME
+// handler under its own base (`/admin-auth`) and cookie (`vike_auth_session__admin`)
+// via createGuardsMiddleware (guards-middleware.js) — one handler, N audiences.
 //
 // NOTE: resolving the current user for RENDERING is done in oncreate.js, not
 // here. In Vike 0.4.259 a +middleware's returned context is not bridged into
@@ -50,95 +55,103 @@ const navigate = (to, cookie) => {
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+// The auth request handler, parameterized by the auth INSTANCE, its endpoint BASE
+// (`/auth`) and its session COOKIE name. The default middleware and every named guard
+// share this one body; only the base/cookie/instance differ. Returns a Response for an
+// owned `${base}/*` path, or `undefined` to fall through to Vike's renderer.
+//
 // `secure` defaults to true (fail closed): the session cookie carries `; Secure`
 // unless the caller explicitly opts out for local http dev. `dev` only controls
-// the inline magic-link convenience; it no longer governs the Secure flag, so a
+// the inline magic-link convenience; it does not govern the Secure flag, so a
 // deployment that forgets `NODE_ENV=production` cannot silently ship the cookie
 // over plain HTTP. See vike-middleware.js for how the default wiring derives both.
-export function createAuthMiddleware(auth, { dev = false, secure = true } = {}) {
+export async function handleAuthRequest(request, { auth, cookieName = SESSION_COOKIE, basePath = '/auth', dev = false, secure = true }) {
   const sessionCookie = (token, maxAgeSec) =>
-    serializeCookie(SESSION_COOKIE, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure })
+    serializeCookie(cookieName, token, { maxAge: maxAgeSec, sameSite: 'Lax', secure })
 
-  // Vike dedupes identical `middleware` contributions by extension identity
-  // (vikejs/vike#3354, fixed in 0.4.259), so this runs once per request even when
-  // several extensions self-install vike-auth (the app + vike-teams + vike-stripe).
-  // No per-request idempotency guard is needed; reading the body once is safe.
-  async function authMiddleware(request) {
-    const url = new URL(request.url)
-    if (!url.pathname.startsWith('/auth/')) return // fall through to Vike
+  const url = new URL(request.url)
+  if (!url.pathname.startsWith(`${basePath}/`)) return // fall through to Vike
 
-    // --- issue a magic link -------------------------------------------------
-    if (url.pathname === '/auth/request' && request.method === 'POST') {
-      const form = await request.formData()
-      const result = await auth.requestMagicLink(form.get('email'))
-      if (!result.ok) {
-        return html(400, `<p>Could not send a link: <code>${esc(result.error)}</code>.</p><p><a href="/">Back</a></p>`)
-      }
-      // Rate-limited (cooldown / too many live links for this email): no token was
-      // issued and no mail is sent, but we return the SAME neutral notice as success
-      // so a throttle never reveals itself or whether the address exists.
-      if (result.throttled) {
-        const note = dev
-          ? `<p>Dev mode: issuance is rate-limited for this email right now, so no new link was sent.</p>`
-          : `<p>If that address has an account, a sign-in link is on its way.</p>`
-        return html(200, `<h2>Check your inbox</h2>${note}<p><a href="/">Back</a></p>`)
-      }
-      // Carry the intended destination (where a guard bounced the user from) through
-      // the magic link, so the callback can return them there. Validated to a local
-      // path so the link can never become an open redirect.
-      const next = sanitizeNext(form.get('next'))
-      const nextParam = next ? `&next=${encodeURIComponent(next)}` : ''
-      const link = `${url.origin}/auth/callback?token=${encodeURIComponent(result.token)}${nextParam}`
-      // Deliver the link through vike-mail's neutral PORT (queued via vike-queue).
-      // vike-auth depends only on the port, never a concrete provider (the same shape
-      // as depending on @universal-orm/core, not Drizzle): with no transport registered
-      // vike-mail's dev console/outbox transport records it, and an app that registers a
-      // real transport (Resend/SES) actually emails it. Delivery must not reveal whether
-      // the address exists, so a failure is swallowed and the neutral notice still shows.
-      // INVARIANT: requestMagicLink issues a token for ANY syntactically-valid email with
-      // no DB existence check, so there is no existence-dependent branch here and thus no
-      // timing oracle. Do NOT add an "only send if the user exists" path: that would make
-      // delivery latency leak existence, which swallowing the error alone would not close.
-      try {
-        await sendMail({
-          to: result.email,
-          subject: 'Your sign-in link',
-          html: `<p>Click to sign in:</p><p><a href="${esc(link)}">${esc(link)}</a></p><p>This link expires shortly and can only be used once.</p>`,
-          text: `Sign in: ${link}`,
-        })
-      } catch (err) {
-        console.error('[vike-auth] failed to hand the magic link to vike-mail:', err)
-      }
-      // In dev we also surface the link inline for convenience (no inbox to open).
-      const devLink = dev
-        ? `<p>Dev mode: the link was handed to vike-mail. For convenience:</p><p><a href="${esc(link)}">${esc(link)}</a></p>`
+  // --- issue a magic link -------------------------------------------------
+  if (url.pathname === `${basePath}/request` && request.method === 'POST') {
+    const form = await request.formData()
+    const result = await auth.requestMagicLink(form.get('email'))
+    if (!result.ok) {
+      return html(400, `<p>Could not send a link: <code>${esc(result.error)}</code>.</p><p><a href="/">Back</a></p>`)
+    }
+    // Rate-limited (cooldown / too many live links for this email): no token was
+    // issued and no mail is sent, but we return the SAME neutral notice as success
+    // so a throttle never reveals itself or whether the address exists.
+    if (result.throttled) {
+      const note = dev
+        ? `<p>Dev mode: issuance is rate-limited for this email right now, so no new link was sent.</p>`
         : `<p>If that address has an account, a sign-in link is on its way.</p>`
-      return html(200, `<h2>Check your inbox</h2>${devLink}<p><a href="/">Back</a></p>`)
+      return html(200, `<h2>Check your inbox</h2>${note}<p><a href="/">Back</a></p>`)
     }
-
-    // --- verify a magic link, open a session --------------------------------
-    if (url.pathname === '/auth/callback' && request.method === 'GET') {
-      const result = await auth.redeemMagicLink(url.searchParams.get('token') || '')
-      if (!result.ok) {
-        return html(401, `<h2>Sign-in failed</h2><p><code>${esc(result.error)}</code></p><p><a href="/">Try again</a></p>`)
-      }
-      // Return to where the user was originally headed (carried through the link),
-      // falling back to the site root. Re-validated here, never trusting the URL.
-      const next = sanitizeNext(url.searchParams.get('next')) || '/'
-      return navigate(next, sessionCookie(result.session.token, Math.floor(auth.sessionTtlMs / 1000)))
+    // Carry the intended destination (where a guard bounced the user from) through
+    // the magic link, so the callback can return them there. Validated to a local
+    // path so the link can never become an open redirect.
+    const next = sanitizeNext(form.get('next'))
+    const nextParam = next ? `&next=${encodeURIComponent(next)}` : ''
+    const link = `${url.origin}${basePath}/callback?token=${encodeURIComponent(result.token)}${nextParam}`
+    // Deliver the link through vike-mail's neutral PORT (queued via vike-queue).
+    // vike-auth depends only on the port, never a concrete provider (the same shape
+    // as depending on @universal-orm/core, not Drizzle): with no transport registered
+    // vike-mail's dev console/outbox transport records it, and an app that registers a
+    // real transport (Resend/SES) actually emails it. Delivery must not reveal whether
+    // the address exists, so a failure is swallowed and the neutral notice still shows.
+    // INVARIANT: requestMagicLink issues a token for ANY syntactically-valid email with
+    // no DB existence check, so there is no existence-dependent branch here and thus no
+    // timing oracle. Do NOT add an "only send if the user exists" path: that would make
+    // delivery latency leak existence, which swallowing the error alone would not close.
+    try {
+      await sendMail({
+        to: result.email,
+        subject: 'Your sign-in link',
+        html: `<p>Click to sign in:</p><p><a href="${esc(link)}">${esc(link)}</a></p><p>This link expires shortly and can only be used once.</p>`,
+        text: `Sign in: ${link}`,
+      })
+    } catch (err) {
+      console.error('[vike-auth] failed to hand the magic link to vike-mail:', err)
     }
-
-    // --- logout -------------------------------------------------------------
-    if (url.pathname === '/auth/logout' && request.method === 'POST') {
-      const token = parseCookies(request.headers.get('cookie'))[SESSION_COOKIE]
-      await auth.destroySession(token)
-      return navigate('/', sessionCookie('', 0))
-    }
-
-    return html(404, `<p>Unknown auth route.</p>`)
+    // In dev we also surface the link inline for convenience (no inbox to open).
+    const devLink = dev
+      ? `<p>Dev mode: the link was handed to vike-mail. For convenience:</p><p><a href="${esc(link)}">${esc(link)}</a></p>`
+      : `<p>If that address has an account, a sign-in link is on its way.</p>`
+    return html(200, `<h2>Check your inbox</h2>${devLink}<p><a href="/">Back</a></p>`)
   }
 
+  // --- verify a magic link, open a session --------------------------------
+  if (url.pathname === `${basePath}/callback` && request.method === 'GET') {
+    const result = await auth.redeemMagicLink(url.searchParams.get('token') || '')
+    if (!result.ok) {
+      return html(401, `<h2>Sign-in failed</h2><p><code>${esc(result.error)}</code></p><p><a href="/">Try again</a></p>`)
+    }
+    // Return to where the user was originally headed (carried through the link),
+    // falling back to the site root. Re-validated here, never trusting the URL.
+    const next = sanitizeNext(url.searchParams.get('next')) || '/'
+    return navigate(next, sessionCookie(result.session.token, Math.floor(auth.sessionTtlMs / 1000)))
+  }
+
+  // --- logout -------------------------------------------------------------
+  if (url.pathname === `${basePath}/logout` && request.method === 'POST') {
+    const token = parseCookies(request.headers.get('cookie'))[cookieName]
+    await auth.destroySession(token)
+    return navigate('/', sessionCookie('', 0))
+  }
+
+  return html(404, `<p>Unknown auth route.</p>`)
+}
+
+// Vike dedupes identical `middleware` contributions by extension identity
+// (vikejs/vike#3354, fixed in 0.4.259), so this runs once per request even when
+// several extensions self-install vike-auth (the app + vike-teams + vike-stripe).
+// No per-request idempotency guard is needed; reading the body once is safe.
+export function createAuthMiddleware(auth, { dev = false, secure = true } = {}) {
   // order = AUTHENTICATION marks this as a middleware (not a route handler) and
   // places it in the conventional slot; no `path` so it sees every request.
-  return enhance(authMiddleware, { name: 'vike-auth', order: MiddlewareOrder.AUTHENTICATION })
+  return enhance((request) => handleAuthRequest(request, { auth, cookieName: SESSION_COOKIE, basePath: '/auth', dev, secure }), {
+    name: 'vike-auth',
+    order: MiddlewareOrder.AUTHENTICATION,
+  })
 }

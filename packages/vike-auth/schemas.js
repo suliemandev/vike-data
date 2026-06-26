@@ -10,43 +10,14 @@
 // the runtime store (composed-store.js) reads the EXACT same names. The `config` arg is
 // accepted for parity with the contribution protocol but the names come from the subject
 // knob, the single source both halves share.
-import { defineSchema } from '@vike-data/vike-schema/schema'
 import { resolveSubject } from './subject.js'
+import { buildSubjectSchemas } from './schema-factory.js'
 
 export default function authSchemas(config) {
-  const { users, sessions, loginTokens, emailColumn } = resolveSubject()
-
-  return [
-    defineSchema(users, (t) => {
-      t.uuid('id').primary()
-      // The subject's CONTACT column follows the knob (default `email`); an app that
-      // renamed the table can call it e.g. `account_email`. The store reads/writes the
-      // same resolved name, so the magic-link lookup always hits the column that exists.
-      t.string(emailColumn).unique()
-      t.string('name').nullable()
-      t.string('password_hash').nullable()
-      t.boolean('email_verified').default(false)
-      t.boolean('active').default(true)
-      t.timestamps()
-    }),
-    defineSchema(sessions, (t) => {
-      t.uuid('id').primary()
-      // FK column stays `user_id`; only its TARGET follows the renamed users table.
-      t.uuid('user_id').references(`${users}.id`, { onDelete: 'cascade' })
-      t.string('token').unique()
-      t.timestamp('expires_at')
-      t.timestamps()
-    }),
-    // Pending magic links. The server tier needs somewhere to keep single-use,
-    // short-lived sign-in tokens, so it adds a table through the same DSL: the
-    // schema grows with the behaviour, still derived to every ORM.
-    defineSchema(loginTokens, (t) => {
-      t.uuid('id').primary()
-      t.string('email')
-      t.string('token').unique()
-      t.timestamp('expires_at')
-      t.timestamp('consumed_at').nullable()
-      t.timestamps()
-    }),
-  ]
+  // The shared factory builds the three tables from the resolved subject; named guards
+  // (#267) reuse the EXACT same factory under their own table names, so a second audience
+  // can never drift from the default's shape. The `config` arg is accepted for parity with
+  // the contribution protocol but the names come from the subject knob (subject.js), the
+  // single source the runtime store also reads.
+  return buildSubjectSchemas(resolveSubject())
 }
