@@ -48,6 +48,16 @@ test('segment re-points the subject FK (b2c -> users)', () => {
   assert.equal(colOf(u, 'organization_id'), undefined)
 })
 
+test('subjectTable overrides the FK target table; the column stays segment-derived (#259)', () => {
+  const b2c = tableOf(paymentSchemas({ segment: 'b2c', subjectTable: 'accounts' }), 'payments')
+  assert.deepEqual(colOf(b2c, 'user_id').references, { table: 'accounts', column: 'id' })
+  const b2b = tableOf(paymentSchemas({ segment: 'b2b', subjectTable: 'teams' }), 'payments')
+  assert.deepEqual(colOf(b2b, 'organization_id').references, { table: 'teams', column: 'id' })
+  // blank override falls back to the segment default.
+  const def = tableOf(paymentSchemas({ segment: 'b2c', subjectTable: '  ' }), 'payments')
+  assert.deepEqual(colOf(def, 'user_id').references, { table: 'users', column: 'id' })
+})
+
 test('stripe_payment_intent_id is unique (the idempotency key)', () => {
   assert.equal(colOf(tableOf(paymentSchemas({}), 'payments'), 'stripe_payment_intent_id').unique, true)
 })

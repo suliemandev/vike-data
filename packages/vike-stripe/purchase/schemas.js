@@ -4,15 +4,21 @@
 // the idempotency key, one row per Stripe charge. The subject FK follows `segment`
 // ('b2b' -> organizations, 'b2c' -> users).
 //
+// The FK TARGET TABLE is overridable via `config.subjectTable`, defaulting to the
+// segment literal — same rationale as the subscription model: vike-stripe stays
+// decoupled from vike-auth/vike-teams (#250), so the app passes the resolved table
+// name for a renamed subject. The FK COLUMN stays segment-derived.
+//
 // One-time charges are this model; recurring subscriptions are the `subscription` model.
 import { defineSchema } from '@vike-data/vike-schema/schema'
 
 export default function paymentSchemas(config) {
   const segment = config?.segment === 'b2c' ? 'b2c' : 'b2b'
-  const ref =
-    segment === 'b2c'
-      ? { column: 'user_id', target: 'users.id' }
-      : { column: 'organization_id', target: 'organizations.id' }
+  const column = segment === 'b2c' ? 'user_id' : 'organization_id'
+  const defaultTable = segment === 'b2c' ? 'users' : 'organizations'
+  const override = config?.subjectTable
+  const table = override != null && String(override).trim() !== '' ? String(override).trim() : defaultTable
+  const ref = { column, target: `${table}.id` }
 
   return [
     defineSchema('payments', (t) => {
