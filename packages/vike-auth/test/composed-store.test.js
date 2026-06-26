@@ -110,3 +110,37 @@ test('a renamed subject targets the renamed tables on the adapter path', async (
     else process.env.VIKE_AUTH_USERS_TABLE = saved
   }
 })
+
+test('a renamed contact column persists physically but the store still returns canonical `email`', async () => {
+  // The DB row is keyed by the physical column (`account_email`), but the auth core,
+  // resolveSessionUser and every downstream reader must keep seeing `user.email`. The store
+  // is the containment boundary: it writes/filters the physical column, normalizes on the
+  // way out.
+  const saved = process.env.VIKE_AUTH_EMAIL_COLUMN
+  process.env.VIKE_AUTH_EMAIL_COLUMN = 'account_email'
+  try {
+    const adapter = createMemoryAdapter()
+    setAdapter(adapter)
+    const store = createStore()
+
+    const created = await store.createUser({ email: 'col@example.com' })
+    // Canonical shape OUT (no physical column leaks to callers)...
+    assert.equal(created.email, 'col@example.com')
+    assert.equal(created.account_email, undefined)
+    // ...while the row landed under the PHYSICAL column the schema declared.
+    const [row] = await adapter.find('users', { account_email: 'col@example.com' })
+    assert.equal(row.account_email, 'col@example.com')
+    assert.equal(row.email, undefined)
+
+    // Lookups filter by the physical column and still hand back canonical `email`.
+    const byEmail = await store.findUserByEmail('col@example.com')
+    assert.equal(byEmail.id, created.id)
+    assert.equal(byEmail.email, 'col@example.com')
+    const byId = await store.findUserById(created.id)
+    assert.equal(byId.email, 'col@example.com')
+    assert.equal(byId.account_email, undefined)
+  } finally {
+    if (saved === undefined) delete process.env.VIKE_AUTH_EMAIL_COLUMN
+    else process.env.VIKE_AUTH_EMAIL_COLUMN = saved
+  }
+})

@@ -58,6 +58,21 @@ env keeps the override a **single source** they can never disagree on (the
 vike-stripe `BILLING_SEGMENT` precedent). With nothing set, behaviour is byte-for-byte
 the default. The FK **column** stays `user_id`; only its target table follows the rename.
 
+If the renamed subject table also names its **contact column** something other than
+`email` (e.g. `account_email`), rename that too — magic-link login looks the subject up
+by, and reads, this column:
+
+```bash
+VIKE_AUTH_EMAIL_COLUMN=account_email   # default: email  (the subject's contact column)
+```
+
+This axis is independent of the table rename. The store is the boundary: it filters and
+writes the physical column, but always hands callers the canonical `user.email`, so
+`resolveSessionUser`, `pageContext.user`, and every downstream extension keep reading
+`email` and never learn the physical name. The `login_tokens` table keeps its own internal
+`email` column (it is not the subject's). Renaming the `name` / `id` columns is reserved for
+a later phase (#207).
+
 > Single-instance only. Using vike-auth for two subjects at once (a `User` guard **and**
 > a `Client` guard), and letting downstream extensions (teams/push/billing) bind to a
 > renamed subject, are later phases (see the epic). A downstream package that hardcodes

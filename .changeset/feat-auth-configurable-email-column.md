@@ -1,0 +1,5 @@
+---
+'vike-auth': minor
+---
+
+vike-auth: make the subject's contact (email) column configurable (#207, P1b). When an app renames the subject table (e.g. `users` -> `accounts`) it may also name the contact column something other than `email` (e.g. `account_email`); previously the magic-link flow hardcoded `email` in the schema, the lookup filter and the insert, so a renamed column silently broke login. A new single env knob `VIKE_AUTH_EMAIL_COLUMN` (default `email`) now flows through both the build-time schema (`vike-auth/schemas`) and the runtime store from the same `resolveSubject()` source. The store is the containment boundary: it filters and writes the physical column but normalizes rows back to the canonical `user.email`, so the auth core, `resolveSessionUser`, `pageContext.user` and every downstream extension keep reading `email` and never learn the physical name. The `login_tokens` table keeps its own internal `email` column. With nothing set, behaviour is byte-for-byte the default. The `nameColumn` / `idColumn` are reserved in the resolver's column map for a later phase but are not yet env-backed.

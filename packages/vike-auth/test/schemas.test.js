@@ -69,3 +69,17 @@ test('renaming only the users table still re-points the sessions FK', () => {
     assert.deepEqual(colOf(tableOf(frags, 'sessions'), 'user_id').references, { table: 'accounts', column: 'id' })
   })
 })
+
+test('VIKE_AUTH_EMAIL_COLUMN renames the subject CONTACT column, leaving login_tokens.email literal', () => {
+  withEnv({ VIKE_AUTH_EMAIL_COLUMN: 'account_email' }, () => {
+    const frags = authSchemas()
+    const users = tableOf(frags, 'users')
+    // The renamed contact column replaces `email` on the subject table (still unique).
+    assert.equal(colOf(users, 'email'), undefined)
+    assert.ok(colOf(users, 'account_email')?.unique, 'account_email is the unique contact column')
+    // The login_tokens table owns its OWN `email` column (vike-auth internal); it does NOT follow the rename.
+    const tokens = tableOf(frags, 'login_tokens')
+    assert.ok(colOf(tokens, 'email'), 'login_tokens keeps its literal email column')
+    assert.equal(colOf(tokens, 'account_email'), undefined)
+  })
+})

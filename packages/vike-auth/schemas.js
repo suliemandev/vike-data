@@ -14,12 +14,15 @@ import { defineSchema } from '@vike-data/vike-schema/schema'
 import { resolveSubject } from './subject.js'
 
 export default function authSchemas(config) {
-  const { users, sessions, loginTokens } = resolveSubject()
+  const { users, sessions, loginTokens, emailColumn } = resolveSubject()
 
   return [
     defineSchema(users, (t) => {
       t.uuid('id').primary()
-      t.string('email').unique()
+      // The subject's CONTACT column follows the knob (default `email`); an app that
+      // renamed the table can call it e.g. `account_email`. The store reads/writes the
+      // same resolved name, so the magic-link lookup always hits the column that exists.
+      t.string(emailColumn).unique()
       t.string('name').nullable()
       t.string('password_hash').nullable()
       t.boolean('email_verified').default(false)
