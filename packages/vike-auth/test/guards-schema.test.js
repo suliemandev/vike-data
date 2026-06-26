@@ -11,8 +11,8 @@ import { mergeSchemas, generateArtifacts } from '@vike-data/vike-schema/schema'
 import authSchemas from '../schemas.js'
 import { defineGuard } from '../guards.js'
 
-const admin = defineGuard('admin', { subject: 'Admin', users: 'admins', sessions: 'admin_sessions', loginTokens: 'admin_login_tokens' })
-const client = defineGuard('client', { subject: 'Client', users: 'clients', sessions: 'client_sessions', loginTokens: 'client_login_tokens' })
+const admin = defineGuard('admin', { table: 'admins', sessionTable: 'admin_sessions', loginTokenTable: 'admin_login_tokens' })
+const client = defineGuard('client', { table: 'clients', sessionTable: 'client_sessions', loginTokenTable: 'client_login_tokens' })
 
 // The full set an app would contribute: the default subject's tables + each guard's.
 const fragments = [...authSchemas(), ...admin.schemas, ...client.schemas]

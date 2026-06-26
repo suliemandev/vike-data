@@ -41,15 +41,15 @@ export default {
 
 ### Renaming the subject + tables
 
-By default the subject is `User` over `users` / `sessions` / `login_tokens`. An app
-that wants different names sets them once, through env, and **both** the schema and
-the runtime store pick the rename up from the same source:
+By default the subject lives in `users` / `sessions` / `login_tokens`. An app that wants
+different names sets them once, through env, and **both** the schema and the runtime store
+pick the rename up from the same source. The keys name the table's role (so they read
+straight even when the value is `accounts`), matching the `defineGuard` vocabulary:
 
 ```bash
-VIKE_AUTH_SUBJECT=Account              # the subject label (default: User)
-VIKE_AUTH_USERS_TABLE=accounts         # default: users  (re-points the sessions/login_tokens FK)
-VIKE_AUTH_SESSIONS_TABLE=account_sessions        # default: sessions
-VIKE_AUTH_LOGIN_TOKENS_TABLE=account_login_tokens # default: login_tokens
+VIKE_AUTH_SUBJECT_TABLE=accounts                 # default: users  (re-points the sessions/login_tokens FK)
+VIKE_AUTH_SESSION_TABLE=account_sessions         # default: sessions
+VIKE_AUTH_LOGIN_TOKEN_TABLE=account_login_tokens # default: login_tokens
 ```
 
 Env, not a `+config` value, is the knob on purpose: the runtime store is built at
@@ -73,11 +73,74 @@ writes the physical column, but always hands callers the canonical `user.email`,
 `email` column (it is not the subject's). Renaming the `name` / `id` columns is reserved for
 a later phase (#207).
 
-> Single-instance only. Using vike-auth for two subjects at once (a `User` guard **and**
-> a `Client` guard), and letting downstream extensions (teams/push/billing) bind to a
-> renamed subject, are later phases (see the epic). A downstream package that hardcodes
-> `users` (e.g. vike-teams' FK) still targets `users`, so renaming the subject is for a
-> standalone vike-auth today.
+### Named guards (multi-instance)
+
+The rename above is a single subject per app. **Named guards** (Laravel "guards") run
+vike-auth more than once in one app, each instance authenticating a different subject
+against its own tables, with no cross-talk. Declare each one with `defineGuard`:
+
+```js
+// guards.js  (imported by BOTH +config.js and server start)
+import { defineGuard } from 'vike-auth/guards'
+
+export const guards = [
+  defineGuard('admin',  { table: 'admins' }),   // staff
+  defineGuard('client', { table: 'clients' }),  // customers
+]
+```
+
+`table` (the subject table) is the only required key; the session and login-token tables
+default from the guard name. Override any of them, or rename the contact column:
+
+```js
+defineGuard('admin', {
+  table: 'admins',                  // required: the subject table
+  sessionTable: 'admin_sessions',   // default: <name>_sessions
+  loginTokenTable: 'admin_links',   // default: <name>_login_tokens
+  emailColumn: 'work_email',        // default: email
+})
+```
+
+Each guard derives its own cookie, endpoint namespace and resolved user from its name:
+
+| | default guard | a `admin` guard |
+|---|---|---|
+| session cookie | `vike_auth_session` | `vike_auth_session__admin` |
+| endpoints | `/auth/*` | `/admin-auth/*` |
+| resolved user | `pageContext.user` | `pageContext.guards.admin.user` |
+
+Two audiences can be signed in at once in the same browser, and logout on one leaves the
+other untouched (separate cookies, separate session rows).
+
+**Opt-in and additive.** Guards are off until you install the tier and declare them:
+
+1. `extends: ['vike-auth/react', 'vike-auth/react/guards']` — the guards config adds one
+   dispatcher middleware (owns every `/<name>-auth/*`), the render hook that resolves
+   `pageContext.guards`, and the `authGuard` page meta.
+2. `schemas: guards.flatMap((g) => g.schemas)` — each guard's three tables merge + derive
+   alongside the default's, across all three ORMs.
+3. Own the per-guard login routes, pointing each at the extension's component (vike-auth
+   owns the login UI; the app owns the URL):
+   ```js
+   pages: guards.map((g) => ({
+     route: `/${g.name}/login`,
+     Page: 'import:vike-auth/react/GuardLoginPage:default',
+     guard: 'import:vike-auth/react/guardLoginGuard:guard',
+     layout: 'centered',
+     authGuard: g.name,
+   }))
+   ```
+4. Import `guards.js` at server start (e.g. in `+onCreateGlobalContext`) so the instances
+   register in the server process. `defineGuard` is idempotent per name, so importing the
+   module on both the config and the server path is safe.
+
+An app that declares no guards is byte-for-byte the single-subject default (`/login`,
+`/auth/*`, `vike_auth_session`, `pageContext.user`). See the worked
+[`examples/two-audience`](../../examples/two-audience) app for the full wiring.
+
+> Downstream extensions (teams/push/billing) still bind to the default `users` subject
+> today; pointing them at a non-default guard is a later phase (the "which subject" seam,
+> see the epic).
 
 ## Server tier
 

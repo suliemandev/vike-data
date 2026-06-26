@@ -15,7 +15,7 @@ import { defineSchema } from '@vike-data/vike-schema/schema'
 import { resolveSubject } from 'vike-auth/subject'
 
 // role_user FKs into auth's subject table, so it must FOLLOW a renamed subject
-// (VIKE_AUTH_USERS_TABLE) the same way the other downstream extensions do (PR #215),
+// (VIKE_AUTH_SUBJECT_TABLE) the same way the other downstream extensions do (PR #215),
 // not hardcode the literal 'users'. Default resolves to 'users', so the zero-config
 // app is unchanged. Resolved once at module-eval (env is build-time data).
 const USERS = resolveSubject().users

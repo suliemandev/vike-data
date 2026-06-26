@@ -130,7 +130,7 @@ bundle entirely.
 <tr><td colspan="2"><strong>Examples &amp; fixtures</strong></td></tr>
 <tr><td><code>examples/react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
 <tr><td><code>examples/vue</code></td><td>The Vue twin of <code>examples/react</code>: the same composition over the <code>vike-*/vue</code> subpaths.</td></tr>
-<tr><td><code>examples/two-audience</code></td><td>Two-audience reference app (<a href="https://github.com/suleimansh/vike-data/issues/255">epic #255</a>): currently the Phase 0 skeleton — a single audience (the default user guard) on the memory adapter.</td></tr>
+<tr><td><code>examples/two-audience</code></td><td>Two-audience reference app (<a href="https://github.com/suleimansh/vike-data/issues/255">epic #255</a>): a staff guard and a customer guard side by side via vike-auth's named guards, each with its own login, cookie and tables, on the memory adapter.</td></tr>
 <tr><td><code>fixtures/codegen</code></td><td>Data-layer fixture (no UI): the merged schema rendered + compiled to all three ORMs; the CI drift gate.</td></tr>
 </tbody>
 </table>
@@ -155,7 +155,7 @@ pnpm gen:check                # CI drift gate: fail if committed artifacts are s
 # UI-tier demo: themed + localized login + admin panel
 cd examples/react && pnpm dev     # http://localhost:4100
 cd examples/vue && pnpm dev       # http://localhost:4200 (the Vue twin)
-cd examples/two-audience && pnpm dev  # http://localhost:4300 (epic #255 skeleton)
+cd examples/two-audience && pnpm dev  # http://localhost:4300 (epic #255: two named guards)
 ```
 
 In `examples/react` (and its Vue twin `examples/vue`), switch **Language** (bottom-left) and

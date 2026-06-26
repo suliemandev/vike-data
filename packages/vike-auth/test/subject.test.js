@@ -8,7 +8,6 @@ import { resolveSubject, DEFAULT_SUBJECT } from '../subject.js'
 
 test('with nothing set, resolves to today\'s names byte-for-byte', () => {
   assert.deepEqual(resolveSubject({}, {}), {
-    subject: 'User',
     users: 'users',
     sessions: 'sessions',
     loginTokens: 'login_tokens',
@@ -22,15 +21,13 @@ test('the default export is frozen so callers can\'t mutate the shared defaults'
   assert.ok(Object.isFrozen(DEFAULT_SUBJECT))
 })
 
-test('env renames the subject + each table independently', () => {
+test('env renames each table independently', () => {
   const env = {
-    VIKE_AUTH_SUBJECT: 'Account',
-    VIKE_AUTH_USERS_TABLE: 'accounts',
-    VIKE_AUTH_SESSIONS_TABLE: 'account_sessions',
-    VIKE_AUTH_LOGIN_TOKENS_TABLE: 'account_login_tokens',
+    VIKE_AUTH_SUBJECT_TABLE: 'accounts',
+    VIKE_AUTH_SESSION_TABLE: 'account_sessions',
+    VIKE_AUTH_LOGIN_TOKEN_TABLE: 'account_login_tokens',
   }
   assert.deepEqual(resolveSubject({}, env), {
-    subject: 'Account',
     users: 'accounts',
     sessions: 'account_sessions',
     loginTokens: 'account_login_tokens',
@@ -42,28 +39,28 @@ test('env renames the subject + each table independently', () => {
 })
 
 test('renaming only the users table leaves sessions/login_tokens at their defaults', () => {
-  const r = resolveSubject({}, { VIKE_AUTH_USERS_TABLE: 'accounts' })
+  const r = resolveSubject({}, { VIKE_AUTH_SUBJECT_TABLE: 'accounts' })
   assert.equal(r.users, 'accounts')
   assert.equal(r.sessions, 'sessions')
   assert.equal(r.loginTokens, 'login_tokens')
 })
 
 test('an explicit override beats env beats default', () => {
-  const env = { VIKE_AUTH_USERS_TABLE: 'from_env' }
+  const env = { VIKE_AUTH_SUBJECT_TABLE: 'from_env' }
   assert.equal(resolveSubject({ users: 'from_override' }, env).users, 'from_override')
   assert.equal(resolveSubject({}, env).users, 'from_env')
   assert.equal(resolveSubject({}, {}).users, 'users')
 })
 
 test('blank / whitespace-only values are treated as unset (never a nameless table)', () => {
-  // An empty `VIKE_AUTH_USERS_TABLE=` in a .env must not produce a table named ''.
-  assert.equal(resolveSubject({}, { VIKE_AUTH_USERS_TABLE: '' }).users, 'users')
-  assert.equal(resolveSubject({}, { VIKE_AUTH_USERS_TABLE: '   ' }).users, 'users')
-  assert.equal(resolveSubject({ users: '' }, { VIKE_AUTH_USERS_TABLE: 'accounts' }).users, 'accounts')
+  // An empty `VIKE_AUTH_SUBJECT_TABLE=` in a .env must not produce a table named ''.
+  assert.equal(resolveSubject({}, { VIKE_AUTH_SUBJECT_TABLE: '' }).users, 'users')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_SUBJECT_TABLE: '   ' }).users, 'users')
+  assert.equal(resolveSubject({ users: '' }, { VIKE_AUTH_SUBJECT_TABLE: 'accounts' }).users, 'accounts')
 })
 
 test('values are trimmed', () => {
-  assert.equal(resolveSubject({}, { VIKE_AUTH_USERS_TABLE: '  accounts  ' }).users, 'accounts')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_SUBJECT_TABLE: '  accounts  ' }).users, 'accounts')
 })
 
 // --------------------------------------------------- the contact column (P1b) ----
@@ -78,7 +75,7 @@ test('the contact column defaults to `email` and is renamed by its own env var',
 
 test('renaming the table leaves the contact column independent, and vice versa', () => {
   // Each axis moves on its own: a renamed table keeps `email`; a renamed column keeps `users`.
-  const r1 = resolveSubject({}, { VIKE_AUTH_USERS_TABLE: 'accounts' })
+  const r1 = resolveSubject({}, { VIKE_AUTH_SUBJECT_TABLE: 'accounts' })
   assert.equal(r1.emailColumn, 'email')
   const r2 = resolveSubject({}, { VIKE_AUTH_EMAIL_COLUMN: 'account_email' })
   assert.equal(r2.users, 'users')

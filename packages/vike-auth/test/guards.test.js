@@ -7,8 +7,8 @@ import assert from 'node:assert/strict'
 import { defineGuard, getGuard, getGuards } from '../guards.js'
 import { SESSION_COOKIE } from '../constants.js'
 
-const ADMIN = { subject: 'Admin', users: 'admins', sessions: 'admin_sessions', loginTokens: 'admin_login_tokens' }
-const CLIENT = { subject: 'Client', users: 'clients', sessions: 'client_sessions', loginTokens: 'client_login_tokens' }
+const ADMIN = { table: 'admins', sessionTable: 'admin_sessions', loginTokenTable: 'admin_login_tokens' }
+const CLIENT = { table: 'clients', sessionTable: 'client_sessions', loginTokenTable: 'client_login_tokens' }
 
 // ---------------------------------------------------------- derivation --------
 
@@ -44,6 +44,21 @@ test('an invalid guard name is rejected loudly', () => {
   }
 })
 
+test('a guard requires a `table` (the subject table)', () => {
+  assert.throws(() => defineGuard('vendor', {}), /a `table`.*is required/)
+  assert.throws(() => defineGuard('vendor', { table: '  ' }), /a `table`.*is required/)
+})
+
+test('the session + login-token tables default from the guard name', () => {
+  // only `table` given -> sessionTable/loginTokenTable derive from the name
+  const staff = defineGuard('staff', { table: 'staff_people' })
+  assert.deepEqual(staff.schemas.map((f) => f.table), ['staff_people', 'staff_sessions', 'staff_login_tokens'])
+  // an explicit override still wins
+  const vendor = defineGuard('vendor', { table: 'vendors', sessionTable: 'vendor_logins' })
+  assert.equal(vendor.subject.sessions, 'vendor_logins')
+  assert.equal(vendor.subject.loginTokens, 'vendor_login_tokens') // still defaulted
+})
+
 test('defineGuard is idempotent per name (HMR / double import returns the same descriptor)', () => {
   const a = defineGuard('admin', ADMIN)
   const b = defineGuard('admin', ADMIN)
@@ -54,8 +69,8 @@ test('defineGuard is idempotent per name (HMR / double import returns the same d
 
 test('getGuards lists every declared guard; getGuard reads one by name', () => {
   defineGuard('client', CLIENT)
-  const names = getGuards().map((g) => g.name).sort()
-  assert.deepEqual(names, ['admin', 'client'])
+  const names = getGuards().map((g) => g.name)
+  assert.ok(names.includes('admin') && names.includes('client'))
   assert.equal(getGuard('client').basePath, '/client-auth')
   assert.equal(getGuard('nope'), null)
 })
