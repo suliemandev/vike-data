@@ -130,19 +130,31 @@ export async function pruneSubscription(endpoint) {
   return adapter.delete(TABLE, { endpoint })
 }
 
-// The send job: one delivery per subscription. Resolves the transport at RUN time so a
-// transport registered after dispatch but before the worker runs is still honoured.
+// The send job: one delivery per subscription. The job payload carries only the
+// subscription's id (a non-secret uuid), NOT its encryption material: vike-queue persists
+// the payload (JSON in the jobs table), so dispatching `{ endpoint, keys: { p256dh, auth } }`
+// would write the RFC 8291 `auth` secret to durable storage where it lingers after delivery
+// (#229). Instead the handler re-reads the row here and reconstructs the subscription at RUN
+// time - which also picks up the current keys if the subscription was refreshed since
+// dispatch. A row deleted before the worker runs (the user unsubscribed) is a no-op.
+//
+// Resolves the transport at RUN time too, so a transport registered after dispatch but
+// before the worker runs is still honoured.
 //
 // A transport may flag a send error with `subscriptionGone` (a 404/410 from the push
 // service): the subscription is permanently gone, so prune the dead row and return without
 // rethrowing - retrying it would only fail forever. Any other error propagates so vike-queue
 // retries the job per its maxAttempts (a transient push-service failure).
-const sendHandler = async ({ subscription, payload }) => {
+const sendHandler = async ({ subscriptionId, payload }) => {
+  const adapter = requireAdapter()
+  const row = (await adapter.find(TABLE, { id: subscriptionId }))[0]
+  if (!row) return // subscription removed before delivery - nothing to send
+  const subscription = { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }
   try {
     await getPushTransport().send(subscription, payload)
   } catch (err) {
-    if (err && err.subscriptionGone && subscription?.endpoint) {
-      await pruneSubscription(subscription.endpoint)
+    if (err && err.subscriptionGone && row.endpoint) {
+      await pruneSubscription(row.endpoint)
       return
     }
     throw err
@@ -164,13 +176,7 @@ export async function sendPush(userId, payload) {
   const adapter = requireAdapter()
   const rows = await adapter.find(TABLE, { user_id: userId })
   return Promise.all(
-    rows.map((row) =>
-      dispatch(
-        JOB,
-        { subscription: { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }, payload },
-        { maxAttempts: 3 },
-      ),
-    ),
+    rows.map((row) => dispatch(JOB, { subscriptionId: row.id, payload }, { maxAttempts: 3 })),
   )
 }
 

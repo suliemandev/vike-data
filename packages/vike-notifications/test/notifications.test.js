@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
-import { clearQueue } from 'vike-queue'
+import { clearQueue, setQueueDriver } from 'vike-queue'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
 import { notify, registerChannel, getChannel, getChannels, clearChannels, routeFor } from '../index.js'
 import { getFeed, unreadCount, markRead } from '../database-channel.js'
@@ -51,6 +51,25 @@ test('routeFor resolves the conventional user field per channel (the #206 seam)'
   assert.equal(routeFor(user, 'database'), 'u-1') // keyed on id
   assert.equal(routeFor(user, 'slack'), 'u-1') // unknown channel falls back to id
   assert.equal(routeFor(null, 'mail'), undefined) // tolerant of a missing notifiable
+})
+
+test('notify dispatches only the routable fields, never the full user row (#229)', async () => {
+  const adapter = setup()
+  // A hydrated user row carries a secret column (password_hash) alongside the routing fields.
+  await adapter.insert('users', { id: 'u-1', email: 'a@b.c', password_hash: 'super-secret', name: 'A' })
+
+  // Capture what notify hands the driver — exactly what the DB driver would persist.
+  const enqueued = []
+  setQueueDriver({ enqueue: (job) => { enqueued.push(job); return Promise.resolve() } })
+  registerChannel({ name: 'mail', send: async () => {} })
+
+  await notify('u-1', { via: () => ['mail'], toMail: (u) => ({ to: u.email }) })
+
+  assert.equal(enqueued.length, 1)
+  const { notifiable } = enqueued[0].payload
+  assert.deepEqual(Object.keys(notifiable).sort(), ['email', 'id']) // projected to routable fields
+  assert.equal('password_hash' in notifiable, false) // the secret is gone
+  assert.equal(notifiable.email, 'a@b.c') // routing still works
 })
 
 test('registerChannel validates the channel', () => {
