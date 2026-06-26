@@ -37,7 +37,9 @@ import { registerChannel } from 'vike-notifications'
 registerChannel({ name: 'mail', async send(user, rendered) { /* rendered = notification.toMail(user) */ } })
 ```
 
-The built-in **`database`** channel is always registered (this package owns the table). Official mail/push adapters self-register from their own packages — `import 'vike-notifications-mail'` etc. — so adding a channel is a new package, never a change here. Apps can also register a one-off custom channel directly (the same `registerChannel` seam).
+The built-in **`database`** channel is always registered (this package owns the table). Official mail/push adapters self-register from their own packages — `import 'vike-notifications-mail'` etc. — so adding a channel is a new package, never a change here.
+
+**Adding your own channel.** `registerChannel` is the same seam whether a package or your app calls it, so the choice is about *distribution, not capability*: **package it** (a thin self-registering sibling like `vike-notifications-mail`) when the channel is reusable across apps; **app-wire it** — register a one-off `{ name, send }` directly at server start — for an app-specific channel you don't want to publish. The app-wired path is fully supported; see [AUTHORING §10](../../AUTHORING.md#10-runtime-registries-many-providers--the-app-wired-adapter) for a worked custom-channel (Slack) example.
 
 ## Who you notify
 
