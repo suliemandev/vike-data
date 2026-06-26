@@ -23,6 +23,38 @@ import { createPort } from '@vike-data/kit'
 
 const TABLE = 'uploads'
 
+// A storage key is always a UUID we minted (see `randomUUID` in storeUpload); nothing else is
+// a key we would ever issue. Validating the key before it reaches a provider stops a path
+// traversal payload (e.g. `..%2f..%2fetc%2fpasswd`, which survives `new URL().pathname`) from
+// reaching a naive disk/S3 provider doing `join(root, key)`. Providers MUST still reject keys
+// containing path separators or `..` as defense in depth - this is the framework's half.
+const STORAGE_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** True when `key` is a well-formed storage key (a UUID), i.e. one this package could have issued. */
+export function isStorageKey(key) {
+  return typeof key === 'string' && STORAGE_KEY_RE.test(key)
+}
+
+// Cap on a single upload's size. The bytes are buffered to validate + hand to the provider, so
+// without a cap an authenticated client could POST a multi-GB body and exhaust server memory
+// (concurrent uploads amplify it). Default 10 MiB; override with setMaxUploadBytes() or the
+// VIKE_STORAGE_MAX_UPLOAD_BYTES env var. A hard streaming cap against a LYING Content-Length
+// belongs at the reverse proxy (its body-size limit), the same edge-vs-app split as throttling.
+const DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+const envMax = Number(process.env.VIKE_STORAGE_MAX_UPLOAD_BYTES)
+let maxUploadBytes = Number.isFinite(envMax) && envMax > 0 ? envMax : DEFAULT_MAX_UPLOAD_BYTES
+
+/** Set the max bytes a single upload may be (the endpoint rejects larger with 413). */
+export function setMaxUploadBytes(n) {
+  if (!Number.isFinite(n) || n <= 0) throw new Error('setMaxUploadBytes: expected a positive number of bytes')
+  maxUploadBytes = n
+}
+
+/** The current max upload size in bytes. */
+export function getMaxUploadBytes() {
+  return maxUploadBytes
+}
+
 // The built-in dev provider: an in-memory blob store cached on globalThis, so uploads
 // persist across requests within a single dev run (a fresh Map per request would lose every
 // byte). `url(key)` points back at our own GET /uploads/:key route, so a stored file is
@@ -122,6 +154,9 @@ export async function storeUpload(userId, file) {
  * buckets are a follow-up.
  */
 export async function readUpload(key) {
+  // Reject anything that is not a key we could have issued before it reaches the provider,
+  // so a traversal payload can never be turned into a filesystem path by a disk provider.
+  if (!isStorageKey(key)) return null
   return getStorageProvider().get(key)
 }
 

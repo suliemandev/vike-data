@@ -43,6 +43,10 @@ const { id, key, url } = await storeUpload(user.id, { filename, mime, bytes })
 
 The stored mime is browser-supplied, so `GET` never trusts it to render arbitrary content from your origin: it sends `X-Content-Type-Options: nosniff` always, serves a small allowlist of inert image types (`png`, `jpeg`, `gif`, `webp`, `avif`) `inline`, and forces everything else (including `text/html` and script-capable `image/svg+xml`) to `application/octet-stream` with `Content-Disposition: attachment` so the browser downloads instead of executing it. For untrusted uploads, prefer serving from a separate origin/CDN as defense in depth.
 
+**Key validation.** A storage key is always a UUID this package minted, so `readUpload` (and therefore `GET`) rejects anything else before it reaches the provider — a traversal payload like `..%2f..%2fetc%2fpasswd` returns `404` and the provider is never asked. A disk/S3 provider must still reject keys containing path separators or `..` as defense in depth; the framework guards the key it receives, the provider guards the path it builds.
+
+**Upload size.** `POST` caps a single upload at `getMaxUploadBytes()` (default 10 MiB; set with `setMaxUploadBytes(n)` or the `VIKE_STORAGE_MAX_UPLOAD_BYTES` env var). An over-size `Content-Length` is rejected with `413` before the body is buffered; a missing/understated `Content-Length` is caught by re-checking the parsed file size. A hard streaming cap against a *lying* `Content-Length` belongs at your reverse proxy's body-size limit.
+
 ## Upload controls
 
 Framework-agnostic helpers (`vike-storage/client`): `uploadFile(file)` and `deleteUpload(id)`. Thin React and Vue controls wrap them:

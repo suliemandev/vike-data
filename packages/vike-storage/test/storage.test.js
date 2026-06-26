@@ -7,7 +7,17 @@ import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
-import { storeUpload, readUpload, deleteUpload, setStorageProvider, clearStorageProvider, urlFor } from '../index.js'
+import {
+  storeUpload,
+  readUpload,
+  deleteUpload,
+  setStorageProvider,
+  clearStorageProvider,
+  urlFor,
+  isStorageKey,
+  getMaxUploadBytes,
+  setMaxUploadBytes,
+} from '../index.js'
 import { createStorageMiddleware } from '../middleware.js'
 
 function setup() {
@@ -227,4 +237,98 @@ test('a path that is not /uploads falls through (returns undefined)', async () =
   const mw = createStorageMiddleware()
   const res = await mw(new Request('http://localhost/something-else', { method: 'GET' }))
   assert.equal(res, undefined)
+})
+
+// ----------------------------------------------- upload-path hardening (#231) --
+
+test('isStorageKey accepts a minted uuid key and rejects traversal payloads', async () => {
+  const saved = await (async () => {
+    setup()
+    return storeUpload('u-1', { filename: 'x', mime: 'text/plain', bytes: new Uint8Array([1]) })
+  })()
+  assert.equal(isStorageKey(saved.key), true)
+  assert.equal(isStorageKey('..%2f..%2fetc%2fpasswd'), false)
+  assert.equal(isStorageKey('../../etc/passwd'), false)
+  assert.equal(isStorageKey('not-a-uuid'), false)
+  assert.equal(isStorageKey(''), false)
+  assert.equal(isStorageKey(undefined), false)
+})
+
+test('readUpload refuses a non-key without ever calling the provider', async () => {
+  setup()
+  let asked = null
+  setStorageProvider({
+    async put() {},
+    async get(key) {
+      asked = key // a traversal key must never reach here
+      return { bytes: new Uint8Array([1]), meta: {} }
+    },
+    async delete() {},
+    url: (k) => `/uploads/${k}`,
+  })
+  assert.equal(await readUpload('..%2f..%2fetc%2fpasswd'), null)
+  assert.equal(asked, null) // provider.get was never called
+})
+
+test('GET with a traversal key is 404 (the provider is never asked)', async () => {
+  setup()
+  const mw = createStorageMiddleware()
+  const res = await mw(new Request('http://localhost/uploads/..%2f..%2fetc%2fpasswd', { method: 'GET' }))
+  assert.equal(res.status, 404)
+})
+
+test('POST rejects an over-size body up front via Content-Length (413)', async () => {
+  setup()
+  const cookie = await openSessionCookie('big-cl@example.com')
+  const mw = createStorageMiddleware()
+  const res = await mw(
+    new Request('http://localhost/uploads', {
+      method: 'POST',
+      headers: { cookie, 'content-length': String(getMaxUploadBytes() + 1) },
+      body: new FormData(),
+    }),
+  )
+  assert.equal(res.status, 413)
+  assert.equal((await res.json()).error, 'upload-too-large')
+})
+
+test('POST rejects an over-size file when Content-Length is absent/understated (413)', async () => {
+  const adapter = setup()
+  const cookie = await openSessionCookie('big-file@example.com')
+  const prev = getMaxUploadBytes()
+  setMaxUploadBytes(1024) // 1 KiB cap for the test
+  try {
+    const mw = createStorageMiddleware()
+    const fd = new FormData()
+    fd.append('file', new File([new Uint8Array(4096)], 'big.bin', { type: 'application/octet-stream' }))
+    const res = await mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+    assert.equal(res.status, 413)
+    // nothing was stored
+    assert.equal((await adapter.find('uploads', {})).length, 0)
+  } finally {
+    setMaxUploadBytes(prev)
+  }
+})
+
+test('POST accepts a file within the cap', async () => {
+  const adapter = setup()
+  const cookie = await openSessionCookie('ok-size@example.com')
+  const prev = getMaxUploadBytes()
+  setMaxUploadBytes(1024)
+  try {
+    const mw = createStorageMiddleware()
+    const fd = new FormData()
+    fd.append('file', new File([new Uint8Array(512)], 'ok.bin', { type: 'application/octet-stream' }))
+    const res = await mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+    assert.equal(res.status, 200)
+    assert.equal((await adapter.find('uploads', {})).length, 1)
+  } finally {
+    setMaxUploadBytes(prev)
+  }
+})
+
+test('setMaxUploadBytes rejects a non-positive value', () => {
+  assert.throws(() => setMaxUploadBytes(0), /positive number/)
+  assert.throws(() => setMaxUploadBytes(-1), /positive number/)
+  assert.throws(() => setMaxUploadBytes(NaN), /positive number/)
 })
