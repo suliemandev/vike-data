@@ -79,6 +79,18 @@ function requireAdapter() {
  * Store (or refresh) a browser push subscription for a user. Keyed by the unique
  * `endpoint`, so re-subscribing updates the same row rather than duplicating it.
  * `subscription` is the PushManager shape: `{ endpoint, keys: { p256dh, auth } }`.
+ *
+ * TRUST MODEL (why a different user may re-bind an existing endpoint): a Web Push
+ * `endpoint` identifies a service-worker registration on ONE browser profile, not a
+ * user. When a device changes hands (B logs out, A logs in on the same browser), the
+ * endpoint legitimately re-binds to A and the keys are rotated — B SHOULD stop
+ * receiving pushes on a device they left. So `saveSubscription` (called with the
+ * authenticated caller as `userId`) reassigns the row to the current holder by design;
+ * this is NOT the IDOR the DELETE side guards. The endpoint URL is a bearer capability:
+ * an attacker who already knows B's secret endpoint can at most cause a self-healing DoS
+ * (B re-subscribes routinely), and never reads B's pushes — they're delivered to B's
+ * browser, which can't decrypt the attacker's keys. Clients should call
+ * `PushSubscription.unsubscribe()` on logout to release the endpoint promptly.
  */
 export async function saveSubscription(userId, subscription) {
   const adapter = requireAdapter()
@@ -90,6 +102,8 @@ export async function saveSubscription(userId, subscription) {
   const authSecret = keys.auth ?? null
   const existing = (await adapter.find(TABLE, { endpoint: subscription.endpoint }))[0]
   if (existing) {
+    // Re-bind the device endpoint to the current holder and ALWAYS rotate the keys, so a
+    // stale key from a prior owner can never linger on the row (see the trust model above).
     await adapter.update(TABLE, { endpoint: subscription.endpoint }, {
       user_id: userId, p256dh, auth_secret: authSecret, updated_at: ts,
     })
