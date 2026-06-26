@@ -22,6 +22,20 @@ import { resolveUserAccess } from './index.js'
 import { assignRoles } from './seed.js'
 
 const KEY = Symbol.for('vike-rbac.db')
+const SOURCE_KEY = Symbol.for('vike-rbac.orgRoleSource')
+
+// The configured `orgRoleSource`, remembered on globalThis. The page enricher reads it
+// from `pageContext.config` on every render and records it here; the Telefunc RPC seam has
+// NO pageContext, so it reads the SAME source from here to load the SAME org grants. Without
+// this, org-scoped checks resolved on the RPC path but with no grants, so `can(user, x,
+// { org })` always denied over RPC (page vs RPC divergence). An app/server can also set it
+// explicitly at startup for an RPC that fires before any page render.
+export function setOrgRoleSource(source) {
+  globalThis[SOURCE_KEY] = source || null
+}
+function getOrgRoleSource() {
+  return globalThis[SOURCE_KEY] || null
+}
 
 // Built lazily on first use and cached on globalThis, so the app's setAdapter(...)
 // at server start is in place before the first request resolves the repository
@@ -58,8 +72,11 @@ export async function resolveAccessOnto(pageContext) {
   // per-org role names (vike-teams `memberships`), read this user's rows and hand them
   // to the resolver as org grants. Read through the RAW adapter, not the repo: that
   // table belongs to another extension and isn't in rbac's merged schema. Off by
-  // default, so a flat app does no extra read.
-  const orgGrants = await readOrgGrants(adapter, pageContext.config?.orgRoleSource, user.id)
+  // default, so a flat app does no extra read. Remember the source so the RPC seam,
+  // which has no pageContext, resolves the same org grants (#235).
+  const source = pageContext.config?.orgRoleSource
+  if (source) setOrgRoleSource(source)
+  const orgGrants = await readOrgGrants(adapter, source, user.id)
 
   const access = await resolveAccess(user.id, { orgGrants })
   // Mutate in place so the enrichment rides on the object auth already exposes via
@@ -99,6 +116,20 @@ export async function resolveAccess(userId, { orgGrants = [] } = {}) {
   const permissions = permIds.length ? await d.permissions.find({ id: { in: permIds } }) : []
 
   return resolveUserAccess(userId, { roleUser, roles, permissionRole, permissions, orgGrants })
+}
+
+/**
+ * Resolve a user's effective access by user id INCLUDING org grants, reading the org
+ * source the page enricher remembered (setOrgRoleSource). The Telefunc RPC seam uses this:
+ * it has a user id from the session cookie but no pageContext to read `orgRoleSource` from,
+ * so without it org-scoped RPC guards always denied. With `orgRoleSource` unset this is
+ * exactly `resolveAccess(userId)` (global roles/permissions only), so a flat app is unchanged.
+ */
+export async function resolveAccessForUser(userId) {
+  if (!userId) return resolveAccess(userId)
+  const { adapter } = db()
+  const orgGrants = await readOrgGrants(adapter, getOrgRoleSource(), userId)
+  return resolveAccess(userId, { orgGrants })
 }
 
 // Read a user's org-scoped role grants from the configured source table (vike-teams

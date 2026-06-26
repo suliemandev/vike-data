@@ -6,11 +6,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
-import { resolveAccessOnto } from '../resolve.js'
+import { resolveAccessOnto, resolveAccessForUser, setOrgRoleSource } from '../resolve.js'
 import { seedRbac, assignRoles } from '../seed.js'
 import { definePermissions } from '../index.js'
 
 const DB_KEY = Symbol.for('vike-rbac.db')
+const SOURCE_KEY = Symbol.for('vike-rbac.orgRoleSource')
 const REGISTRY = definePermissions([
   { name: 'users.view', label: 'View users', roles: ['admin'] },
   { name: 'users.edit', label: 'Edit users', roles: ['admin'] },
@@ -20,6 +21,7 @@ const REGISTRY = definePermissions([
 // each test resolves against its own freshly-seeded backend.
 async function freshAdapter() {
   globalThis[DB_KEY] = undefined
+  globalThis[SOURCE_KEY] = undefined // forget any remembered orgRoleSource
   clearAdapter()
   const a = createMemoryAdapter()
   setAdapter(a)
@@ -77,6 +79,41 @@ test('no orgRoleSource configured -> no org maps, no extra read (#109)', async (
   await resolveAccessOnto(ctx)
   assert.deepEqual(ctx.user.orgRoles, {})
   assert.deepEqual(ctx.user.orgPermissions, {})
+})
+
+// --- the RPC path resolves org grants too (#235) -----------------------------
+
+test('resolveAccessForUser folds in org grants once the enricher remembered the source', async () => {
+  const a = await freshAdapter()
+  await a.insert('memberships', { id: 'm-1', user_id: 'u-mem', organization_id: 'org-A', role: 'admin' })
+
+  // No source remembered yet -> RPC path sees only global access (empty for u-mem).
+  const before = await resolveAccessForUser('u-mem')
+  assert.deepEqual(before.orgRoles, {})
+
+  // A page render remembers orgRoleSource; now the RPC path resolves the SAME org grants.
+  await resolveAccessOnto({ user: { id: 'u-mem' }, config: { orgRoleSource: 'memberships' } })
+  const after = await resolveAccessForUser('u-mem')
+  assert.deepEqual(after.orgRoles, { 'org-A': ['admin'] })
+  assert.deepEqual(after.orgPermissions['org-A'].sort(), ['users.edit', 'users.view'])
+})
+
+test('setOrgRoleSource lets the RPC path resolve org grants with no prior page render', async () => {
+  const a = await freshAdapter()
+  await a.insert('memberships', { id: 'm-1', user_id: 'u-mem', organization_id: 'org-A', role: 'admin' })
+  setOrgRoleSource('memberships') // e.g. wired at server start
+  const access = await resolveAccessForUser('u-mem')
+  assert.deepEqual(access.orgRoles, { 'org-A': ['admin'] })
+})
+
+test('resolveAccessForUser with no source is just the global access', async () => {
+  const a = await freshAdapter()
+  await assignRoles(a, 'u-ada', ['admin'])
+  await a.insert('memberships', { id: 'm-1', user_id: 'u-ada', organization_id: 'org-A', role: 'admin' })
+  const access = await resolveAccessForUser('u-ada') // source never set
+  assert.deepEqual(access.roles, ['admin'])
+  assert.deepEqual(access.permissions.sort(), ['users.edit', 'users.view'])
+  assert.deepEqual(access.orgRoles, {}) // memberships present but not wired -> ignored
 })
 
 test('resolveAccessOnto bails on client-side / signed-out', async () => {
