@@ -74,6 +74,22 @@ test('an invalid email never reaches the mailer', async () => {
   assert.equal(getOutbox().length, 0)
 })
 
+test('a throttled /auth/request shows the neutral notice and sends no second email', async () => {
+  clearMailTransport()
+  clearOutbox()
+  const mw = createAuthMiddleware(auth, { dev: false })
+
+  const first = await postRequest(mw, 'flood-victim@example.com')
+  assert.equal(first.status, 200)
+  // a second immediate request for the same address is on cooldown
+  const second = await postRequest(mw, 'flood-victim@example.com')
+  assert.equal(second.status, 200)
+  assert.match(await second.text(), /Check your inbox/) // same neutral notice as success
+
+  // only the first link was actually delivered (the email-bomb is throttled)
+  assert.equal(getOutbox().length, 1)
+})
+
 // Drive a full magic-link login through the middleware and return the Set-Cookie
 // value the callback sets, so we can assert on the session cookie's flags.
 async function loginCookie(mw, email) {

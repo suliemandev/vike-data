@@ -137,6 +137,17 @@ await auth.destroySession(session.token) // real logout
   into `pageContext`, so the middleware can't hand `user` to the renderer. If
   Vike bridged universal-middleware context into `pageContext`, the endpoint
   handling and the user-resolution would collapse into a single middleware.
+- **Magic-link issuance is rate-limited per email, not per IP.** `requestMagicLink`
+  spaces links to one address by a cooldown (`magicLinkCooldownMs`, default 60s)
+  and caps how many can be live at once (`maxActiveMagicLinks`, default 3), and it
+  purges consumed/expired `login_tokens` (plus delete-on-consume in `redeemMagicLink`)
+  so the table can't be flooded. A throttled request returns the *same* neutral notice
+  as success, so it is not an existence or timing oracle. The limit state is the
+  `login_tokens` rows themselves, which is **durable and correct across horizontally
+  scaled instances** — the deliberate reason it lives here and not in process memory.
+  Per-IP / global throttling for a cross-email flood is intentionally left to the
+  edge (a WAF or a shared limiter), where in-process counters would be wrong under
+  scale-out anyway.
 
 ## Install
 

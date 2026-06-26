@@ -115,6 +115,20 @@ export function createStore() {
         (a) => firstRow(a, LOGIN_TOKENS, { token }),
       )
     },
+    async findLoginTokensByEmail(email) {
+      return dispatch(
+        () => memory.findLoginTokensByEmail(email),
+        (a) => a.find(LOGIN_TOKENS, { email }),
+      )
+    },
+    async deleteLoginToken(token) {
+      return dispatch(
+        () => memory.deleteLoginToken(token),
+        async (a) => {
+          await a.delete(LOGIN_TOKENS, { token })
+        },
+      )
+    },
     async consumeLoginToken(token) {
       return dispatch(
         () => memory.consumeLoginToken(token),
