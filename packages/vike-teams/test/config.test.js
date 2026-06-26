@@ -83,6 +83,55 @@ test('follows a renamed auth subject (VIKE_AUTH_USERS_TABLE) in every FK into it
   }
 })
 
+test('resolveTeamSubject: defaults are today\'s names; overrides + env win in that order', async () => {
+  const { resolveTeamSubject, DEFAULT_TEAM_SUBJECT } = await import('../subject.js')
+  // Default (no env, no override) is byte-for-byte today.
+  const def = resolveTeamSubject({}, {})
+  assert.equal(def.organizations, 'organizations')
+  assert.equal(def.memberships, 'memberships')
+  assert.equal(def.team, 'Organization')
+  assert.deepEqual(DEFAULT_TEAM_SUBJECT.organizations, 'organizations')
+  // env renames the tables; a blank env value is treated as unset.
+  assert.equal(resolveTeamSubject({}, { VIKE_TEAMS_ORGANIZATIONS_TABLE: 'teams' }).organizations, 'teams')
+  assert.equal(resolveTeamSubject({}, { VIKE_TEAMS_ORGANIZATIONS_TABLE: '   ' }).organizations, 'organizations')
+  // explicit override beats env.
+  assert.equal(
+    resolveTeamSubject({ memberships: 'team_members' }, { VIKE_TEAMS_MEMBERSHIPS_TABLE: 'x' }).memberships,
+    'team_members',
+  )
+  // column map is reserved (default-only), never env-backed.
+  assert.equal(resolveTeamSubject({}, { VIKE_TEAMS_SLUG_COLUMN: 'handle' }).slugColumn, 'slug')
+})
+
+test('renames its OWN tables (VIKE_TEAMS_*_TABLE) across schema + internal FKs', async () => {
+  const prevO = process.env.VIKE_TEAMS_ORGANIZATIONS_TABLE
+  const prevM = process.env.VIKE_TEAMS_MEMBERSHIPS_TABLE
+  process.env.VIKE_TEAMS_ORGANIZATIONS_TABLE = 'teams'
+  process.env.VIKE_TEAMS_MEMBERSHIPS_TABLE = 'team_members'
+  try {
+    const { default: renamed } = await import('../+config.js?teams=1')
+    assert.deepEqual(
+      renamed.schemas.map((s) => `${s.mode}:${s.table}`),
+      ['create:teams', 'create:team_members', 'extend:users'],
+    )
+    const frag = (table, mode = 'create') => renamed.schemas.find((s) => s.table === table && s.mode === mode)
+    const col = (f, name) => f.columns.find((c) => c.name === name)
+    // the membership -> org FK and the users.current_organization_id FK follow the new org name.
+    assert.deepEqual(col(frag('team_members'), 'organization_id').references, { table: 'teams', column: 'id' })
+    assert.deepEqual(col(frag('users', 'extend'), 'current_organization_id').references, { table: 'teams', column: 'id' })
+    // FKs into auth's subject are unaffected (still 'users' under default auth env).
+    assert.deepEqual(col(frag('teams'), 'owner_id').references, { table: 'users', column: 'id' })
+    // and it still merges cleanly onto auth.
+    const { conflicts } = mergeSchemas([...authSchemas(), ...renamed.schemas])
+    assert.deepEqual(conflicts, [])
+  } finally {
+    if (prevO === undefined) delete process.env.VIKE_TEAMS_ORGANIZATIONS_TABLE
+    else process.env.VIKE_TEAMS_ORGANIZATIONS_TABLE = prevO
+    if (prevM === undefined) delete process.env.VIKE_TEAMS_MEMBERSHIPS_TABLE
+    else process.env.VIKE_TEAMS_MEMBERSHIPS_TABLE = prevM
+  }
+})
+
 test('composition proof: teams merges onto auth with zero conflicts (the Stem Vision)', () => {
   const { tables, conflicts } = mergeSchemas([...authSchemas(), ...teamsConfig.schemas])
   assert.deepEqual(conflicts, [])

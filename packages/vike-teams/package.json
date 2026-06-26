@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Teams / multi-tenancy extension. Composes on vike-auth: references its users table and adds a column to it.",
   "exports": {
-    "./config": "./+config.js"
+    "./config": "./+config.js",
+    "./subject": "./subject.js"
   },
   "scripts": {
     "test": "node --test"

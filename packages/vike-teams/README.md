@@ -37,6 +37,28 @@ export default {
 }
 ```
 
+## Configurable table names
+
+By default vike-teams owns `organizations` + `memberships`. Product vocabulary
+varies (teams / companies / workspaces / tenants), so the table names are
+configurable through one env-based knob, the same way vike-auth renames its
+subject (`VIKE_AUTH_*`). Read once at config-eval by `vike-teams/subject`, so the
+schema is the single source.
+
+| env var                          | default         |
+|----------------------------------|-----------------|
+| `VIKE_TEAMS_SUBJECT`             | `Organization`  |
+| `VIKE_TEAMS_ORGANIZATIONS_TABLE` | `organizations` |
+| `VIKE_TEAMS_MEMBERSHIPS_TABLE`   | `memberships`   |
+
+Renaming the org table follows through every FK that targets it (the
+membership `organization_id` and the `current_organization_id` added to auth's
+table). FKs INTO auth's subject still follow the auth rename
+(`VIKE_AUTH_USERS_TABLE`) independently. Defaults are byte-for-byte today's
+behaviour, so the zero-config app is unchanged. Column names (`slug`/`role`/etc.)
+are reserved in the resolver but not yet env-backed, since vike-teams ships no
+runtime that reads them by name.
+
 > Cross-table references (`user_id`, `organization_id`, `owner_id`) are real
 > foreign keys via `.references('table.column', { onDelete })`. `merge.js`
 > validates the target exists across extensions, so a FK into auth's `users`
