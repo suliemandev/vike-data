@@ -12,6 +12,12 @@
 
 const SUBJECT_COLUMN = { b2b: 'organization_id', b2c: 'user_id' }
 
+// The one Stripe event type that means money actually moved. The shared webhook hands
+// EVERY verified event to the model (once the real SDK is swapped in, a single endpoint
+// receives `payment_intent.payment_failed`, refunds, `created`, etc.), so a non-success
+// type must not create a payments row that an app reads as proof of payment.
+const SUCCESS_TYPE = 'payment_intent.succeeded'
+
 const isoNow = () => new Date().toISOString()
 
 export function createPayments({ db, segment = 'b2b' } = {}) {
@@ -23,6 +29,14 @@ export function createPayments({ db, segment = 'b2b' } = {}) {
 
     // Record a (Stripe-shaped) successful charge: one INSERT, idempotent per intent.
     async recordCharge(event) {
+      // Only a SUCCEEDED charge is a payment. Ignore a failed/refunded/pending charge, or a
+      // non-success event type, with a 200 (ignored, not an error) so Stripe does not retry
+      // it. A bare event with neither field is treated as a success (back-compat).
+      const status = event?.status ?? 'succeeded'
+      if ((event?.type && event.type !== SUCCESS_TYPE) || status !== 'succeeded') {
+        return { ok: true, ignored: true }
+      }
+
       const intentId = event?.stripePaymentIntentId
       if (!intentId) return { ok: false, error: 'missing-payment-intent' }
       const subjectId = event?.subject
@@ -31,20 +45,33 @@ export function createPayments({ db, segment = 'b2b' } = {}) {
       const existing = await db.payments.findOne({ stripe_payment_intent_id: intentId })
       if (existing) return { ok: true, payment: existing, idempotent: true }
 
-      const payment = await db.payments.insert({
+      const newRow = {
         [subjectColumn]: subjectId,
         amount: event.amount ?? 0,
         currency: event.currency ?? 'usd',
-        status: event.status ?? 'succeeded',
+        status: 'succeeded',
         description: event.description ?? null,
         stripe_payment_intent_id: intentId,
         paid_at: event.paidAt ?? isoNow(),
-      })
-      return { ok: true, payment }
+      }
+      try {
+        const payment = await db.payments.insert(newRow)
+        return { ok: true, payment }
+      } catch (err) {
+        // A concurrent delivery of the same intent won the race and inserted first; the
+        // unique constraint on stripe_payment_intent_id is what makes idempotency correct
+        // (the find-first above is only a fast path). Re-read and return that row so the
+        // webhook stays idempotent (a 200) instead of surfacing the unique-violation 500.
+        const row = await db.payments.findOne({ stripe_payment_intent_id: intentId })
+        if (row) return { ok: true, payment: row, idempotent: true }
+        throw err
+      }
     },
 
     async paymentsFor(subjectId) {
-      return db.payments.find({ [subjectColumn]: subjectId })
+      // Only succeeded charges count. recordCharge already records nothing else, so this is
+      // defense in depth against a legacy/failed row reaching an entitlement check.
+      return db.payments.find({ [subjectColumn]: subjectId, status: 'succeeded' })
     },
   }
 }

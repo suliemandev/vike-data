@@ -69,6 +69,32 @@ test('a subjectless event is rejected, nothing written', async () => {
   assert.equal((await db.subscriptions.find()).length, 0)
 })
 
+test('a stale (out-of-order) event does not overwrite newer state (#234)', async () => {
+  const { subscriptions, db } = makeSubscriptions()
+  // canceled happened at T2; a delayed/retried `active` event from T1 arrives afterwards.
+  await subscriptions.applySubscriptionEvent({
+    subject: 'org1', plan: 'pro', status: 'canceled', occurredAt: '2026-01-02T00:00:00.000Z',
+  })
+  const res = await subscriptions.applySubscriptionEvent({
+    subject: 'org1', plan: 'pro', status: 'active', occurredAt: '2026-01-01T00:00:00.000Z',
+  })
+  assert.equal(res.stale, true)
+  // the newer canceled state is preserved: a canceled subscriber is NOT re-granted access
+  assert.equal((await db.subscriptions.findOne({ organization_id: 'org1' })).status, 'canceled')
+})
+
+test('a newer event applies over older state (ordering respected)', async () => {
+  const { subscriptions, db } = makeSubscriptions()
+  await subscriptions.applySubscriptionEvent({
+    subject: 'org1', plan: 'pro', status: 'past_due', occurredAt: '2026-01-01T00:00:00.000Z',
+  })
+  const res = await subscriptions.applySubscriptionEvent({
+    subject: 'org1', plan: 'pro', status: 'active', occurredAt: '2026-01-02T00:00:00.000Z',
+  })
+  assert.ok(!res.stale)
+  assert.equal((await db.subscriptions.findOne({ organization_id: 'org1' })).status, 'active')
+})
+
 // -------------------------------------------------------------------- webhook
 const SECRET = 'whsec_test_subscription'
 const provider = createStripe({ webhookSecret: SECRET })
