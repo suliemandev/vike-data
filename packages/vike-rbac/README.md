@@ -57,7 +57,10 @@ if (!can(pageContext.user, 'widgets.edit')) throw render(403)
   composed `permissions` registry — no hand-written seed list.
 - **Org-scoped roles.** With `orgRoleSource: 'memberships'`, per-organization role
   grants are read from [vike-teams](../vike-teams); `can(user, perm, { org })` checks
-  global ∪ org access.
+  global ∪ org access. The page enricher records the configured `orgRoleSource`, and the
+  RPC seam reads org grants from the same source, so `requirePermission('x', { org })`
+  authorizes identically on a page and over Telefunc. (A server can also call
+  `setOrgRoleSource('memberships')` at startup for an RPC that precedes any page render.)
 - **Telefunc seam.** `requirePermission()` reads the signed-in, role-enriched user off
   the Telefunc context, so a server function is authorized by exactly what `canView`
   enforces.
