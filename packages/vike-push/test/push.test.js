@@ -31,13 +31,21 @@ test('saveSubscription stores a row, then refreshes the same row by endpoint', a
   assert.equal(rows[0].user_id, 'u-1')
   assert.equal(rows[0].p256dh, 'pub-https://push/aaa')
 
-  // re-subscribe (same endpoint) updates in place, keeps the id, does not duplicate
-  const b = await saveSubscription('u-2', sub('https://push/aaa'))
+  // A device endpoint is re-bound to the current holder when the same browser
+  // re-subscribes under a different user (logout/login on a shared device). This is
+  // INTENDED (an endpoint is device-scoped, not user-scoped; see saveSubscription's
+  // trust model) - the row keeps its id and the keys are rotated to the new owner's.
+  const b = await saveSubscription('u-2', {
+    endpoint: 'https://push/aaa',
+    keys: { p256dh: 'pub-u2', auth: 'sec-u2' }, // the new holder's own keys
+  })
   assert.equal(b.updated, true)
   assert.equal(b.id, a.id)
   rows = await adapter.find('push_subscriptions', {})
   assert.equal(rows.length, 1)
   assert.equal(rows[0].user_id, 'u-2')
+  assert.equal(rows[0].p256dh, 'pub-u2') // keys rotated, never the prior owner's stale key
+  assert.equal(rows[0].auth_secret, 'sec-u2')
 })
 
 test('sendPush delivers one payload per subscription the user has', async () => {

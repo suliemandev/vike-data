@@ -40,6 +40,8 @@ With no transport registered, a built-in console/outbox transport records each d
 
 Both resolve the current user from the session cookie (vike-auth's server seam), so a client can only manage its own subscriptions. `saveSubscription` / `removeSubscription` are also exported for programmatic use.
 
+**Endpoints are device-scoped (trust model).** A push `endpoint` identifies a service-worker registration on one browser profile, not a user. So when the same browser re-subscribes under a different account (logout/login on a shared device), `/push/subscribe` re-binds that endpoint to the current signed-in user and rotates the keys — the prior user *should* stop receiving pushes on a device they left. This is intended, and is not the IDOR the owner-scoped `/push/unsubscribe` guards against: the endpoint URL is a bearer capability, and an attacker who already knows another user's secret endpoint can at most cause a self-healing denial (that user re-subscribes routinely) and never reads their pushes (they decrypt only with their own browser's keys). Clients should call `PushSubscription.unsubscribe()` on logout to release the endpoint promptly.
+
 ## Client: the subscribe control
 
 A user must opt in (browser permission + a stored subscription) before `sendPush` can reach them. vike-push ships that flow:
