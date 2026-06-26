@@ -12,6 +12,9 @@ test('with nothing set, resolves to today\'s names byte-for-byte', () => {
     users: 'users',
     sessions: 'sessions',
     loginTokens: 'login_tokens',
+    emailColumn: 'email',
+    nameColumn: 'name',
+    idColumn: 'id',
   })
 })
 
@@ -31,6 +34,10 @@ test('env renames the subject + each table independently', () => {
     users: 'accounts',
     sessions: 'account_sessions',
     loginTokens: 'account_login_tokens',
+    // The contact column is independent of the table rename: unset here, so it stays default.
+    emailColumn: 'email',
+    nameColumn: 'name',
+    idColumn: 'id',
   })
 })
 
@@ -57,4 +64,32 @@ test('blank / whitespace-only values are treated as unset (never a nameless tabl
 
 test('values are trimmed', () => {
   assert.equal(resolveSubject({}, { VIKE_AUTH_USERS_TABLE: '  accounts  ' }).users, 'accounts')
+})
+
+// --------------------------------------------------- the contact column (P1b) ----
+
+test('the contact column defaults to `email` and is renamed by its own env var', () => {
+  assert.equal(resolveSubject({}, {}).emailColumn, 'email')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_EMAIL_COLUMN: 'account_email' }).emailColumn, 'account_email')
+  // Same precedence + blank-is-unset rules as the table names.
+  assert.equal(resolveSubject({ emailColumn: 'override_email' }, { VIKE_AUTH_EMAIL_COLUMN: 'env_email' }).emailColumn, 'override_email')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_EMAIL_COLUMN: '   ' }).emailColumn, 'email')
+})
+
+test('renaming the table leaves the contact column independent, and vice versa', () => {
+  // Each axis moves on its own: a renamed table keeps `email`; a renamed column keeps `users`.
+  const r1 = resolveSubject({}, { VIKE_AUTH_USERS_TABLE: 'accounts' })
+  assert.equal(r1.emailColumn, 'email')
+  const r2 = resolveSubject({}, { VIKE_AUTH_EMAIL_COLUMN: 'account_email' })
+  assert.equal(r2.users, 'users')
+})
+
+test('nameColumn / idColumn are reserved: they exist with defaults but no env knob (yet)', () => {
+  // Shape stability for a future PR — the column map is the single place to grow. They take
+  // an explicit override (the factory arg) but are deliberately NOT env-backed, so we never
+  // ship a `VIKE_AUTH_*_COLUMN` that silently does nothing.
+  assert.equal(resolveSubject({}, {}).nameColumn, 'name')
+  assert.equal(resolveSubject({}, {}).idColumn, 'id')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_NAME_COLUMN: 'full_name', VIKE_AUTH_ID_COLUMN: 'uid' }).nameColumn, 'name')
+  assert.equal(resolveSubject({}, { VIKE_AUTH_ID_COLUMN: 'uid' }).idColumn, 'id')
 })

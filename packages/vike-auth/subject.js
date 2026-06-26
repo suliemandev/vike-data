@@ -15,6 +15,16 @@
 // `user_id` (an internal column the store writes by name); only its TARGET table follows
 // the rename. Multi-instance / named guards and the downstream "which subject" seam are
 // P2/P3 (#207); a single process resolves exactly one subject.
+//
+// SCOPE (P1b, #207): the subject table's CONTACT COLUMN is configurable too. Magic-link
+// login looks the subject up by, and reads, an email column; an app that renames the
+// subject table to `accounts` may well call that column `account_email`. Today only that
+// one column carries login behaviour, so only `emailColumn` is env-backed + threaded (into
+// schemas.js and composed-store.js). `nameColumn` / `idColumn` are RESERVED here for shape
+// stability — returned with their defaults so the column map is the single place to grow,
+// but not yet env-backed or threaded (the schema/store still hardcode `name` / `id`). When
+// a real consumer needs a renamed id/name column, env-back them here and thread them the
+// same way `emailColumn` is; nothing else has to learn a new shape.
 
 // Today's names. Frozen so a caller can't mutate the shared defaults.
 export const DEFAULT_SUBJECT = Object.freeze({
@@ -22,15 +32,23 @@ export const DEFAULT_SUBJECT = Object.freeze({
   users: 'users',
   sessions: 'sessions',
   loginTokens: 'login_tokens',
+  // Column names on the subject table. Only `emailColumn` is wired today (see scope note).
+  emailColumn: 'email',
+  nameColumn: 'name',
+  idColumn: 'id',
 })
 
 // Map each resolved field to its env var. `subject` is the human/label name; the three
-// table fields are the names threaded into the schema + store.
+// table fields are the names threaded into the schema + store; `emailColumn` is the
+// subject's contact column. `nameColumn` / `idColumn` are intentionally absent — they are
+// reserved (default/override only) until a consumer needs them, so we never ship an env var
+// that silently does nothing.
 const ENV_KEYS = {
   subject: 'VIKE_AUTH_SUBJECT',
   users: 'VIKE_AUTH_USERS_TABLE',
   sessions: 'VIKE_AUTH_SESSIONS_TABLE',
   loginTokens: 'VIKE_AUTH_LOGIN_TOKENS_TABLE',
+  emailColumn: 'VIKE_AUTH_EMAIL_COLUMN',
 }
 
 // Resolve the subject config. Precedence per field: explicit `overrides` (used by tests,
@@ -52,5 +70,8 @@ export function resolveSubject(overrides = {}, env = (typeof process !== 'undefi
     users: pick('users'),
     sessions: pick('sessions'),
     loginTokens: pick('loginTokens'),
+    emailColumn: pick('emailColumn'),
+    nameColumn: pick('nameColumn'),
+    idColumn: pick('idColumn'),
   }
 }

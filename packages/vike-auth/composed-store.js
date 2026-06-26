@@ -26,7 +26,7 @@ export function createStore() {
   // created, defaulting to `users` / `sessions` / `login_tokens`. Resolved here at
   // store-build time (instance.js builds the store once, after the app's env is in
   // place). The memory fallback is keyless, so the names only matter on the adapter path.
-  const { users: USERS, sessions: SESSIONS, loginTokens: LOGIN_TOKENS } = resolveSubject()
+  const { users: USERS, sessions: SESSIONS, loginTokens: LOGIN_TOKENS, emailColumn: EMAIL } = resolveSubject()
 
   // Run `viaAdapter(adapter)` when an adapter is registered, else `viaMemory()`.
   const dispatch = (viaMemory, viaAdapter) => {
@@ -35,33 +35,47 @@ export function createStore() {
   }
   const firstRow = async (adapter, table, filter) => (await adapter.find(table, filter))[0] ?? null
 
+  // The CONTAINMENT BOUNDARY for the configurable contact column. The adapter returns rows
+  // keyed by physical column names, so when `emailColumn` is renamed a row carries e.g.
+  // `account_email`, not `email`. Normalize it back to canonical `email` here, so the auth
+  // core, `resolveSessionUser`, and every downstream extension keep reading `user.email`
+  // and never learn the physical name. Default (`email`) is a pass-through, so the common
+  // path stays byte-for-byte unchanged and allocation-free.
+  const toUser = (row) => {
+    if (!row || EMAIL === 'email') return row
+    const { [EMAIL]: email, ...rest } = row
+    return { ...rest, email }
+  }
+
   return {
     async findUserByEmail(email) {
       return dispatch(
         () => memory.findUserByEmail(email),
-        (a) => firstRow(a, USERS, { email }),
+        async (a) => toUser(await firstRow(a, USERS, { [EMAIL]: email })),
       )
     },
     async findUserById(id) {
       return dispatch(
         () => memory.findUserById(id),
-        (a) => firstRow(a, USERS, { id }),
+        async (a) => toUser(await firstRow(a, USERS, { id })),
       )
     },
     async createUser({ email }) {
       return dispatch(
         () => memory.createUser({ email }),
-        (a) =>
-          a.insert(USERS, {
-            id: newId(),
-            email,
-            name: null,
-            password_hash: null,
-            email_verified: true, // identity confirmed by redeeming the magic link
-            active: true,
-            created_at: isoIn(0),
-            updated_at: isoIn(0),
-          }),
+        async (a) =>
+          toUser(
+            await a.insert(USERS, {
+              id: newId(),
+              [EMAIL]: email,
+              name: null,
+              password_hash: null,
+              email_verified: true, // identity confirmed by redeeming the magic link
+              active: true,
+              created_at: isoIn(0),
+              updated_at: isoIn(0),
+            }),
+          ),
       )
     },
 
