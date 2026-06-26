@@ -31,6 +31,17 @@ export function createSubscriptions({ db, segment = 'b2b' } = {}) {
       // new state. One extra read; the upsert itself is unchanged.
       const previous = await db.subscriptions.findOne({ [subjectColumn]: subjectId })
 
+      // Stripe does not guarantee event ordering and retries deliveries, so a delayed
+      // `active` event can arrive AFTER a `canceled` one. Applying it unconditionally would
+      // overwrite the newer state and re-grant paid access to a canceled subscriber. When
+      // the event carries `occurredAt` and we have a stored timestamp, drop a strictly older
+      // event. (No timestamp -> apply, so the existing single-stream upsert is unchanged.)
+      const incomingTs = event.occurredAt ? Date.parse(event.occurredAt) : NaN
+      const storedTs = previous?.updated_at ? Date.parse(previous.updated_at) : NaN
+      if (!Number.isNaN(incomingTs) && !Number.isNaN(storedTs) && incomingTs < storedTs) {
+        return { ok: true, subscription: previous, stale: true }
+      }
+
       const row = {
         [subjectColumn]: subjectId,
         plan: event.plan ?? 'free',

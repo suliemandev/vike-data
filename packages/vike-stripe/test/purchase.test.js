@@ -84,6 +84,63 @@ test('a charge without an intent id or subject is rejected, nothing written', as
   assert.equal((await db.payments.find()).length, 0)
 })
 
+test('a non-succeeded charge is ignored, no payments row (#234)', async () => {
+  const { payments, db } = makePayments()
+  // a failed status...
+  const failed = await payments.recordCharge({ subject: 'org1', status: 'failed', stripePaymentIntentId: 'pi_f' })
+  assert.deepEqual(failed, { ok: true, ignored: true })
+  // ...and a non-success event TYPE (what the real SDK routes through the one endpoint)
+  const wrongType = await payments.recordCharge({
+    subject: 'org1', type: 'payment_intent.payment_failed', stripePaymentIntentId: 'pi_t',
+  })
+  assert.deepEqual(wrongType, { ok: true, ignored: true })
+  assert.equal((await db.payments.find()).length, 0) // nothing recorded as a payment
+})
+
+test('the success event type is recorded (#234)', async () => {
+  const { payments, db } = makePayments()
+  const res = await payments.recordCharge({
+    subject: 'org1', type: 'payment_intent.succeeded', amount: 500, stripePaymentIntentId: 'pi_ok',
+  })
+  assert.equal(res.ok, true)
+  assert.equal((await db.payments.find()).length, 1)
+})
+
+test('paymentsFor returns only succeeded rows (#234)', async () => {
+  const { payments, db } = makePayments()
+  await payments.recordCharge({ subject: 'org1', amount: 100, stripePaymentIntentId: 'pi_1' })
+  // a stray failed row written directly (e.g. legacy data) must not count as a payment
+  await db.payments.insert({
+    organization_id: 'org1', amount: 200, currency: 'usd', status: 'failed',
+    description: null, stripe_payment_intent_id: 'pi_bad', paid_at: '2026-01-01T00:00:00.000Z',
+  })
+  const list = await payments.paymentsFor('org1')
+  assert.equal(list.length, 1)
+  assert.equal(list[0].stripe_payment_intent_id, 'pi_1')
+})
+
+test('a concurrent duplicate insert is caught and returns the existing row idempotently (#234)', async () => {
+  // A db stub whose findOne misses (the race: both deliveries saw null) but whose insert
+  // rejects on the unique constraint, then findOne returns the row the winner inserted.
+  const winner = { id: 'p1', stripe_payment_intent_id: 'pi_race', status: 'succeeded' }
+  let inserted = false
+  const db = {
+    payments: {
+      async findOne() {
+        return inserted ? winner : null
+      },
+      async insert() {
+        inserted = true // the other delivery committed first
+        throw new Error('UNIQUE constraint failed: payments.stripe_payment_intent_id')
+      },
+    },
+  }
+  const { createPayments } = await import('../purchase/payment.js')
+  const payments = createPayments({ db, segment: 'b2b' })
+  const res = await payments.recordCharge({ subject: 'org1', amount: 1, stripePaymentIntentId: 'pi_race' })
+  assert.deepEqual(res, { ok: true, payment: winner, idempotent: true })
+})
+
 // -------------------------------------------------------------------- webhook
 const SECRET = 'whsec_test_purchase'
 const provider = createStripe({ webhookSecret: SECRET })

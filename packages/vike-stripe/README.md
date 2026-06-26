@@ -58,12 +58,19 @@ is unchanged either way — that round trip is proven on Postgres (PGlite) in
 `test/drizzle-integration.test.js`.
 
 - **subscription** is the canonical **upsert**: the same subject emits repeated
-  events (`created → renewed → canceled`), each converging the one row.
+  events (`created → renewed → canceled`), each converging the one row. Stripe does
+  not guarantee ordering and retries deliveries, so an event carrying `occurredAt`
+  older than the stored row is **dropped as stale** — a delayed `active` event can't
+  overwrite a newer `canceled` one and re-grant access.
 - **purchase** is the narrowest **insert**: a charge is immutable, so there is
-  nothing to upsert; idempotency is a `findOne` on the Stripe payment-intent id before
-  the insert.
+  nothing to upsert. Only a **succeeded** charge is recorded (a `payment_intent.payment_failed`
+  / refunded / pending event is ignored with a 200, never a `payments` row), and
+  `paymentsFor` returns only succeeded rows. Idempotency is keyed on the unique Stripe
+  payment-intent id: a `findOne` fast-path plus a caught unique-violation on insert, so a
+  concurrent duplicate delivery returns the existing row instead of a 500.
 
-No transactions yet (each write is a single atomic statement).
+No transactions yet (each write is a single atomic statement; idempotency leans on the
+`stripe_payment_intent_id` unique constraint).
 
 > The webhook verifies the `stripe-signature` header over the raw body (a shared
 > `constructEvent` in `stripe.js`, the single place a signature gates a write) before
