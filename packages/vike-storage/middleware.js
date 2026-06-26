@@ -12,7 +12,7 @@
 // the cumulative `middleware` config from +config.js.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { resolveSessionUser } from 'vike-auth/server'
-import { storeUpload, readUpload, deleteUpload } from './index.js'
+import { storeUpload, readUpload, deleteUpload, getMaxUploadBytes } from './index.js'
 
 const json = (status, obj) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
@@ -52,6 +52,12 @@ export function createStorageMiddleware() {
     if (request.method === 'POST' && rest === '') {
       const user = await resolveSessionUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
+      // Reject an over-size upload. Content-Length is the cheap pre-check that rejects an
+      // honest multi-GB body BEFORE it is buffered into memory; we re-check the parsed file
+      // size below for a request that sent no/an understated Content-Length.
+      const max = getMaxUploadBytes()
+      const declared = Number(request.headers.get('content-length'))
+      if (Number.isFinite(declared) && declared > max) return json(413, { error: 'upload-too-large', max })
       let form
       try {
         form = await request.formData()
@@ -60,6 +66,7 @@ export function createStorageMiddleware() {
       }
       const file = form.get('file')
       if (!file || typeof file.arrayBuffer !== 'function') return json(400, { error: 'no-file' })
+      if (typeof file.size === 'number' && file.size > max) return json(413, { error: 'upload-too-large', max })
       const bytes = new Uint8Array(await file.arrayBuffer())
       const saved = await storeUpload(user.id, { filename: file.name, mime: file.type, bytes })
       return json(200, { ok: true, ...saved })
