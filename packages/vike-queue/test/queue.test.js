@@ -274,3 +274,118 @@ test('database driver: a failing job reschedules, then fails at max_attempts', a
   assert.equal(row.attempts, 2)
   assert.ok(row.failed_at)
 })
+
+// --- atomic claim + zombie reclaim (#237) ------------------------------------
+
+test('database driver: two concurrent work() drains never run a job twice (atomic claim)', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  setQueueDriver(createDatabaseDriver())
+
+  let runs = 0
+  // The handler awaits a tick, so both drains have read the row as pending before either
+  // resolves — exactly the race that duplicate execution needs.
+  registerJob('once', async () => { await Promise.resolve(); runs++ })
+  await dispatch('once', null)
+
+  const [a, b] = await Promise.all([getQueueDriver().work(), getQueueDriver().work()])
+  assert.equal(runs, 1) // ran exactly once despite two overlapping drains
+  // exactly one drain claimed + processed it; the other saw no claimable row
+  assert.equal(a.processed + b.processed, 1)
+  assert.equal(a.done + b.done, 1)
+  assert.equal((await adapter.find('jobs', { status: 'done' })).length, 1)
+})
+
+test('database driver: a job is running while in flight, then done', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  setQueueDriver(createDatabaseDriver())
+
+  let statusDuringRun = null
+  registerJob('inflight', async () => {
+    statusDuringRun = (await adapter.find('jobs', {}))[0].status
+  })
+  await dispatch('inflight', null)
+  await getQueueDriver().work()
+
+  assert.equal(statusDuringRun, 'running') // claimed before the handler ran
+  assert.equal((await adapter.find('jobs', {}))[0].status, 'done')
+})
+
+test('database driver: a stale running row (crashed worker) is reclaimed and retried', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  let clock = Date.parse('2026-01-01T00:00:00.000Z')
+  const driver = createDatabaseDriver({
+    now: () => new Date(clock).toISOString(),
+    visibilityTimeoutMs: 1000,
+  })
+  setQueueDriver(driver)
+
+  let ran = false
+  registerJob('recover', async () => { ran = true })
+
+  // a row left 'running' by a crashed worker an hour ago, attempts still under max
+  await adapter.insert('jobs', {
+    id: 'j-zombie', name: 'recover', payload: 'null', status: 'running',
+    attempts: 0, max_attempts: 2, run_at: '2026-01-01T00:00:00.000Z',
+    created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+  })
+
+  clock += 5000 // past the 1s visibility window
+  const s = await driver.work()
+  assert.equal(ran, true) // reclaimed -> pending -> claimed -> run
+  assert.equal(s.done, 1)
+  assert.equal((await adapter.find('jobs', { id: 'j-zombie' }))[0].status, 'done')
+})
+
+test('database driver: a fresh running row is NOT reclaimed (within the visibility window)', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  const ts = '2026-01-01T00:00:00.000Z'
+  const driver = createDatabaseDriver({ now: () => ts, visibilityTimeoutMs: 60000 })
+  setQueueDriver(driver)
+
+  let ran = false
+  registerJob('busy', async () => { ran = true })
+  await adapter.insert('jobs', {
+    id: 'j-busy', name: 'busy', payload: 'null', status: 'running',
+    attempts: 1, max_attempts: 3, run_at: ts, created_at: ts, updated_at: ts, // just claimed
+  })
+
+  const s = await driver.work()
+  assert.equal(ran, false) // still owned by its worker
+  assert.deepEqual(s, { processed: 0, done: 0, failed: 0, rescheduled: 0 })
+  assert.equal((await adapter.find('jobs', { id: 'j-busy' }))[0].status, 'running')
+})
+
+test('database driver: a reclaimed job that exhausted its attempts is failed, not rerun', async () => {
+  reset()
+  const adapter = createMemoryAdapter()
+  setAdapter(adapter)
+  let clock = Date.parse('2026-01-01T00:00:00.000Z')
+  const driver = createDatabaseDriver({
+    now: () => new Date(clock).toISOString(),
+    visibilityTimeoutMs: 1000,
+  })
+  setQueueDriver(driver)
+
+  let runs = 0
+  registerJob('poison', async () => { runs++ })
+  // crashed on its only allowed attempt (attempts already == max_attempts)
+  await adapter.insert('jobs', {
+    id: 'j-poison', name: 'poison', payload: 'null', status: 'running',
+    attempts: 1, max_attempts: 1, run_at: '2026-01-01T00:00:00.000Z',
+    created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+  })
+
+  clock += 5000
+  const s = await driver.work()
+  assert.equal(runs, 0) // not run again
+  assert.deepEqual(s, { processed: 1, done: 0, failed: 1, rescheduled: 0 })
+  assert.equal((await adapter.find('jobs', { id: 'j-poison' }))[0].status, 'failed')
+})
