@@ -59,6 +59,11 @@ export default {
 
   defaultRoles: ['member'],
 
+  // rbac + Telefunc seam (#110/#128): one universal middleware serves guarded RPCs in dev
+  // AND prod. The seam relocates telefunc's endpoint off `/_telefunc` so telefunc's own
+  // context-less dev middleware never intercepts it; pages/+client.js points the browser
+  // telefunc client at the relocated endpoint, `middleware` owns it server-side. See
+  // pages/rpc-demo.
   middleware: ['import:vike-rbac/telefunc-middleware:default'],
 
   layout: 'topbar',

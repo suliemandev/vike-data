@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
-import { provideTelefuncContext } from 'telefunc'
+import { provideTelefuncContext, telefuncConfig } from 'telefunc'
 import { resolveAccess } from '../resolve.js'
 import { seedRbac, assignRoles } from '../seed.js'
 import { definePermissions } from '../index.js'
@@ -25,6 +25,7 @@ import {
   hasRole,
 } from '../telefunc.js'
 import telefuncMiddleware from '../telefunc-middleware.js'
+import { TELEFUNC_URL } from '../telefunc-url.js'
 
 const DB_KEY = Symbol.for('vike-rbac.db')
 const REGISTRY = definePermissions([
@@ -135,8 +136,16 @@ test('re-exported can/hasRole are the same pure predicates (branch, not abort)',
 
 // --- the context-provider middleware ------------------------------------------
 
+test('importing the middleware points telefunc SERVER at the relocated endpoint (#128)', () => {
+  // The single-transport design relocates telefunc's endpoint off the default `/_telefunc`
+  // so telefunc's own dev middleware never intercepts the RPC. telefunc() asserts the request
+  // pathname === config.telefuncUrl, so the middleware must set it on import.
+  assert.equal(telefuncConfig.telefuncUrl, TELEFUNC_URL)
+  assert.notEqual(TELEFUNC_URL, '/_telefunc') // it really is relocated (the whole point)
+})
+
 test('the telefunc middleware falls through on a non-RPC request', async () => {
-  // Only /_telefunc is handled; everything else returns nothing so Vike renders it.
+  // Only the relocated RPC endpoint is handled; everything else returns nothing so Vike renders it.
   const res = await telefuncMiddleware(new Request('http://localhost/admin/users'))
   assert.equal(res, undefined)
 })

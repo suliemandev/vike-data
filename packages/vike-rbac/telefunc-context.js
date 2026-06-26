@@ -1,9 +1,8 @@
 // The heart of the Telefunc seam (#110): resolve the Telefunc context's `user`
 // from a request — the SAME user a page render sees, so the SAME can()/hasRole()
 // guards both. Transport-agnostic: it takes a Web `Request` and returns the user,
-// with NO telefunc import, so it is reused by both wirings below:
-//   - telefunc-plugin.js   — the dev Vite plugin (serves /_telefunc itself)
-//   - telefunc-middleware.js — the production universal middleware
+// with NO telefunc import, so the single universal middleware that owns the RPC
+// endpoint in dev and prod (telefunc-middleware.js, #128) reuses it.
 //
 // vike-auth/server re-reads the session cookie the same way onCreatePageContext
 // does; vike-rbac's resolveAccessForUser enriches it with the user's global roles +
