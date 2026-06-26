@@ -54,6 +54,35 @@ test('extends auth users with a nullable SET NULL FK back to organizations (the 
   assert.equal(col.onDelete, 'set null')
 })
 
+test('follows a renamed auth subject (VIKE_AUTH_USERS_TABLE) in every FK into it', async () => {
+  // The static `teamsConfig` import above was evaluated with the default env, so
+  // re-evaluate +config.js with the subject renamed. A query string makes Node ESM
+  // treat it as a distinct module and re-run the resolveSubject() call at its top.
+  const prev = process.env.VIKE_AUTH_USERS_TABLE
+  process.env.VIKE_AUTH_USERS_TABLE = 'accounts'
+  try {
+    const { default: renamed } = await import('../+config.js?subject=accounts')
+    const frag = (table, mode = 'create') =>
+      renamed.schemas.find((s) => s.table === table && s.mode === mode)
+    const col = (f, name) => f.columns.find((c) => c.name === name)
+
+    // organizations.owner_id and memberships.user_id now target the renamed table...
+    assert.deepEqual(col(frag('organizations'), 'owner_id').references, { table: 'accounts', column: 'id' })
+    assert.deepEqual(col(frag('memberships'), 'user_id').references, { table: 'accounts', column: 'id' })
+    // ...and the cross-extension extend lands on the renamed table, not 'users'.
+    assert.ok(frag('accounts', 'extend'), 'extendSchema target should follow the rename')
+    assert.equal(frag('users', 'extend'), undefined, 'no extend against the old literal name')
+
+    // And it still merges cleanly onto a renamed auth schema (the factory follows the same env).
+    const { tables, conflicts } = mergeSchemas([...authSchemas(), ...renamed.schemas])
+    assert.deepEqual(conflicts, [])
+    assert.ok(tables.some((t) => t.table === 'accounts'), 'merged tables include the renamed subject')
+  } finally {
+    if (prev === undefined) delete process.env.VIKE_AUTH_USERS_TABLE
+    else process.env.VIKE_AUTH_USERS_TABLE = prev
+  }
+})
+
 test('composition proof: teams merges onto auth with zero conflicts (the Stem Vision)', () => {
   const { tables, conflicts } = mergeSchemas([...authSchemas(), ...teamsConfig.schemas])
   assert.deepEqual(conflicts, [])
