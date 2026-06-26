@@ -138,9 +138,22 @@ An app that declares no guards is byte-for-byte the single-subject default (`/lo
 `/auth/*`, `vike_auth_session`, `pageContext.user`). See the worked
 [`examples/two-audience`](../../examples/two-audience) app for the full wiring.
 
-> Downstream extensions (teams/push/billing) still bind to the default `users` subject
-> today; pointing them at a non-default guard is a later phase (the "which subject" seam,
-> see the epic).
+#### One model, two on-ramps
+
+Internally the default subject is itself a guard — the **default guard** — built through the
+same descriptor shape as a named one, just with the bare `vike_auth_session` cookie, the
+`/auth` base, and `default: true`. There is one notion of "an audience"; the two surfaces
+are only how you *configure* one:
+
+- **default audience** → env (or nothing): `VIKE_AUTH_SUBJECT_TABLE=...`, zero code.
+- **additional audiences** → `defineGuard('admin', { table })`.
+
+`getAllGuards()` enumerates every audience (default first, then the named ones) as uniform
+descriptors, and `getGuard('default')` resolves the default like any other — the seam the
+downstream "which subject" work (teams/push/billing) will bind through.
+
+> Those downstream extensions still bind to the default `users` subject today; pointing them
+> at a non-default guard is a later phase (the "which subject" seam, see the epic).
 
 ## Server tier
 

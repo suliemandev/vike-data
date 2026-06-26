@@ -1,21 +1,14 @@
-// The default auth instance the Vike binding wires up: an in-memory store + the
-// auth core. Both the middleware and the onCreatePageContext hook import THIS
-// module so they share one store within a process.
+// The default auth instance the Vike binding wires up. It is now the instance of the
+// DEFAULT GUARD (guards.js, #276): the primary, env-configured subject expressed through the
+// same descriptor shape as a named guard. This module stays as a thin, back-compat alias so
+// the default middleware (vike-middleware.js), the render hook (oncreate.js) and the
+// server-tier seam (server.js) keep importing one shared `auth` — they need not know it now
+// comes from the unified guard registry.
 //
-// It is cached on globalThis so duplicate module evaluation (different pointer
-// imports, dev HMR) can't fork the store into two — every code path sees the
-// same sessions and login tokens.
-import { createAuth } from './auth.js'
-import { createStore } from './composed-store.js'
+// The globalThis caching that used to live here moved into getDefaultGuard(), so duplicate
+// module evaluation (different pointer imports, dev HMR) still can't fork the default store
+// — every code path resolves the same default instance.
+import { getDefaultGuard } from './guards.js'
 
-const KEY = Symbol.for('vike-auth.instance')
-
-if (!globalThis[KEY]) {
-  // The default store persists through the app's universal-orm adapter when one is
-  // registered (so auth shares the users/sessions tables with the rest of the app),
-  // and falls back to in-memory when none is — see composed-store.js.
-  globalThis[KEY] = createAuth({ store: createStore() })
-}
-
-/** @type {ReturnType<typeof createAuth>} */
-export const auth = globalThis[KEY]
+/** @type {ReturnType<typeof import('./auth.js').createAuth>} */
+export const auth = getDefaultGuard().instance
