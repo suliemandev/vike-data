@@ -12,6 +12,7 @@ import { redirect } from 'vike/abort'
 import { isInCondition } from '@universal-orm/core'
 import { readFormRequest } from './request.js'
 import { parseListQuery, QueryError } from './query.js'
+import { projectRow } from './project.js'
 import {
   resolveAdminTables,
   getResources,
@@ -210,6 +211,7 @@ export async function listData(pageContext) {
   if (!schemaTable) throw redirect('/admin')
 
   const columns = viewColumns(resource, schemaTable)
+  const pk = primaryKeyOf(schemaTable)
   const db = buildDb(tables)
 
   const search = pageContext.urlParsed?.search ?? {}
@@ -269,9 +271,13 @@ export async function listData(pageContext) {
     table,
     label: resourceLabel(resource),
     columns,
-    rows,
+    // Project to the visible columns (+pk) BEFORE returning: vike-react serializes this
+    // straight into the client payload, so a raw row would ship every hidden column (a
+    // password_hash, an unlisted secret) to the browser — the same leak the JSON API's
+    // projectRow guards against (#228). The list only renders these columns and `row[pk]`.
+    rows: rows.map((row) => projectRow(row, { columns, pk })),
     fkLabels, // { column -> { value -> title } } so FK cells show the referenced row's title
-    pk: primaryKeyOf(schemaTable), // the row identity the Edit links key on
+    pk, // the row identity the Edit links key on
     canEdit: canEdit(resource, pageContext.user),
     // paging + sort state for the list UI
     page,
@@ -391,5 +397,8 @@ export async function editData(pageContext) {
   if (!values) throw redirect(`/admin/${table}`) // deleted, never existed, or not the user's
 
   const withOptions = await loadFkOptions(fields, { db, config: pageContext.config, tables, user: pageContext.user })
-  return { table, label: resourceLabel(resource), fields: withOptions, values, id, pk }
+  // Project to the form fields (+pk) before returning, for the same reason as the list: the
+  // raw row is serialized into the client payload and would otherwise leak hidden columns
+  // (#228). The edit form only pre-fills `values[field.name]`.
+  return { table, label: resourceLabel(resource), fields: withOptions, values: projectRow(values, { columns: fields, pk }), id, pk }
 }
