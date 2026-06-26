@@ -12,6 +12,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@vike-data/kit": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*"
   }

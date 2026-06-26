@@ -26,6 +26,8 @@
 // a real consumer needs a renamed id/name column, env-back them here and thread them the
 // same way `emailColumn` is; nothing else has to learn a new shape.
 
+import { createSubjectResolver } from '@vike-data/kit'
+
 // Today's names. Frozen so a caller can't mutate the shared defaults.
 export const DEFAULT_SUBJECT = Object.freeze({
   subject: 'User',
@@ -57,21 +59,7 @@ const ENV_KEYS = {
 //
 // A blank/whitespace-only env value is treated as unset (falls through to the default),
 // so an empty `VIKE_AUTH_USERS_TABLE=` in a .env never produces a nameless table.
-export function resolveSubject(overrides = {}, env = (typeof process !== 'undefined' ? process.env : {})) {
-  const pick = (field) => {
-    const override = overrides[field]
-    if (override != null && String(override).trim() !== '') return String(override).trim()
-    const fromEnv = env[ENV_KEYS[field]]
-    if (fromEnv != null && String(fromEnv).trim() !== '') return String(fromEnv).trim()
-    return DEFAULT_SUBJECT[field]
-  }
-  return {
-    subject: pick('subject'),
-    users: pick('users'),
-    sessions: pick('sessions'),
-    loginTokens: pick('loginTokens'),
-    emailColumn: pick('emailColumn'),
-    nameColumn: pick('nameColumn'),
-    idColumn: pick('idColumn'),
-  }
-}
+// `nameColumn` / `idColumn` have no ENV_KEYS entry, so they resolve from override/default
+// only (reserved; see scope note). The precedence + blank-guard mechanism is shared via
+// kit's `createSubjectResolver`, so vike-teams' twin resolver can't drift from it.
+export const resolveSubject = createSubjectResolver(DEFAULT_SUBJECT, ENV_KEYS)

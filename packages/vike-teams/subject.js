@@ -19,6 +19,8 @@
 // shipping an env var that silently does nothing. Cross-extension FKs INTO auth's
 // subject still follow the auth rename via `vike-auth/subject` (#256), unchanged.
 
+import { createSubjectResolver } from '@vike-data/kit'
+
 // Today's names. Frozen so a caller can't mutate the shared defaults.
 export const DEFAULT_TEAM_SUBJECT = Object.freeze({
   team: 'Organization',
@@ -42,25 +44,10 @@ const ENV_KEYS = {
 }
 
 // Resolve the team subject config. Precedence per field: explicit `overrides` (used by
-// tests, which call this directly) > env > default. `env` is injected for testability
-// and defaults to `process.env`. A blank/whitespace-only env value is treated as unset
-// (falls through to the default), so an empty `VIKE_TEAMS_ORGANIZATIONS_TABLE=` in a
-// .env never produces a nameless table.
-export function resolveTeamSubject(overrides = {}, env = (typeof process !== 'undefined' ? process.env : {})) {
-  const pick = (field) => {
-    const override = overrides[field]
-    if (override != null && String(override).trim() !== '') return String(override).trim()
-    const fromEnv = env[ENV_KEYS[field]]
-    if (fromEnv != null && String(fromEnv).trim() !== '') return String(fromEnv).trim()
-    return DEFAULT_TEAM_SUBJECT[field]
-  }
-  return {
-    team: pick('team'),
-    organizations: pick('organizations'),
-    memberships: pick('memberships'),
-    slugColumn: pick('slugColumn'),
-    roleColumn: pick('roleColumn'),
-    nameColumn: pick('nameColumn'),
-    idColumn: pick('idColumn'),
-  }
-}
+// tests, which call this directly) > env > default. `env` defaults to `process.env`. A
+// blank/whitespace-only env value is treated as unset (falls through to the default), so
+// an empty `VIKE_TEAMS_ORGANIZATIONS_TABLE=` in a .env never produces a nameless table.
+// The column fields have no ENV_KEYS entry, so they resolve from override/default only
+// (reserved; see scope note). The precedence + blank-guard mechanism is shared via kit's
+// `createSubjectResolver`, the same one vike-auth's resolver uses.
+export const resolveTeamSubject = createSubjectResolver(DEFAULT_TEAM_SUBJECT, ENV_KEYS)
