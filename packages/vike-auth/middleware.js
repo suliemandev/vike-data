@@ -74,6 +74,15 @@ export function createAuthMiddleware(auth, { dev = false, secure = true } = {}) 
       if (!result.ok) {
         return html(400, `<p>Could not send a link: <code>${esc(result.error)}</code>.</p><p><a href="/">Back</a></p>`)
       }
+      // Rate-limited (cooldown / too many live links for this email): no token was
+      // issued and no mail is sent, but we return the SAME neutral notice as success
+      // so a throttle never reveals itself or whether the address exists.
+      if (result.throttled) {
+        const note = dev
+          ? `<p>Dev mode: issuance is rate-limited for this email right now, so no new link was sent.</p>`
+          : `<p>If that address has an account, a sign-in link is on its way.</p>`
+        return html(200, `<h2>Check your inbox</h2>${note}<p><a href="/">Back</a></p>`)
+      }
       // Carry the intended destination (where a guard bounced the user from) through
       // the magic link, so the callback can return them there. Validated to a local
       // path so the link can never become an open redirect.

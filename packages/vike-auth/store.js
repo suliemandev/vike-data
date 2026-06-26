@@ -21,6 +21,8 @@
 // login tokens (pending magic links)
 //   createLoginToken({ email, token, expiresAt }) -> loginToken
 //   findLoginToken(token)             -> loginToken | null
+//   findLoginTokensByEmail(email)     -> loginToken[]        (for the issuance cooldown/cap + purge)
+//   deleteLoginToken(token)           -> void                (delete-on-consume + purge of stale rows)
 //   consumeLoginToken(token)          -> loginToken | null   (marks consumed_at, single-use)
 
 import { newId, isoIn } from './tokens.js'
@@ -88,6 +90,12 @@ export function createMemoryStore() {
     },
     async findLoginToken(token) {
       return loginTokens.get(token) ?? null
+    },
+    async findLoginTokensByEmail(email) {
+      return [...loginTokens.values()].filter((r) => r.email === email)
+    },
+    async deleteLoginToken(token) {
+      loginTokens.delete(token)
     },
     async consumeLoginToken(token) {
       const row = loginTokens.get(token)

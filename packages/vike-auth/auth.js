@@ -15,7 +15,12 @@
 // the session exercises the schema this extension already owns and makes logout
 // mean something. See the README design note.
 
-import { MAGIC_LINK_TTL_MS, SESSION_TTL_MS } from './constants.js'
+import {
+  MAGIC_LINK_TTL_MS,
+  SESSION_TTL_MS,
+  MAGIC_LINK_COOLDOWN_MS,
+  MAX_ACTIVE_MAGIC_LINKS,
+} from './constants.js'
 import { newToken, isoIn, isExpired } from './tokens.js'
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
@@ -24,6 +29,8 @@ export function createAuth({
   store,
   magicLinkTtlMs = MAGIC_LINK_TTL_MS,
   sessionTtlMs = SESSION_TTL_MS,
+  magicLinkCooldownMs = MAGIC_LINK_COOLDOWN_MS,
+  maxActiveMagicLinks = MAX_ACTIVE_MAGIC_LINKS,
 } = {}) {
   if (!store) throw new Error('[vike-auth] createAuth requires a { store }')
 
@@ -33,11 +40,41 @@ export function createAuth({
     // Issue a magic link for an email. We do NOT create the user yet — identity
     // is only confirmed once the link is followed (so a typo'd email never mints
     // an account). Returns the opaque token; the caller builds + delivers the URL.
+    //
+    // Issuance is rate-limited per EMAIL to stop an attacker email-bombing a victim
+    // and flooding `login_tokens`: links to one address are spaced by a cooldown and
+    // capped at a small number of concurrently-live links. The limit state is the
+    // `login_tokens` rows themselves (durable, so it holds across instances). A
+    // throttled request returns `{ ok: true, throttled: true }` with NO token — the
+    // caller shows the same neutral notice it shows on success, so a throttle is not
+    // an existence/timing oracle (the store is read on every path either way). Per-IP
+    // / global throttling for a cross-email flood belongs at the edge (a WAF or shared
+    // limiter), where rate-limit state is correct under horizontal scaling.
     async requestMagicLink(rawEmail) {
       const email = normalizeEmail(rawEmail)
       if (!email || !email.includes('@')) {
         return { ok: false, error: 'invalid-email' }
       }
+
+      // Read this email's pending links, purging consumed/expired rows as we go (so
+      // stale tokens never accumulate) and collecting the still-live ones.
+      const now = Date.now()
+      const existing = await store.findLoginTokensByEmail(email)
+      const active = []
+      for (const row of existing) {
+        if (row.consumed_at || isExpired(row.expires_at, now)) {
+          await store.deleteLoginToken(row.token)
+        } else {
+          active.push(row)
+        }
+      }
+
+      // Cooldown: a link was just issued for this email. Cap: too many live at once.
+      const onCooldown = active.some((r) => now - new Date(r.created_at).getTime() < magicLinkCooldownMs)
+      if (onCooldown || active.length >= maxActiveMagicLinks) {
+        return { ok: true, email, throttled: true }
+      }
+
       const token = newToken()
       await store.createLoginToken({ email, token, expiresAt: isoIn(magicLinkTtlMs) })
       return { ok: true, email, token }
@@ -53,6 +90,9 @@ export function createAuth({
 
       const consumed = await store.consumeLoginToken(token)
       if (!consumed) return { ok: false, error: 'used-token' } // lost a race
+      // Single-use is already enforced by the atomic consume above; the row is now
+      // spent, so delete it (delete-on-consume) rather than leave a dead row behind.
+      await store.deleteLoginToken(token)
 
       let user = await store.findUserByEmail(pending.email)
       if (!user) user = await store.createUser({ email: pending.email })

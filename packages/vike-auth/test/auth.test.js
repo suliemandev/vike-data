@@ -44,6 +44,7 @@ test('redeemMagicLink() refuses to open a session for a deactivated user', async
     async consumeLoginToken() {
       return { token: 'lt', consumed_at: '2026-01-01T00:00:00.000Z' }
     },
+    async deleteLoginToken() {},
     async findUserByEmail() {
       return { id: 'u1', email: 'banned@example.com', active: false }
     },
@@ -99,7 +100,56 @@ test('redeemMagicLink is single-use: a second redeem is rejected', async () => {
   const auth = mkAuth()
   const { token } = await auth.requestMagicLink('alice@example.com')
   await auth.redeemMagicLink(token)
-  assert.deepEqual(await auth.redeemMagicLink(token), { ok: false, error: 'used-token' })
+  // delete-on-consume removes the spent row, so a replay finds nothing at all
+  // (invalid-token) rather than a row marked consumed (used-token) - both reject.
+  assert.deepEqual(await auth.redeemMagicLink(token), { ok: false, error: 'invalid-token' })
+})
+
+test('redeemMagicLink deletes the spent login token (delete-on-consume)', async () => {
+  const store = createMemoryStore()
+  const auth = createAuth({ store })
+  const { token } = await auth.requestMagicLink('alice@example.com')
+  await auth.redeemMagicLink(token)
+  assert.equal(await store.findLoginToken(token), null)
+  assert.deepEqual(await store.findLoginTokensByEmail('alice@example.com'), [])
+})
+
+// ----------------------------------------------- issuance rate limiting -------
+
+test('requestMagicLink cooldown throttles a rapid second link for the same email', async () => {
+  const auth = mkAuth() // default 60s cooldown
+  const first = await auth.requestMagicLink('victim@example.com')
+  assert.equal(first.ok, true)
+  assert.ok(first.token, 'first request issues a token')
+
+  const second = await auth.requestMagicLink('victim@example.com')
+  // neutral success shape, but no token issued and no new row written
+  assert.deepEqual(second, { ok: true, email: 'victim@example.com', throttled: true })
+
+  // a different address is unaffected by the victim's cooldown
+  const other = await auth.requestMagicLink('someone-else@example.com')
+  assert.ok(other.token && !other.throttled)
+})
+
+test('requestMagicLink caps the number of concurrently-live links per email', async () => {
+  const store = createMemoryStore()
+  const auth = createAuth({ store, magicLinkCooldownMs: 0, maxActiveMagicLinks: 2 })
+  const a = await auth.requestMagicLink('cap@example.com')
+  const b = await auth.requestMagicLink('cap@example.com')
+  const c = await auth.requestMagicLink('cap@example.com')
+  assert.ok(a.token && b.token, 'first two are issued')
+  assert.equal(c.throttled, true)
+  assert.equal((await store.findLoginTokensByEmail('cap@example.com')).length, 2)
+})
+
+test('requestMagicLink purges consumed/expired rows so login_tokens cannot flood', async () => {
+  // magicLinkTtlMs: -1 mints an already-expired token on each issue, so no link is
+  // ever "live" - every request purges the previous expired row before issuing.
+  const store = createMemoryStore()
+  const auth = createAuth({ store, magicLinkCooldownMs: 0, magicLinkTtlMs: -1 })
+  for (let i = 0; i < 5; i++) await auth.requestMagicLink('flood@example.com')
+  // never more than the one row each call left behind, not five accumulated
+  assert.equal((await store.findLoginTokensByEmail('flood@example.com')).length, 1)
 })
 
 test('redeemMagicLink rejects an expired token', async () => {
