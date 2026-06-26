@@ -41,6 +41,8 @@ const { id, key, url } = await storeUpload(user.id, { filename, mime, bytes })
 
 `POST`/`DELETE` are bound to the signed-in user (vike-auth session), so a client can only upload as itself and delete only its own files. `DELETE` is scoped to the owner, so guessing another user's id deletes nothing.
 
+The stored mime is browser-supplied, so `GET` never trusts it to render arbitrary content from your origin: it sends `X-Content-Type-Options: nosniff` always, serves a small allowlist of inert image types (`png`, `jpeg`, `gif`, `webp`, `avif`) `inline`, and forces everything else (including `text/html` and script-capable `image/svg+xml`) to `application/octet-stream` with `Content-Disposition: attachment` so the browser downloads instead of executing it. For untrusted uploads, prefer serving from a separate origin/CDN as defense in depth.
+
 ## Upload controls
 
 Framework-agnostic helpers (`vike-storage/client`): `uploadFile(file)` and `deleteUpload(id)`. Thin React and Vue controls wrap them:
