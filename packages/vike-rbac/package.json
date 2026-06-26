@@ -13,7 +13,8 @@
     "./telefunc": "./telefunc.js",
     "./telefunc-context": "./telefunc-context.js",
     "./telefunc-middleware": "./telefunc-middleware.js",
-    "./telefunc-plugin": "./telefunc-plugin.js"
+    "./telefunc-client": "./telefunc-client.js",
+    "./telefunc-url": "./telefunc-url.js"
   },
   "scripts": {
     "test": "node --test"

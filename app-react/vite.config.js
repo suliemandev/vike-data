@@ -1,6 +1,5 @@
 import vike from 'vike/plugin'
 import vikeI18n from 'vike-i18n/plugin'
-import vikeRbacTelefunc from 'vike-rbac/telefunc-plugin'
 import telefunc from 'telefunc/vite'
 import { loadEnv } from 'vite'
 
@@ -17,11 +16,12 @@ export default ({ mode }) => {
     // locales (#79). It must come after vike() so getVikeConfig() sees a resolved
     // config.
     // telefunc() transforms the app's *.telefunc.js files (server functions called from
-    // the browser). vikeRbacTelefunc() MUST come BEFORE telefunc(): it serves /_telefunc
-    // with the signed-in, role-enriched user on the Telefunc context (so requirePermission()
-    // runs the same can() as the admin's canView, #110), ahead of telefunc's own dev
-    // middleware which would otherwise handle the RPC with no context.
-    plugins: [vike(), vikeI18n(), vikeRbacTelefunc(), telefunc()],
+    // the browser). vike-rbac's Telefunc seam (#110) puts the signed-in, role-enriched user
+    // on the RPC context through ONE universal middleware for dev AND prod — wired in
+    // pages/+config.js (`middleware` + `client`), not here. It relocates telefunc's endpoint
+    // off the default `/_telefunc` so telefunc's own context-less dev middleware never
+    // intercepts the RPC (#128) — no dev-only Vite plugin needed.
+    plugins: [vike(), vikeI18n(), telefunc()],
     // vike-react renders with the automatic JSX runtime (imports react/jsx-runtime),
     // so no `import React` is needed in components. Applies to app + workspace .jsx.
     esbuild: { jsx: 'automatic' },

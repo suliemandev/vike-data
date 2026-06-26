@@ -1,7 +1,6 @@
 import vike from 'vike/plugin'
 import vue from '@vitejs/plugin-vue'
 import vikeI18n from 'vike-i18n/plugin'
-import vikeRbacTelefunc from 'vike-rbac/telefunc-plugin'
 import telefunc from 'telefunc/vite'
 import { loadEnv } from 'vite'
 
@@ -13,7 +12,9 @@ export default ({ mode }) => {
   // in production too. Unset = the demo's dev console/outbox transports, unchanged.
   Object.assign(process.env, loadEnv(mode, process.cwd(), ['RESEND_', 'VAPID_']))
   return {
-    plugins: [vike(), vue(), vikeI18n(), vikeRbacTelefunc(), telefunc()],
+    // vike-rbac's Telefunc seam (#110/#128) is wired in pages/+config.js (`middleware` +
+    // `client`), one universal middleware for dev AND prod; no dev-only Vite plugin.
+    plugins: [vike(), vue(), vikeI18n(), telefunc()],
     optimizeDeps: {
       exclude: ['vike-admin', 'vike-auth', 'vike-themes', 'vike-layouts', 'vike-toolbar', 'vike-i18n', 'vike-theme-emerald', 'vike-push'],
     },

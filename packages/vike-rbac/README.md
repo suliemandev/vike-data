@@ -36,6 +36,35 @@ import { can, hasRole } from 'vike-rbac'
 if (!can(pageContext.user, 'widgets.edit')) throw render(403)
 ```
 
+### Guarded RPCs (Telefunc)
+
+To run the same `can()` on a Telefunc RPC, install `telefunc` and wire ONE universal middleware — it serves dev and prod alike, because the seam relocates telefunc's endpoint off the default `/_telefunc` so telefunc's own context-less dev middleware never intercepts the call (#128):
+
+```js
+// pages/+config.js
+export default {
+  middleware: ['import:vike-rbac/telefunc-middleware:default'], // server: owns the RPC endpoint, with context
+}
+```
+
+```js
+// pages/+client.js — point the browser telefunc client at the relocated endpoint
+import 'vike-rbac/telefunc-client'
+```
+
+Then guard a telefunction with the same check the page uses:
+
+```js
+// stats.telefunc.js
+import { requirePermission } from 'vike-rbac/telefunc'
+export async function userCount() {
+  requirePermission('users.view') // Telefunc Abort (403) unless allowed — the same can() as the page
+  /* ... */
+}
+```
+
+No Vite plugin is needed (the old dev-only `telefunc-plugin` is retired).
+
 ## Exports
 
 | Subpath | What |
@@ -45,7 +74,7 @@ if (!can(pageContext.user, 'widgets.edit')) throw render(403)
 | `./schema` | The RBAC table definitions. |
 | `./resolve` | The request-time resolver that enriches `pageContext.user` with roles + permissions. |
 | `./seed` | `seedRbac()` / `assignRoles()` — materialize roles/permissions/grants from the registry (idempotent). |
-| `./telefunc`, `./telefunc-context`, `./telefunc-middleware`, `./telefunc-plugin` | Guard Telefunc RPCs with the same `can()` (dev Vite plugin + prod universal middleware). |
+| `./telefunc`, `./telefunc-context`, `./telefunc-middleware`, `./telefunc-client`, `./telefunc-url` | Guard Telefunc RPCs with the same `can()` — ONE universal middleware for dev and prod (the endpoint is relocated off telefunc's default `/_telefunc`, so telefunc's own context-less dev middleware never intercepts it). |
 
 ## Key concepts
 

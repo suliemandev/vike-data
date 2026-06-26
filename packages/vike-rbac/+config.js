@@ -17,11 +17,13 @@
 // vike-auth <- vike-rbac.
 //
 // The Telefunc seam (#110) lives in the same package but is OPT-IN, not wired here:
-// an app that wants guarded RPCs installs `telefunc`, adds vike-rbac/telefunc-plugin
-// to vite.config (dev) / vike-rbac/telefunc-middleware to its server (prod), and
-// guards telefunctions with vike-rbac/telefunc's requirePermission(). Row/resource
-// scoping stays the separate `scope(user)` layer vike-admin has (#105), orthogonal
-// to can().
+// an app that wants guarded RPCs installs `telefunc`, then references ONE universal
+// middleware for both dev and prod — `middleware: ['import:vike-rbac/telefunc-middleware:default']`
+// plus `client: 'vike-rbac/telefunc-client'` — and guards telefunctions with
+// vike-rbac/telefunc's requirePermission(). The seam relocates telefunc's endpoint so a
+// single middleware owns it in dev too (#128), retiring the old dev-only Vite plugin.
+// Row/resource scoping stays the separate `scope(user)` layer vike-admin has (#105),
+// orthogonal to can().
 import { rbacSchemas } from './schema.js'
 
 export default {

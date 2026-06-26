@@ -105,10 +105,11 @@ export default {
 
   // rbac + Telefunc seam (#110): guarded RPCs. The telefunction guards (requirePermission)
   // run the SAME can() as the admin's canView, because every call gets the signed-in,
-  // role-enriched user on the Telefunc context. Under `vite dev` that context is provided
-  // by vike-rbac/telefunc-plugin (wired in vite.config). This `middleware` is the
-  // PRODUCTION transport (a server that mounts universal middlewares uses it); it's inert
-  // under `vite dev`, where the Vite plugin serves /_telefunc first. See pages/rpc-demo.
+  // role-enriched user on the Telefunc context. ONE universal middleware serves this in dev
+  // AND prod (#128): the seam relocates telefunc's endpoint off the default `/_telefunc` so
+  // telefunc's own context-less dev middleware never intercepts it. The browser telefunc
+  // client is pointed at the relocated endpoint by pages/+client.js (a one-line client
+  // entry); `middleware` owns it server-side. See pages/rpc-demo.
   middleware: ['import:vike-rbac/telefunc-middleware:default'],
 
   // layout: pick the app-shell + fill its slots. The auth /login page sets centered.
