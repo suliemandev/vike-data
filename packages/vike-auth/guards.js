@@ -73,10 +73,8 @@ export function defineGuard(name, config = {}) {
 
   // Map the friendly guard keys onto the internal subject shape the store + schema read
   // (`users`/`sessions`/`loginTokens`), defaulting the session + token tables from the
-  // guard name so the common case is just `{ table }`. `subject` (the label) is unused on
-  // the guard path, so it's set to the name only to satisfy the shared resolver shape.
+  // guard name so the common case is just `{ table }`.
   const subject = resolveGuardSubject({
-    subject: name,
     users: table,
     sessions: sessionTable || `${name}_sessions`,
     loginTokens: loginTokenTable || `${name}_login_tokens`,

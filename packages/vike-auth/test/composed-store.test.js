@@ -93,8 +93,8 @@ test('a renamed subject targets the renamed tables on the adapter path', async (
   // The store resolves its table names from the subject knob at build time (resolveSubject
   // reads env), so a rename must route reads/writes to the renamed tables, the SAME tables
   // schemas.js declares, not the literal `users` / `sessions` / `login_tokens`.
-  const saved = process.env.VIKE_AUTH_USERS_TABLE
-  process.env.VIKE_AUTH_USERS_TABLE = 'accounts'
+  const saved = process.env.VIKE_AUTH_SUBJECT_TABLE
+  process.env.VIKE_AUTH_SUBJECT_TABLE = 'accounts'
   try {
     const adapter = createMemoryAdapter()
     setAdapter(adapter)
@@ -106,8 +106,8 @@ test('a renamed subject targets the renamed tables on the adapter path', async (
     // And the store reads back from the renamed table.
     assert.equal((await store.findUserByEmail('renamed@example.com')).id, u.id)
   } finally {
-    if (saved === undefined) delete process.env.VIKE_AUTH_USERS_TABLE
-    else process.env.VIKE_AUTH_USERS_TABLE = saved
+    if (saved === undefined) delete process.env.VIKE_AUTH_SUBJECT_TABLE
+    else process.env.VIKE_AUTH_SUBJECT_TABLE = saved
   }
 })
 

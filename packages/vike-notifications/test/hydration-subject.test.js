@@ -5,12 +5,12 @@ import { createMemoryAdapter } from '@universal-orm/memory'
 import { clearQueue } from 'vike-queue'
 
 // The bare-id hydration reads vike-auth's subject table, whose name is configurable
-// (VIKE_AUTH_USERS_TABLE). index.js resolves that name ONCE at import, so the rename has to
+// (VIKE_AUTH_SUBJECT_TABLE). index.js resolves that name ONCE at import, so the rename has to
 // be in env BEFORE index.js evaluates. ESM hoists static imports above the module body, so
 // a static `import '../index.js'` would evaluate first and miss this; hence the dynamic
 // import after setting env. node --test isolates each file in its own process, so this
 // override never leaks into the other vike-notifications test files.
-process.env.VIKE_AUTH_USERS_TABLE = 'members'
+process.env.VIKE_AUTH_SUBJECT_TABLE = 'members'
 const { notify, registerChannel, clearChannels } = await import('../index.js')
 
 test('notify hydrates a bare user id from the renamed subject table', async () => {

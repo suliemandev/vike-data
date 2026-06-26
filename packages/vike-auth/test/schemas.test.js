@@ -45,9 +45,9 @@ test('the default schema matches the columns the inline schema declared', () => 
 test('env renames the tables and re-points the FK target', () => {
   withEnv(
     {
-      VIKE_AUTH_USERS_TABLE: 'accounts',
-      VIKE_AUTH_SESSIONS_TABLE: 'account_sessions',
-      VIKE_AUTH_LOGIN_TOKENS_TABLE: 'account_login_tokens',
+      VIKE_AUTH_SUBJECT_TABLE: 'accounts',
+      VIKE_AUTH_SESSION_TABLE: 'account_sessions',
+      VIKE_AUTH_LOGIN_TOKEN_TABLE: 'account_login_tokens',
     },
     () => {
       const frags = authSchemas()
@@ -63,7 +63,7 @@ test('env renames the tables and re-points the FK target', () => {
 })
 
 test('renaming only the users table still re-points the sessions FK', () => {
-  withEnv({ VIKE_AUTH_USERS_TABLE: 'accounts' }, () => {
+  withEnv({ VIKE_AUTH_SUBJECT_TABLE: 'accounts' }, () => {
     const frags = authSchemas()
     assert.equal(tableOf(frags, 'sessions') !== undefined, true) // sessions keeps its default name
     assert.deepEqual(colOf(tableOf(frags, 'sessions'), 'user_id').references, { table: 'accounts', column: 'id' })

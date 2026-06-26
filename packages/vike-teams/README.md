@@ -54,7 +54,7 @@ schema is the single source.
 Renaming the org table follows through every FK that targets it (the
 membership `organization_id` and the `current_organization_id` added to auth's
 table). FKs INTO auth's subject still follow the auth rename
-(`VIKE_AUTH_USERS_TABLE`) independently. Defaults are byte-for-byte today's
+(`VIKE_AUTH_SUBJECT_TABLE`) independently. Defaults are byte-for-byte today's
 behaviour, so the zero-config app is unchanged. Column names (`slug`/`role`/etc.)
 are reserved in the resolver but not yet env-backed, since vike-teams ships no
 runtime that reads them by name.

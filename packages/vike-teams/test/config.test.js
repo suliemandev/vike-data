@@ -54,12 +54,12 @@ test('extends auth users with a nullable SET NULL FK back to organizations (the 
   assert.equal(col.onDelete, 'set null')
 })
 
-test('follows a renamed auth subject (VIKE_AUTH_USERS_TABLE) in every FK into it', async () => {
+test('follows a renamed auth subject (VIKE_AUTH_SUBJECT_TABLE) in every FK into it', async () => {
   // The static `teamsConfig` import above was evaluated with the default env, so
   // re-evaluate +config.js with the subject renamed. A query string makes Node ESM
   // treat it as a distinct module and re-run the resolveSubject() call at its top.
-  const prev = process.env.VIKE_AUTH_USERS_TABLE
-  process.env.VIKE_AUTH_USERS_TABLE = 'accounts'
+  const prev = process.env.VIKE_AUTH_SUBJECT_TABLE
+  process.env.VIKE_AUTH_SUBJECT_TABLE = 'accounts'
   try {
     const { default: renamed } = await import('../+config.js?subject=accounts')
     const frag = (table, mode = 'create') =>
@@ -78,8 +78,8 @@ test('follows a renamed auth subject (VIKE_AUTH_USERS_TABLE) in every FK into it
     assert.deepEqual(conflicts, [])
     assert.ok(tables.some((t) => t.table === 'accounts'), 'merged tables include the renamed subject')
   } finally {
-    if (prev === undefined) delete process.env.VIKE_AUTH_USERS_TABLE
-    else process.env.VIKE_AUTH_USERS_TABLE = prev
+    if (prev === undefined) delete process.env.VIKE_AUTH_SUBJECT_TABLE
+    else process.env.VIKE_AUTH_SUBJECT_TABLE = prev
   }
 })
 

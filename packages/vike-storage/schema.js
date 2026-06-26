@@ -29,7 +29,7 @@ export function uploadsSchemaFor(usersTable = resolveSubject().users) {
 }
 
 // Resolved once at import, the value contributed to the cumulative `schemas` point. With
-// no `VIKE_AUTH_USERS_TABLE` override this is byte-for-byte the previous inline schema.
+// no `VIKE_AUTH_SUBJECT_TABLE` override this is byte-for-byte the previous inline schema.
 export const uploadsSchema = uploadsSchemaFor()
 
 export default uploadsSchema

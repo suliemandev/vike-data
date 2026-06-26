@@ -27,7 +27,7 @@ test('storage_key is a unique string (one row per stored object)', () => {
 })
 
 test('the FK target follows a renamed vike-auth subject table (the FK column stays user_id)', () => {
-  // vike-auth's subject table is configurable (VIKE_AUTH_USERS_TABLE); the FK target has to
+  // vike-auth's subject table is configurable (VIKE_AUTH_SUBJECT_TABLE); the FK target has to
   // follow it or the migration points at a users table that was never created.
   const renamed = uploadsSchemaFor('members')
   const fk = renamed.columns.find((c) => c.name === 'user_id')

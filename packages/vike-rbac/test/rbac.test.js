@@ -149,12 +149,12 @@ test('the RBAC schema merges into four tables with the join FKs', () => {
   assert.ok(roleUser.columns.some((c) => c.name === 'role_id'))
 })
 
-test('role_user.user_id follows a renamed auth subject (VIKE_AUTH_USERS_TABLE)', async () => {
+test('role_user.user_id follows a renamed auth subject (VIKE_AUTH_SUBJECT_TABLE)', async () => {
   // The static `rbacSchemas` import was evaluated with the default env; re-evaluate
   // schema.js with the subject renamed. A query string makes Node ESM treat it as a
   // distinct module and re-run the resolveSubject() call at its top.
-  const prev = process.env.VIKE_AUTH_USERS_TABLE
-  process.env.VIKE_AUTH_USERS_TABLE = 'accounts'
+  const prev = process.env.VIKE_AUTH_SUBJECT_TABLE
+  process.env.VIKE_AUTH_SUBJECT_TABLE = 'accounts'
   try {
     const { rbacSchemas: renamed } = await import('../schema.js?subject=accounts')
     const roleUser = renamed.find((s) => s.table === 'role_user')
@@ -164,7 +164,7 @@ test('role_user.user_id follows a renamed auth subject (VIKE_AUTH_USERS_TABLE)',
     const roleId = roleUser.columns.find((c) => c.name === 'role_id')
     assert.deepEqual(roleId.references, { table: 'roles', column: 'id' })
   } finally {
-    if (prev === undefined) delete process.env.VIKE_AUTH_USERS_TABLE
-    else process.env.VIKE_AUTH_USERS_TABLE = prev
+    if (prev === undefined) delete process.env.VIKE_AUTH_SUBJECT_TABLE
+    else process.env.VIKE_AUTH_SUBJECT_TABLE = prev
   }
 })

@@ -1,8 +1,7 @@
 // The SUBJECT knob: which subject vike-auth authenticates and which tables it owns.
-// Defaults to `User` over `users` / `sessions` / `login_tokens` (today's behaviour,
-// byte-for-byte). An app renames the subject + tables through ONE surface, and both the
-// build-time schema (schemas.js) and the runtime store (composed-store.js) read it from
-// HERE, so they can never disagree.
+// Defaults to `users` / `sessions` / `login_tokens` (today's behaviour, byte-for-byte). An
+// app renames the tables through ONE surface, and both the build-time schema (schemas.js)
+// and the runtime store (composed-store.js) read it from HERE, so they can never disagree.
 //
 // Why env, not a `+config` value (the design call for P1): the schema factory CAN read a
 // `+config` (Vike hands it the resolved config) but the runtime store is built at module
@@ -28,9 +27,11 @@
 
 import { createSubjectResolver } from '@vike-data/kit'
 
-// Today's names. Frozen so a caller can't mutate the shared defaults.
+// Today's names. Frozen so a caller can't mutate the shared defaults. The internal FIELD
+// names (`users` / `sessions` / `loginTokens`) are what the schema + store read; the env
+// var names below describe their ROLE (subject / session / login-token table), matching the
+// `defineGuard` vocabulary (`table` / `sessionTable` / `loginTokenTable`).
 export const DEFAULT_SUBJECT = Object.freeze({
-  subject: 'User',
   users: 'users',
   sessions: 'sessions',
   loginTokens: 'login_tokens',
@@ -40,16 +41,16 @@ export const DEFAULT_SUBJECT = Object.freeze({
   idColumn: 'id',
 })
 
-// Map each resolved field to its env var. `subject` is the human/label name; the three
-// table fields are the names threaded into the schema + store; `emailColumn` is the
-// subject's contact column. `nameColumn` / `idColumn` are intentionally absent — they are
-// reserved (default/override only) until a consumer needs them, so we never ship an env var
-// that silently does nothing.
+// Map each resolved field to its env var. The three table fields are the names threaded
+// into the schema + store; `emailColumn` is the subject's contact column. The env names use
+// the role (`SUBJECT_TABLE`, not `USERS_TABLE`) so they read straight even when the value is
+// `accounts`, and mirror the guard keys. `nameColumn` / `idColumn` are intentionally absent
+// — they are reserved (default/override only) until a consumer needs them, so we never ship
+// an env var that silently does nothing. There is no `subject` LABEL knob: nothing read it.
 const ENV_KEYS = {
-  subject: 'VIKE_AUTH_SUBJECT',
-  users: 'VIKE_AUTH_USERS_TABLE',
-  sessions: 'VIKE_AUTH_SESSIONS_TABLE',
-  loginTokens: 'VIKE_AUTH_LOGIN_TOKENS_TABLE',
+  users: 'VIKE_AUTH_SUBJECT_TABLE',
+  sessions: 'VIKE_AUTH_SESSION_TABLE',
+  loginTokens: 'VIKE_AUTH_LOGIN_TOKEN_TABLE',
   emailColumn: 'VIKE_AUTH_EMAIL_COLUMN',
 }
 
@@ -58,7 +59,7 @@ const ENV_KEYS = {
 // > env > default. `env` is injected for testability and defaults to `process.env`.
 //
 // A blank/whitespace-only env value is treated as unset (falls through to the default),
-// so an empty `VIKE_AUTH_USERS_TABLE=` in a .env never produces a nameless table.
+// so an empty `VIKE_AUTH_SUBJECT_TABLE=` in a .env never produces a nameless table.
 // `nameColumn` / `idColumn` have no ENV_KEYS entry, so they resolve from override/default
 // only (reserved; see scope note). The precedence + blank-guard mechanism is shared via
 // kit's `createSubjectResolver`, so vike-teams' twin resolver can't drift from it.

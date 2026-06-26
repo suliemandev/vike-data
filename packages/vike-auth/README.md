@@ -41,15 +41,15 @@ export default {
 
 ### Renaming the subject + tables
 
-By default the subject is `User` over `users` / `sessions` / `login_tokens`. An app
-that wants different names sets them once, through env, and **both** the schema and
-the runtime store pick the rename up from the same source:
+By default the subject lives in `users` / `sessions` / `login_tokens`. An app that wants
+different names sets them once, through env, and **both** the schema and the runtime store
+pick the rename up from the same source. The keys name the table's role (so they read
+straight even when the value is `accounts`), matching the `defineGuard` vocabulary:
 
 ```bash
-VIKE_AUTH_SUBJECT=Account              # the subject label (default: User)
-VIKE_AUTH_USERS_TABLE=accounts         # default: users  (re-points the sessions/login_tokens FK)
-VIKE_AUTH_SESSIONS_TABLE=account_sessions        # default: sessions
-VIKE_AUTH_LOGIN_TOKENS_TABLE=account_login_tokens # default: login_tokens
+VIKE_AUTH_SUBJECT_TABLE=accounts                 # default: users  (re-points the sessions/login_tokens FK)
+VIKE_AUTH_SESSION_TABLE=account_sessions         # default: sessions
+VIKE_AUTH_LOGIN_TOKEN_TABLE=account_login_tokens # default: login_tokens
 ```
 
 Env, not a `+config` value, is the knob on purpose: the runtime store is built at

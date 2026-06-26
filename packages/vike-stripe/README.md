@@ -89,7 +89,7 @@ contribution. `BILLING_SEGMENT` switches it in the demo.
 
 vike-stripe deliberately does **not** import `vike-auth` / `vike-teams` — billing
 stays decoupled. So if an app renames the subject table (vike-auth's
-`VIKE_AUTH_USERS_TABLE`, or vike-teams' `VIKE_TEAMS_ORGANIZATIONS_TABLE`), stripe
+`VIKE_AUTH_SUBJECT_TABLE`, or vike-teams' `VIKE_TEAMS_ORGANIZATIONS_TABLE`), stripe
 can't resolve that itself. Pass the resolved table name through the optional
 `subjectTable` config; the FK **column** stays segment-derived
 (`user_id` / `organization_id`), only its **target table** follows:

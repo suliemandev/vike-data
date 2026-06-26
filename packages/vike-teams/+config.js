@@ -14,7 +14,7 @@ import { resolveSubject } from 'vike-auth/subject'
 import { resolveTeamSubject } from './subject.js'
 
 // vike-teams FKs into auth's subject table, so it must FOLLOW a renamed auth subject
-// (VIKE_AUTH_USERS_TABLE) the same way the other downstream extensions do (PR #215),
+// (VIKE_AUTH_SUBJECT_TABLE) the same way the other downstream extensions do (PR #215),
 // not hardcode the literal 'users'. Default resolves to 'users', so the zero-config
 // app is unchanged. Resolved once at config-eval (env is build-time data).
 const USERS = resolveSubject().users
