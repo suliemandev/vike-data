@@ -7,6 +7,8 @@ export { createStore } from './composed-store.js'
 export { createMemoryStore } from './store.js'
 export { createAuthMiddleware, handleAuthRequest } from './middleware.js'
 // Named guards (#267): declare a second (third, ...) auth audience. See guards.js.
-export { defineGuard, getGuard, getGuards } from './guards.js'
+// The default subject is itself the "default guard" (#276); getAllGuards() enumerates every
+// audience (default + named) through one descriptor shape.
+export { defineGuard, getGuard, getGuards, getDefaultGuard, getAllGuards, DEFAULT_GUARD_NAME } from './guards.js'
 export { createGuardsMiddleware } from './guards-middleware.js'
 export { SESSION_COOKIE, MAGIC_LINK_TTL_MS, SESSION_TTL_MS } from './constants.js'

@@ -4,32 +4,43 @@
 // `client` guard over `clients` coexist with zero cross-talk; signing into one leaves the
 // other untouched.
 //
-// This is the `many` variant of the single auth instance (instance.js): AUTHORING.md
-// seam 10 (a runtime registry keyed by name + a dispatcher), the same shape as
-// vike-queue's jobs and vike-notifications' channels. The app declares each guard ONCE
-// with `defineGuard(name, config)` in a shared module it imports from BOTH its `+config`
-// (to contribute the guard's tables to the cumulative `schemas` point) and its server
-// start (so the runtime middleware / render hook see the instance). `defineGuard` both
-// registers the instance AND returns the guard's schemas, so the app declares it once and
-// wires the two halves from the one descriptor.
+// This is AUTHORING.md seam 10 (a runtime registry keyed by name + a dispatcher), the same
+// shape as vike-queue's jobs and vike-notifications' channels. The app declares each guard
+// ONCE with `defineGuard(name, config)` in a shared module it imports from BOTH its
+// `+config` (to contribute the guard's tables to the cumulative `schemas` point) and its
+// server start (so the runtime middleware / render hook see the instance). `defineGuard`
+// both registers the instance AND returns the guard's schemas, so the app declares it once
+// and wires the two halves from the one descriptor.
 //
-// THE DEFAULT IS UNTOUCHED. A guard is strictly additive: an app that calls no
-// `defineGuard` keeps the byte-for-byte single-subject path (`/login`, `/auth/*`,
-// `vike_auth_session`, `pageContext.user`). Guards are opt-in (install the guards config,
-// declare guards); the moat — zero-config default-User — stays.
+// ONE MODEL (#276). The default, primary subject is itself a guard — the DEFAULT GUARD —
+// expressed through the exact same descriptor shape (getDefaultGuard()), just with the bare
+// `vike_auth_session` cookie + `/auth` base and `default: true`. So there is a single notion
+// of "an audience": the default plus any named ones, all enumerable through getAllGuards().
+//
+// TWO ON-RAMPS, not two models. The default guard takes its config from ENV (resolveSubject,
+// the zero-code path for a one-subject app); a named guard takes it from the defineGuard
+// argument. A guard is strictly additive: an app that calls no `defineGuard` keeps the
+// byte-for-byte single-subject path (`/login`, `/auth/*`, `vike_auth_session`,
+// `pageContext.user`); named guards are opt-in. The moat — zero-config default subject — stays.
 import { createSubjectResolver } from '@vike-data/kit'
 import { createAuth } from './auth.js'
 import { createStore } from './composed-store.js'
 import { buildSubjectSchemas } from './schema-factory.js'
-import { DEFAULT_SUBJECT } from './subject.js'
+import { DEFAULT_SUBJECT, resolveSubject } from './subject.js'
 import { SESSION_COOKIE } from './constants.js'
 
 // The guard registry, on globalThis so duplicate module evaluation (pointer imports, dev
 // HMR) can't fork it — every code path (middleware, render hook, schema factory) sees the
-// same guards. A Map keyed by guard name, the seam-10 shape.
+// same guards. A Map keyed by guard name, the seam-10 shape. This holds the NAMED guards;
+// the default guard (the env-configured primary subject) lives in its own globalThis slot
+// below, exposed through the same descriptor shape — one model, two on-ramps (#276).
 const KEY = Symbol.for('vike-auth.guards')
 /** @type {Map<string, object>} */
 const registry = globalThis[KEY] || (globalThis[KEY] = new Map())
+
+// The reserved name of the default guard (the primary, env-configured subject). An app
+// can't `defineGuard('default', ...)` — that identity belongs to the default subject.
+export const DEFAULT_GUARD_NAME = 'default'
 
 // Resolve a guard's subject from EXPLICIT config (override > default), with NO env read:
 // unlike the default subject (subject.js, env-backed so the app sets it once), a guard's
@@ -43,6 +54,22 @@ const resolveGuardSubject = createSubjectResolver(DEFAULT_SUBJECT, {})
 // with a letter. Reject anything else loudly at declaration time rather than mint a broken
 // route/cookie.
 const NAME_RE = /^[a-z][a-z0-9-]*$/
+
+// Build a guard descriptor — the ONE shape every audience takes, the default and each named
+// guard alike. Its specialness is pure data: the default carries the bare `vike_auth_session`
+// cookie + `/auth` base, a named guard a suffixed cookie + `/<name>-auth`. Both get an auth
+// instance over their own tables (createStore(subject)) and the same three schema fragments.
+function buildDescriptor({ name, subject, cookieName, basePath, isDefault = false }) {
+  return {
+    name,
+    subject,
+    cookieName,
+    basePath,
+    instance: createAuth({ store: createStore(subject) }),
+    schemas: buildSubjectSchemas(subject),
+    default: isDefault,
+  }
+}
 
 /**
  * Declare a named guard. Idempotent per name (HMR / double import return the existing
@@ -60,6 +87,9 @@ const NAME_RE = /^[a-z][a-z0-9-]*$/
 export function defineGuard(name, config = {}) {
   if (typeof name !== 'string' || !NAME_RE.test(name)) {
     throw new Error(`[vike-auth] defineGuard: invalid guard name ${JSON.stringify(name)} (use lowercase letters, digits and hyphens, starting with a letter)`)
+  }
+  if (name === DEFAULT_GUARD_NAME) {
+    throw new Error(`[vike-auth] defineGuard: '${DEFAULT_GUARD_NAME}' is reserved for the default subject; configure it via env (VIKE_AUTH_SUBJECT_TABLE, ...) instead`)
   }
   const { table, sessionTable, loginTokenTable, emailColumn } = config
   if (typeof table !== 'string' || !table.trim()) {
@@ -80,27 +110,48 @@ export function defineGuard(name, config = {}) {
     loginTokens: loginTokenTable || `${name}_login_tokens`,
     emailColumn,
   })
-  // Each guard gets its OWN cookie and endpoint namespace, derived from the name. The
-  // default guard keeps the bare `vike_auth_session` / `/auth`; a named one is suffixed
-  // so two guards never read or clobber each other's session.
-  const cookieName = `${SESSION_COOKIE}__${name}`
-  const basePath = `/${name}-auth`
-  // The guard's own auth instance over its own tables (createStore(subject) targets the
-  // guard's `admins` / `admin_sessions` / ... through the registered adapter, falling back
-  // to a private in-memory store when none is registered — exactly like the default).
-  const instance = createAuth({ store: createStore(subject) })
-
-  // The guard's tables — the same three the default owns, under the guard's names — so the
-  // app spreads `guard.schemas` into the cumulative `schemas` point and they merge + derive
-  // to every ORM alongside the default's.
-  const schemas = buildSubjectSchemas(subject)
-  const descriptor = { name, subject, cookieName, basePath, instance, schemas }
+  // A named guard gets its OWN cookie + endpoint namespace, suffixed by the name so two
+  // guards never read or clobber each other's session.
+  const descriptor = buildDescriptor({
+    name,
+    subject,
+    cookieName: `${SESSION_COOKIE}__${name}`,
+    basePath: `/${name}-auth`,
+  })
   registry.set(name, descriptor)
   return descriptor
 }
 
-/** Read one guard by name, or null. */
-export const getGuard = (name) => registry.get(name) || null
+// The DEFAULT guard: the primary, env-configured subject, expressed through the same
+// descriptor shape as a named guard but with the bare `vike_auth_session` cookie + `/auth`
+// base + `default: true`. Built lazily on first access and cached on globalThis (so HMR /
+// duplicate module eval can't fork the default store) — this is the single home of the
+// default auth instance that instance.js, the default middleware and the render hook share.
+// Its subject is read from env (resolveSubject()), the zero-code on-ramp for a one-subject
+// app; a named guard takes its config from defineGuard instead.
+const DEFAULT_KEY = Symbol.for('vike-auth.default-guard')
+export function getDefaultGuard() {
+  if (!globalThis[DEFAULT_KEY]) {
+    globalThis[DEFAULT_KEY] = buildDescriptor({
+      name: DEFAULT_GUARD_NAME,
+      subject: resolveSubject(),
+      cookieName: SESSION_COOKIE,
+      basePath: '/auth',
+      isDefault: true,
+    })
+  }
+  return globalThis[DEFAULT_KEY]
+}
 
-/** All declared guards (the dispatcher fans out over these). */
+/** Read one guard by name (incl. the default), or null. */
+export const getGuard = (name) => (name === DEFAULT_GUARD_NAME ? getDefaultGuard() : registry.get(name)) || null
+
+/** The NAMED guards (the named-guard dispatcher + render hook fan out over these). */
 export const getGuards = () => [...registry.values()]
+
+/**
+ * EVERY audience — the default guard followed by the named ones — as uniform descriptors.
+ * The enumeration seam for downstream "which subject" work (#207 P3): a consumer that binds
+ * to a subject can resolve any of them through one shape, default included.
+ */
+export const getAllGuards = () => [getDefaultGuard(), ...registry.values()]
