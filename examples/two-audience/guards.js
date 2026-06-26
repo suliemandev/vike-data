@@ -13,17 +13,10 @@
 // `defineGuard` is idempotent per name, so importing this module on both paths is safe.
 import { defineGuard } from 'vike-auth/guards'
 
+// `table` is the only required key (the subject table); the session + login-token tables
+// default from the guard name (`admin_sessions` / `admin_login_tokens`), so each audience
+// is a one-liner.
 export const guards = [
-  defineGuard('admin', {
-    subject: 'Admin',
-    users: 'admins',
-    sessions: 'admin_sessions',
-    loginTokens: 'admin_login_tokens',
-  }),
-  defineGuard('client', {
-    subject: 'Client',
-    users: 'clients',
-    sessions: 'client_sessions',
-    loginTokens: 'client_login_tokens',
-  }),
+  defineGuard('admin', { table: 'admins' }),
+  defineGuard('client', { table: 'clients' }),
 ]

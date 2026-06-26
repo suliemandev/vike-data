@@ -26,8 +26,8 @@ test('a client-side run bails (HttpOnly cookies only resolve server-side)', asyn
 // ------------------------------------------------- per-guard resolution -------
 
 test('resolves only the guard whose cookie is present; the other guard stays null', async () => {
-  const admin = defineGuard('admin', { subject: 'Admin', users: 'admins', sessions: 'admin_sessions', loginTokens: 'admin_login_tokens' })
-  defineGuard('client', { subject: 'Client', users: 'clients', sessions: 'client_sessions', loginTokens: 'client_login_tokens' })
+  const admin = defineGuard('admin', { table: 'admins', sessionTable: 'admin_sessions', loginTokenTable: 'admin_login_tokens' })
+  defineGuard('client', { table: 'clients', sessionTable: 'client_sessions', loginTokenTable: 'client_login_tokens' })
 
   // Open a real admin session and present ONLY the admin cookie.
   const { token: link } = await admin.instance.requestMagicLink('boss@example.com')
@@ -43,8 +43,8 @@ test('resolves only the guard whose cookie is present; the other guard stays nul
 })
 
 test('both guards can be signed in at once with no cross-talk', async () => {
-  const admin = defineGuard('admin', { subject: 'Admin', users: 'admins', sessions: 'admin_sessions', loginTokens: 'admin_login_tokens' })
-  const client = defineGuard('client', { subject: 'Client', users: 'clients', sessions: 'client_sessions', loginTokens: 'client_login_tokens' })
+  const admin = defineGuard('admin', { table: 'admins', sessionTable: 'admin_sessions', loginTokenTable: 'admin_login_tokens' })
+  const client = defineGuard('client', { table: 'clients', sessionTable: 'client_sessions', loginTokenTable: 'client_login_tokens' })
 
   const aLink = (await admin.instance.requestMagicLink('boss@example.com')).token
   const aSession = (await admin.instance.redeemMagicLink(aLink)).session.token

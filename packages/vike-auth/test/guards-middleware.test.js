@@ -9,7 +9,7 @@ import { createGuardsMiddleware, default as wiredGuardsMiddleware } from '../gua
 import { defineGuard } from '../guards.js'
 import { parseCookies } from '../cookie.js'
 
-const admin = defineGuard('admin', { subject: 'Admin', users: 'admins', sessions: 'admin_sessions', loginTokens: 'admin_login_tokens' })
+const admin = defineGuard('admin', { table: 'admins', sessionTable: 'admin_sessions', loginTokenTable: 'admin_login_tokens' })
 const opts = { auth: admin.instance, cookieName: admin.cookieName, basePath: admin.basePath, dev: true, secure: false }
 
 const post = (path, body) => new Request(`http://localhost${path}`, { method: 'POST', body })
@@ -45,7 +45,7 @@ test('logout posts to the guard base and clears the guard cookie (Max-Age=0)', a
 // ----------------------------------------------------- dispatcher -------------
 
 test('the dispatcher routes a request to the guard whose base matches', async () => {
-  const client = defineGuard('client', { subject: 'Client', users: 'clients', sessions: 'client_sessions', loginTokens: 'client_login_tokens' })
+  const client = defineGuard('client', { table: 'clients', sessionTable: 'client_sessions', loginTokenTable: 'client_login_tokens' })
   const mw = createGuardsMiddleware({ dev: true, secure: false })
   // universal-middleware enhance() returns the handler as a callable with metadata attached.
   assert.equal(typeof mw, 'function')

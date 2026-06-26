@@ -48,12 +48,22 @@ const NAME_RE = /^[a-z][a-z0-9-]*$/
  * Declare a named guard. Idempotent per name (HMR / double import return the existing
  * descriptor). Returns `{ name, subject, cookieName, basePath, instance, schemas }`.
  *
- * @param {string} name  e.g. 'admin' — the guard's url/cookie key.
- * @param {object} config  `{ subject?, users, sessions, loginTokens, emailColumn? }`.
+ * @param {string} name  e.g. 'admin' — the guard's url/cookie key AND the first half of its
+ *   default table names.
+ * @param {object} config  `{ table, sessionTable?, loginTokenTable?, emailColumn? }`:
+ *   - `table` (REQUIRED) — the subject table (e.g. `admins`). The one name that can't be
+ *     guessed from `name` safely (plurals: `company` -> `companys`), so it's explicit.
+ *   - `sessionTable` — defaults to `<name>_sessions`.
+ *   - `loginTokenTable` — defaults to `<name>_login_tokens`.
+ *   - `emailColumn` — optional renamed contact column (defaults to `email`).
  */
 export function defineGuard(name, config = {}) {
   if (typeof name !== 'string' || !NAME_RE.test(name)) {
     throw new Error(`[vike-auth] defineGuard: invalid guard name ${JSON.stringify(name)} (use lowercase letters, digits and hyphens, starting with a letter)`)
+  }
+  const { table, sessionTable, loginTokenTable, emailColumn } = config
+  if (typeof table !== 'string' || !table.trim()) {
+    throw new Error(`[vike-auth] defineGuard('${name}'): a \`table\` (the subject table, e.g. '${name}s') is required`)
   }
   // Idempotent: a second call for the same name (HMR, or the app importing its guards
   // module on both the config and the server path) returns the already-built descriptor
@@ -61,7 +71,17 @@ export function defineGuard(name, config = {}) {
   const existing = registry.get(name)
   if (existing) return existing
 
-  const subject = resolveGuardSubject(config)
+  // Map the friendly guard keys onto the internal subject shape the store + schema read
+  // (`users`/`sessions`/`loginTokens`), defaulting the session + token tables from the
+  // guard name so the common case is just `{ table }`. `subject` (the label) is unused on
+  // the guard path, so it's set to the name only to satisfy the shared resolver shape.
+  const subject = resolveGuardSubject({
+    subject: name,
+    users: table,
+    sessions: sessionTable || `${name}_sessions`,
+    loginTokens: loginTokenTable || `${name}_login_tokens`,
+    emailColumn,
+  })
   // Each guard gets its OWN cookie and endpoint namespace, derived from the name. The
   // default guard keeps the bare `vike_auth_session` / `/auth`; a named one is suffixed
   // so two guards never read or clobber each other's session.
