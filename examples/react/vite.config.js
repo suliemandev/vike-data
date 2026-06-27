@@ -4,12 +4,13 @@ import telefunc from 'telefunc/vite'
 import { loadEnv } from 'vite'
 
 export default ({ mode }) => {
-  // Surface the demo's optional transport secrets (Resend / VAPID, see .env.example) from a
+  // Surface the demo's optional secrets (Resend / VAPID / Anthropic, see .env.example) from a
   // local .env file into process.env, so +onCreateGlobalContext.js (the server hook) and
   // +config.js can read them. Vite otherwise only exposes VITE_-prefixed vars, to
   // import.meta.env. Real env vars already set in the environment take precedence and work
-  // in production too. Unset = the demo's dev console/outbox transports, unchanged.
-  Object.assign(process.env, loadEnv(mode, process.cwd(), ['RESEND_', 'VAPID_']))
+  // in production too. Unset = the demo's dev console/outbox transports + the vike-ai echo
+  // provider, unchanged.
+  Object.assign(process.env, loadEnv(mode, process.cwd(), ['RESEND_', 'VAPID_', 'ANTHROPIC_']))
   return {
     // vikeI18n() reads the app's `locales` + every extension's advertised `localePacks`
     // and provides the virtual:vike-i18n/packs module that bundles only the matching
