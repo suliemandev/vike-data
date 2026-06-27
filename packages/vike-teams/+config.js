@@ -22,7 +22,7 @@ const USERS = resolveSubject().users
 // teams ALSO owns its OWN subject (organizations + memberships). Like auth, those
 // table names are configurable (VIKE_TEAMS_ORGANIZATIONS_TABLE / _MEMBERSHIPS_TABLE),
 // resolved HERE so the schema is the single source. Defaults are today's names.
-const { organizations: ORGS, memberships: MEMBERSHIPS } = resolveTeamSubject()
+const { organizations: ORGS, memberships: MEMBERSHIPS, invitations: INVITATIONS } = resolveTeamSubject()
 
 export default {
   name: 'vike-teams',
@@ -42,6 +42,23 @@ export default {
       t.uuid('organization_id').references(`${ORGS}.id`, { onDelete: 'cascade' })
       t.uuid('user_id').references(`${USERS}.id`, { onDelete: 'cascade' }) // auth owns this table
       t.string('role').default('member')
+      t.timestamps()
+    }),
+    // Pending invitations (#292): invite an email into an org, accept to create a membership.
+    // Single-use + expiring, the same token shape vike-auth's `login_tokens` use. `invited_by`
+    // FKs into auth's subject (SET NULL so deleting the inviter keeps the audit-light row); the
+    // org FK cascades so revoking an org clears its invites. The runtime tier lives in
+    // ./invitations.js — this is just the table the flow reads + writes through universal-orm.
+    defineSchema(INVITATIONS, (t) => {
+      t.uuid('id').primary()
+      t.uuid('organization_id').references(`${ORGS}.id`, { onDelete: 'cascade' })
+      t.string('email')
+      t.string('role').default('member')
+      t.string('token').unique()
+      t.string('status').default('pending') // pending | accepted | revoked
+      t.timestamp('expires_at')
+      t.timestamp('accepted_at').nullable()
+      t.uuid('invited_by').nullable().references(`${USERS}.id`, { onDelete: 'set null' })
       t.timestamps()
     }),
     // 3rd-party ADD: teams adds the user's active org to auth's subject table,

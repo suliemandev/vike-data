@@ -59,6 +59,20 @@ export const memberships = pgTable('memberships', {
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
 })
 
+export const invitations = pgTable('invitations', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  role: varchar('role', { length: 255 }).notNull().default("member"),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  status: varchar('status', { length: 255 }).notNull().default("pending"),
+  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
+  acceptedAt: timestamp('accepted_at', { mode: 'string' }),
+  invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+})
+
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   organizationId: uuid('organization_id').notNull().unique().references(() => organizations.id, { onDelete: 'cascade' }),

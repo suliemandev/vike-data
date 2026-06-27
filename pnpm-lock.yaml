@@ -699,6 +699,9 @@ importers:
 
   packages/vike-teams:
     dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
       '@vike-data/kit':
         specifier: workspace:*
         version: link:../kit
@@ -708,6 +711,10 @@ importers:
       vike-auth:
         specifier: workspace:*
         version: link:../vike-auth
+    devDependencies:
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
 
   packages/vike-theme-emerald:
     dependencies:

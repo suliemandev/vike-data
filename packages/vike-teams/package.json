@@ -6,14 +6,19 @@
   "description": "Teams / multi-tenancy extension. Composes on vike-auth: references its users table and adds a column to it.",
   "exports": {
     "./config": "./+config.js",
-    "./subject": "./subject.js"
+    "./subject": "./subject.js",
+    "./invitations": "./invitations.js"
   },
   "scripts": {
     "test": "node --test"
   },
   "dependencies": {
+    "@universal-orm/core": "workspace:*",
     "@vike-data/kit": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-auth": "workspace:*"
+  },
+  "devDependencies": {
+    "@universal-orm/memory": "workspace:*"
   }
 }

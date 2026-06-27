@@ -26,6 +26,9 @@ export const DEFAULT_TEAM_SUBJECT = Object.freeze({
   team: 'Organization',
   organizations: 'organizations',
   memberships: 'memberships',
+  // The invitation flow's table (#292). Threaded into the schema like the other two, so a
+  // renamed app keeps one source of truth. Default is today's name.
+  invitations: 'invitations',
   // Column names on the team tables. None are wired today (see scope note); reserved.
   slugColumn: 'slug',
   roleColumn: 'role',
@@ -41,6 +44,7 @@ const ENV_KEYS = {
   team: 'VIKE_TEAMS_SUBJECT',
   organizations: 'VIKE_TEAMS_ORGANIZATIONS_TABLE',
   memberships: 'VIKE_TEAMS_MEMBERSHIPS_TABLE',
+  invitations: 'VIKE_TEAMS_INVITATIONS_TABLE',
 }
 
 // Resolve the team subject config. Precedence per field: explicit `overrides` (used by
