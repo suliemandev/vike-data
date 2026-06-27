@@ -45,6 +45,40 @@ The home page resolves all three side by side. See
 [`vike-auth`'s README](../../packages/vike-auth/README.md#named-guards-multi-instance) for
 the API.
 
+## Composition proof: the Stem pattern
+
+This app is a worked proof of how vike-data extensions **compose** — each owns a slice and
+they assemble through Vike's config, with no extension reaching into another.
+
+**Each extension auto-defines and composes its own tables.** Every table here is contributed
+to the one cumulative `schemas` point and merged + derived together:
+
+- vike-auth's default guard owns `users` / `sessions` / `login_tokens`;
+- each named guard owns its own trio — `admins` / `admin_sessions` / `admin_login_tokens`,
+  and the `clients` set — contributed by `guards.flatMap((g) => g.schemas)`;
+- vike-storage owns `uploads`; vike-notifications owns `notifications`.
+
+No extension imports another's tables; they meet only in the merged schema — the same way
+auth owns `users` and (in the Stem vision) a teams extension would own `organizations`.
+
+**Guards isolate the two audiences.** A single `defineGuard('admin', { table: 'admins' })`
+line (in [`guards.js`](./guards.js), the one source of truth — the registry-vs-config call
+settled in [#272](https://github.com/suleimansh/vike-data/issues/272)) is a complete,
+independent vike-auth instance: its own cookie, endpoint namespace, and tables. The two
+audiences share nothing, so both can be signed in at once with no cross-talk.
+
+**Ownership is a composition choice, not a hardcode.** vike-storage and vike-notifications
+don't bake in whose rows they own. The app **binds** each to a guard with one sibling config
+key (`storageGuard: 'admin'`, `notificationsGuard: 'client'`) plus its runtime env twin — so a
+staff upload is owned by `admins` and a client notification by `clients`. Set neither and both
+fall back to the default `users` subject, byte-for-byte (the
+[#207](https://github.com/suleimansh/vike-data/issues/207) P3 "which subject" seam, the owner
+half of [#250](https://github.com/suleimansh/vike-data/issues/250)).
+
+The result: install an extension via `extends`, configure it with a sibling key, and the
+slices compose — three audiences, per-audience tables, and subject-bound storage +
+notifications — in ~5 small files.
+
 ## What's wired
 
 - **vike-auth/react** + **vike-auth/react/guards** — the keystone plus the opt-in named-guards
@@ -102,8 +136,13 @@ notificationsGuard: 'client',          // build-time: notifications.user_id FKs 
 ```js
 // pages/+onCreateGlobalContext.js
 process.env.VIKE_NOTIFICATIONS_GUARD ??= 'client'   // runtime: resolve the reader from the client cookie
-// ...and the literal "notify a client subject" the seam is for:
-await notify('c-1', { via: () => ['database'], toDatabase: () => ({ type: 'welcome', data: { title: 'Welcome aboard', body: '...' } }) })
+
+// The seam exists to write `notify('c-1', notification)` — a row owned by the `clients`
+// subject. This demo SEEDS that row directly (adapter.insert into `notifications`) rather than
+// calling notify() at boot, only to keep vike-notifications' server module — it pulls in
+// node:crypto, which Vike externalizes for the browser — out of this once-per-server hook. The
+// notify() -> client-subject WRITE path is covered end to end by the package tests; here the
+// home page just READS the seeded feed, client-only. (See "What's verified end to end" below.)
 ```
 
 The same two-knob, config/env split as storage:
@@ -114,15 +153,46 @@ The same two-knob, config/env split as storage:
 | runtime (request) | `VIKE_NOTIFICATIONS_GUARD=client` | the `/notifications` feed + a bare-id `notify()` resolve against the **client** guard |
 
 Leave both unset and notifications own the feed by the default `users` subject, byte-for-byte. The
-seed `notify()`s the client; the home page shows a **client-only feed** of those notifications
-(loaded server-side in `pages/index/+data.js`); staff or the default user sees a prompt, never the
-client's notifications.
+seed writes the client's welcome notification (directly, per the note above); the home page shows a
+**client-only feed** of those notifications (loaded server-side in `pages/index/+data.js`); staff or
+the default user sees a prompt, never the client's notifications.
 
 Everything runs on an in-process **memory adapter** (zero database) registered in
 `pages/+onCreateGlobalContext.js`, seeded with one row per audience: staff
 `boss@example.com`, client `customer@example.com`, default user `ada@example.com`. Sign in
 with the magic link printed to the dev console; the seeded row is reused (looked up by
 email).
+
+## What's verified end to end
+
+Honest coverage, mirroring the live-verify discipline across vike-data — some paths need real
+infrastructure and are proven elsewhere, not in this demo.
+
+**Verified live in this running app** (on the in-process memory adapter):
+
+- **Guard isolation.** Three guards resolve independently from three separate session
+  cookies: sign into staff + client + the default user in one browser and all three show
+  signed in, and logging one out leaves the others untouched (the home page).
+- **Staff upload, full round trip.** `FileUpload` POSTs to `/uploads`, the endpoint resolves
+  the uploader from the **admin** cookie, the row's `user_id` FKs into `admins`, and the home
+  page lists that admin's own files — never another audience's.
+- **Client feed ownership + read.** The home page reads `notifications` where `user_id` is the
+  **client** subject, client-only.
+- **Schema composition.** All guards' tables plus `uploads` and `notifications` merge + derive
+  together (gated by the codegen fixture + the package tests).
+
+**Not exercised live here** (proven elsewhere, or needs real infrastructure):
+
+- The `notify('c-1', ...)` **write** call is not made at boot — the demo seeds the feed row
+  directly to keep vike-notifications' server module (node:crypto) out of the once-per-server
+  hook. The `notify()` → client-subject write path is covered by the vike-notifications
+  package tests.
+- **Magic-link email** goes to the **dev console/outbox**, not a real inbox — no transport is
+  registered (same as the other demos). Real delivery needs a Resend key.
+- This app runs on the **memory adapter** (zero database); the Drizzle and Rudder adapters are
+  proven against a real database elsewhere (vike-stripe's signature-verified webhooks, the
+  codegen drift fixture).
+- A **Vue twin** is deferred ([epic #255](https://github.com/suleimansh/vike-data/issues/255)).
 
 ## Run it
 
