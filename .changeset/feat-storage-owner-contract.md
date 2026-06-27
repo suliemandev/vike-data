@@ -1,0 +1,8 @@
+---
+'@vike-data/kit': minor
+'vike-storage': minor
+---
+
+kit: add `resolveOwner(defaultTable, binding)` + `DEFAULT_OWNER_COLUMN` — the shared OWNER-binding contract (#250). It resolves `{ ownerTable, ownerColumn }` from an extension's default owner table (its auth subject) and the app's opt-in `{ table?, column? }`, defaulting the column to `user_id`. This is the owner axis, orthogonal to subject RENAME (`createSubjectResolver`): a rename changes which table the fixed `user_id` FK targets; an owner binding can also swap the COLUMN to a different kind of owner (an organization), the way vike-stripe's `segment` flips `user_id`/`users` <-> `organization_id`/`organizations`. Pure (no env/globals) so it composes with whatever subject/guard resolution a consumer already does.
+
+vike-storage: own uploads by any subject, not just the auth user (#250). Set `storageOwner: { table: 'organizations', column: 'organization_id' }` (build) plus `VIKE_STORAGE_OWNER_COLUMN` + `VIKE_STORAGE_OWNER_FROM` (runtime) and an upload is owned by the uploader's organization (resolved from the signed-in user's `current_organization_id`), shared across the org's members — read and owner-scoped delete both follow the org, and a signed-in user with no org gets `403 no-owner`. This is the owner axis, orthogonal to `storageGuard` (which picks which user subject table): the owner binding's table wins when set, so org ownership supersedes the per-guard user. Unset = the single-user `user_id` -> subject default, byte-for-byte. vike-storage stays decoupled from vike-teams — the app names the table/column/source field, exactly as vike-stripe takes the resolved subject from the app. The same `resolveOwner` contract will land in vike-push and vike-notifications next.

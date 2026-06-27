@@ -188,3 +188,38 @@ export function createSubjectResolver(defaults, envKeys = {}) {
     return out
   }
 }
+
+/**
+ * The canonical OWNER column name (#250): an owned-row extension (vike-storage / vike-push /
+ * vike-notifications) FKs each row to a single owner by this column unless the app opts into a
+ * different kind of owner.
+ */
+export const DEFAULT_OWNER_COLUMN = 'user_id'
+
+/**
+ * Resolve an OWNER binding - `{ ownerTable, ownerColumn }` - the shared contract behind "let this
+ * extension's rows be owned by an organization, not just the auth user" (#250). It is the OWNER
+ * axis, orthogonal to subject RENAME (createSubjectResolver / resolveSubject): a rename changes
+ * which table the fixed `user_id` FK targets; an owner binding can ALSO swap the COLUMN to a
+ * different kind of owner - the way vike-stripe's `segment` flips `user_id`/`users` <->
+ * `organization_id`/`organizations`. Lifting it here means the three owned-row extensions express
+ * "who owns this row" with ONE vocabulary instead of re-deriving stripe's `segment`/`subjectColumn`
+ * per package.
+ *
+ * Pure (no env, no globals) so it composes with whatever subject/guard resolution the extension
+ * already does: the extension passes its resolved default owner table (the auth subject) and the
+ * app's opt-in binding. A blank/whitespace table or column falls through to the default; the
+ * column defaults to `user_id`, so an extension that passes no binding stays byte-for-byte its
+ * single-owner self.
+ *
+ * @param {string} defaultTable  The extension's default owner table (its resolved auth subject).
+ * @param {{ table?:string, column?:string }} [binding]  The app's opt-in owner override.
+ * @returns {{ ownerTable:string, ownerColumn:string }}
+ */
+export function resolveOwner(defaultTable, binding = {}) {
+  const clean = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : undefined)
+  return {
+    ownerTable: clean(binding?.table) ?? defaultTable,
+    ownerColumn: clean(binding?.column) ?? DEFAULT_OWNER_COLUMN,
+  }
+}
