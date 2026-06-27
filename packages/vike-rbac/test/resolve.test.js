@@ -81,6 +81,38 @@ test('no orgRoleSource configured -> no org maps, no extra read (#109)', async (
   assert.deepEqual(ctx.user.orgPermissions, {})
 })
 
+// --- named-guard binding (#291 / #207 P3) ------------------------------------
+
+test('rbacGuard enriches the named guard user, leaving the default user untouched', async () => {
+  const a = await freshAdapter()
+  await assignRoles(a, 'admin-1', ['admin'])
+  const ctx = {
+    user: { id: 'default-1' }, // the default guard's user — must be left untouched
+    guards: { admin: { user: { id: 'admin-1' } } },
+    config: { rbacGuard: 'admin' },
+  }
+  await resolveAccessOnto(ctx)
+  assert.deepEqual(ctx.guards.admin.user.roles, ['admin']) // the guard user got enriched in place
+  assert.deepEqual(ctx.guards.admin.user.permissions.sort(), ['users.edit', 'users.view'])
+  assert.equal(ctx.user.roles, undefined) // the default pageContext.user is untouched
+})
+
+test("rbacGuard: 'default' uses pageContext.user (byte-for-byte the default path)", async () => {
+  const a = await freshAdapter()
+  await assignRoles(a, 'default-1', ['admin'])
+  const ctx = { user: { id: 'default-1' }, config: { rbacGuard: 'default' } }
+  await resolveAccessOnto(ctx)
+  assert.deepEqual(ctx.user.roles, ['admin'])
+})
+
+test('a selected guard with no resolved user is a no-op (the default user is NOT enriched)', async () => {
+  const a = await freshAdapter()
+  await assignRoles(a, 'default-1', ['admin'])
+  const ctx = { user: { id: 'default-1' }, guards: { admin: { user: null } }, config: { rbacGuard: 'admin' } }
+  await resolveAccessOnto(ctx)
+  assert.equal(ctx.user.roles, undefined) // a guard was selected, so the default user is never touched
+})
+
 // --- the RPC path resolves org grants too (#235) -----------------------------
 
 test('resolveAccessForUser folds in org grants once the enricher remembered the source', async () => {

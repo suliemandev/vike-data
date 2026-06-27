@@ -17,6 +17,7 @@
 import { mergeSchemas } from '@vike-data/universal-schema'
 import { createRepository, getAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
+import { DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { rbacSchemas } from './schema.js'
 import { resolveUserAccess } from './index.js'
 import { assignRoles } from './seed.js'
@@ -54,7 +55,16 @@ function db() {
 
 export async function resolveAccessOnto(pageContext) {
   if (pageContext.isClientSide) return
-  const user = pageContext.user
+  // Which audience does rbac enrich? Default = the default guard's `pageContext.user`. A named
+  // `rbacGuard` (#291 / #207 P3) enriches THAT guard's resolved user instead — the object the
+  // vike-auth guards render hook (guards-oncreate) put on `pageContext.guards[name].user`. That
+  // hook runs BEFORE this enricher (the resolveUser seam runs last, after every other
+  // onCreatePageContext hook), so the guard user is already resolved here; we enrich it IN PLACE so
+  // the same object the page reads for can() carries the roles/permissions. Unset / 'default' / an
+  // unresolved guard falls back to the default user — byte-for-byte today's single-subject path.
+  const guardName = pageContext.config?.rbacGuard
+  const user =
+    guardName && guardName !== DEFAULT_GUARD_NAME ? pageContext.guards?.[guardName]?.user : pageContext.user
   if (!user?.id) return
 
   const { adapter } = db()

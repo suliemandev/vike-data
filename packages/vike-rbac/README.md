@@ -70,7 +70,7 @@ No Vite plugin is needed (the old dev-only `telefunc-plugin` is retired).
 | Subpath | What |
 |---|---|
 | `.` | `can` / `hasRole` / `definePermissions` / `allPermissions` / `resolveUserAccess` (pure). |
-| `./config` | The Vike config: cumulative `permissions`, plus `defaultRoles` and `orgRoleSource`. |
+| `./config` | The Vike config: cumulative `permissions`, plus `defaultRoles`, `orgRoleSource`, and `rbacGuard`. |
 | `./schema` | The RBAC table definitions. |
 | `./resolve` | The request-time resolver that enriches `pageContext.user` with roles + permissions. |
 | `./seed` | `seedRbac()` / `assignRoles()` — materialize roles/permissions/grants from the registry (idempotent). |
@@ -84,6 +84,12 @@ No Vite plugin is needed (the old dev-only `telefunc-plugin` is retired).
   seam right after the user is resolved, so the check is **sync** on every page.
 - **Seed-from-registry.** `seedRbac()` derives the roles/permissions/grants from the
   composed `permissions` registry — no hand-written seed list.
+- **Named-guard binding.** By default rbac enriches the default subject (`pageContext.user`).
+  Set `rbacGuard: 'admin'` to bind it to a [named guard](../vike-auth) instead: `role_user.user_id`
+  FKs to that guard's subject table and the resolver enriches `pageContext.guards.admin.user`. The
+  runtime/RPC half follows the same guard via the `VIKE_RBAC_GUARD` env (the `storageGuard` /
+  `VIKE_STORAGE_GUARD` config/env split). Unset = the default subject, byte-for-byte. (One binding
+  per rbac install; RBAC over more than one guard at once is a later multi-instance step.)
 - **Org-scoped roles.** With `orgRoleSource: 'memberships'`, per-organization role
   grants are read from [vike-teams](../vike-teams); `can(user, perm, { org })` checks
   global ∪ org access. The page enricher records the configured `orgRoleSource`, and the

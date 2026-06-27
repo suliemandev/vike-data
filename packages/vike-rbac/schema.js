@@ -13,41 +13,63 @@
 // teams/org model. Kept deliberately flat for the first tier.
 import { defineSchema } from '@vike-data/vike-schema/schema'
 import { resolveSubject } from 'vike-auth/subject'
+import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 
-// role_user FKs into auth's subject table, so it must FOLLOW a renamed subject
-// (VIKE_AUTH_SUBJECT_TABLE) the same way the other downstream extensions do (PR #215),
-// not hardcode the literal 'users'. Default resolves to 'users', so the zero-config
-// app is unchanged. Resolved once at module-eval (env is build-time data).
-const USERS = resolveSubject().users
+// Build the four RBAC tables against a given subject table, so `role_user.user_id`
+// follows BOTH a renamed default subject (VIKE_AUTH_SUBJECT_TABLE, PR #215) AND a
+// named guard binding (#291 / #207 P3). Only `role_user` references the subject; the
+// other three are subject-independent. `usersTable` defaults to the resolved default
+// subject, so the zero-config app is byte-for-byte unchanged. Tests call this with an
+// explicit table without touching env.
+export function rbacSchemasFor(usersTable = resolveSubject().users) {
+  return [
+    defineSchema('roles', (t) => {
+      t.uuid('id').primary()
+      t.string('name').unique() // stable key, e.g. 'admin', 'member'
+      t.string('label').nullable() // human label for an admin UI
+      t.timestamps()
+    }),
+    defineSchema('permissions', (t) => {
+      t.uuid('id').primary()
+      t.string('name').unique() // stable key, e.g. 'users.view'
+      t.string('label').nullable()
+      t.timestamps()
+    }),
+    // A user's roles. FK into auth's subject table (a cross-extension reference;
+    // merge.js validates the table exists). Deleting a user clears their grants.
+    defineSchema('role_user', (t) => {
+      t.uuid('id').primary()
+      t.uuid('role_id').references('roles.id', { onDelete: 'cascade' })
+      t.uuid('user_id').references(`${usersTable}.id`, { onDelete: 'cascade' })
+      t.timestamps()
+    }),
+    // A role's permissions.
+    defineSchema('permission_role', (t) => {
+      t.uuid('id').primary()
+      t.uuid('permission_id').references('permissions.id', { onDelete: 'cascade' })
+      t.uuid('role_id').references('roles.id', { onDelete: 'cascade' })
+      t.timestamps()
+    }),
+  ]
+}
 
-export const rbacSchemas = [
-  defineSchema('roles', (t) => {
-    t.uuid('id').primary()
-    t.string('name').unique() // stable key, e.g. 'admin', 'member'
-    t.string('label').nullable() // human label for an admin UI
-    t.timestamps()
-  }),
-  defineSchema('permissions', (t) => {
-    t.uuid('id').primary()
-    t.string('name').unique() // stable key, e.g. 'users.view'
-    t.string('label').nullable()
-    t.timestamps()
-  }),
-  // A user's roles. FK into auth's subject table (a cross-extension reference;
-  // merge.js validates the table exists). Deleting a user clears their grants.
-  defineSchema('role_user', (t) => {
-    t.uuid('id').primary()
-    t.uuid('role_id').references('roles.id', { onDelete: 'cascade' })
-    t.uuid('user_id').references(`${USERS}.id`, { onDelete: 'cascade' })
-    t.timestamps()
-  }),
-  // A role's permissions.
-  defineSchema('permission_role', (t) => {
-    t.uuid('id').primary()
-    t.uuid('permission_id').references('permissions.id', { onDelete: 'cascade' })
-    t.uuid('role_id').references('roles.id', { onDelete: 'cascade' })
-    t.timestamps()
-  }),
-]
+// Resolved once at import against the DEFAULT subject — the array resolve.js builds its
+// own RBAC-tables repo from, and the value tests read. Byte-for-byte the previous inline
+// schema when no subject override / guard binding is set.
+export const rbacSchemas = rbacSchemasFor()
+
+// The config-aware `schemas` contribution (#291 / #207 P3). `config.rbacGuard` names the
+// guard whose subject OWNS the role grants: defaults to the DEFAULT guard (the env-configured
+// `users`), so no `rbacGuard` = today's table, and `rbacGuard: 'admin'` points `role_user.user_id`
+// at `admins`. An unknown / not-yet-registered guard name falls back to the default subject rather
+// than mint an FK to a table no guard owns. The runtime user resolution follows the same guard via
+// VIKE_RBAC_GUARD (resolve.js / the Telefunc seam). Vike hands this the resolved config
+// (resolveSchemas(config.schemas, config)), the same build-time seam vike-storage's
+// `uploadsSchemas(config)` uses.
+export function rbacSchemasFromConfig(config) {
+  const guardName = config?.rbacGuard || DEFAULT_GUARD_NAME
+  const guard = getGuard(guardName)
+  return rbacSchemasFor(guard ? guard.subject.users : resolveSubject().users)
+}
 
 export default rbacSchemas
