@@ -20,13 +20,14 @@
 import vikeReact from 'vike-react/config'
 import authExt from 'vike-auth/react'
 import authGuardsExt from 'vike-auth/react/guards'
+import storageExt from 'vike-storage/config'
 import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import { guards } from '../guards.js'
 
 export default {
-  extends: [vikeReact, authExt, authGuardsExt, themesExt, layoutsExt, emeraldExt],
+  extends: [vikeReact, authExt, authGuardsExt, storageExt, themesExt, layoutsExt, emeraldExt],
 
   // guards: contribute each guard's tables (`admins` + `admin_sessions` + ..., and the
   // client trio) to the cumulative `schemas` point — they merge + derive alongside the
@@ -45,6 +46,16 @@ export default {
     layout: 'centered',
     authGuard: g.name,
   })),
+
+  // storage: install vike-storage (adds the `uploads` table + the /uploads endpoint) and
+  // BIND it to the staff audience with `storageGuard` (#278 / #207 P3). This is the downstream
+  // "which subject" seam: the `uploads.user_id` FK now targets the admin guard's subject
+  // (`admins`) instead of the default `users`, and the upload endpoint resolves the owner from
+  // the admin session cookie. The runtime half reads the guard from VIKE_STORAGE_GUARD, set in
+  // +onCreateGlobalContext.js (the config/env split vike-storage shares with vike-stripe's
+  // `segment`/`BILLING_SEGMENT`). Unset = the default `users` subject, byte-for-byte. The home
+  // page shows a staff-only uploader and lists the signed-in admin's own files.
+  storageGuard: 'admin',
 
   // themes: two axes — which brand (`theme`, from the cumulative themes registry; the
   // emerald package contributes 'emerald'), and which mode (`appearance`: 'system'

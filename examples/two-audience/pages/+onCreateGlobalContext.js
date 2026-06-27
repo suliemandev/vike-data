@@ -14,6 +14,14 @@ import { guards } from '../guards.js'
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString()
 
 export default async function onCreateGlobalContext() {
+  // Bind vike-storage's RUNTIME owner resolution to the staff (admin) guard (#278 / #207 P3):
+  // the upload endpoint reads this to resolve the uploader from the admin session cookie + the
+  // `admins` subject, matching the build-time `storageGuard: 'admin'` in +config.js. Set here
+  // (the once-per-server hook, before any request) rather than a .env so the demo is
+  // self-contained; a real app would set VIKE_STORAGE_GUARD in its environment. `??=` leaves an
+  // explicit env override untouched.
+  process.env.VIKE_STORAGE_GUARD ??= 'admin'
+
   if (getAdapter()) return // idempotent across dev HMR / double-eval
   const adapter = createMemoryAdapter()
   setAdapter(adapter)

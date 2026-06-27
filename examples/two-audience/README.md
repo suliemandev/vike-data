@@ -12,7 +12,11 @@ leaves the other untouched.
 
 > Phase history: Phase 0 ([#266](https://github.com/suleimansh/vike-data/issues/266)) stood
 > up the single-audience skeleton; Phase 1 ([#267](https://github.com/suleimansh/vike-data/issues/267))
-> added the named guards documented here. Org ownership and a Vue twin are later phases.
+> added the named guards documented here;
+> [#278](https://github.com/suleimansh/vike-data/issues/278) bound vike-storage to the staff
+> guard (the downstream "which subject" seam, [#207](https://github.com/suleimansh/vike-data/issues/207)
+> P3). Org ownership ([#250](https://github.com/suleimansh/vike-data/issues/250)) and a Vue twin
+> are later phases.
 
 ## The guards
 
@@ -48,6 +52,37 @@ the API.
 - **vike-themes/react + vike-theme-emerald** — a brand (light + dark) plus the
   `system`/`light`/`dark` appearance axis.
 - **vike-layouts/react** — the app shell (`topbar`; the login pages use `centered`).
+- **vike-storage** — bound to the staff guard (`storageGuard: 'admin'`), so a staff upload is
+  owned by the `admins` subject. See below.
+
+## Storage owned by the staff guard (#278 / #207 P3)
+
+The downstream **"which subject" seam**: vike-storage hardcodes neither the owner table nor the
+session it reads. This app binds it to the staff audience, so a file uploaded as staff is owned
+by the `admins` subject, not the default user.
+
+```js
+// pages/+config.js
+storageGuard: 'admin',          // build-time: uploads.user_id FKs into `admins`, not `users`
+```
+
+```js
+// pages/+onCreateGlobalContext.js
+process.env.VIKE_STORAGE_GUARD ??= 'admin'   // runtime: resolve the uploader from the admin cookie
+```
+
+Two knobs, one for each half — the same config/env split vike-stripe uses for
+`segment`/`BILLING_SEGMENT`:
+
+| half | knob | effect |
+|---|---|---|
+| schema (build) | `storageGuard: 'admin'` | the `uploads.user_id` FK target follows the admin guard's subject (`admins`) |
+| runtime (request) | `VIKE_STORAGE_GUARD=admin` | the `/uploads` endpoint resolves the owner from the **admin** session cookie |
+
+Leave both unset and storage owns uploads by the default `users` subject, byte-for-byte. The home
+page shows a **staff-only uploader** and lists the signed-in admin's own files (loaded server-side
+in `pages/index/+data.js`); a client or the default user sees a prompt, never another audience's
+files.
 
 Everything runs on an in-process **memory adapter** (zero database) registered in
 `pages/+onCreateGlobalContext.js`, seeded with one row per audience: staff

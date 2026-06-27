@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Phase 0 skeleton for the two-audience reference app (epic #255). A React app on the memory adapter (zero DB) with vike-auth's default user guard as the SINGLE audience for now, themed and laid out. Proves the harness builds + runs; the second guard / org ownership / Vue twin land in later phases.",
+  "description": "The two-audience reference app (epic #255): a React app on the memory adapter (zero DB) running vike-auth's default user guard plus two named guards (staff `admin`, customer `client`) with zero cross-talk. Drives the downstream 'which subject' seam (#207 P3): vike-storage is bound to the admin guard (storageGuard: 'admin'), so a staff upload is owned by the `admins` subject. Org ownership (#250) + a Vue twin land in later phases.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,6 +19,7 @@
     "vike-auth": "workspace:*",
     "vike-i18n": "workspace:*",
     "vike-layouts": "workspace:*",
+    "vike-storage": "workspace:*",
     "vike-themes": "workspace:*",
     "vike-theme-emerald": "workspace:*",
     "vite": "^7.1.0"

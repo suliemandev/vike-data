@@ -8,6 +8,7 @@
 // contributed to the cumulative `schemas` point from +config.js.
 import { defineSchema } from '@vike-data/vike-schema/schema'
 import { resolveSubject } from 'vike-auth/subject'
+import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 
 // Build the table against a given subject table so the FK target follows vike-auth's
 // configurable subject (subject.js). `usersTable` defaults to the resolved name; tests
@@ -28,8 +29,27 @@ export function uploadsSchemaFor(usersTable = resolveSubject().users) {
   })
 }
 
-// Resolved once at import, the value contributed to the cumulative `schemas` point. With
-// no `VIKE_AUTH_SUBJECT_TABLE` override this is byte-for-byte the previous inline schema.
+// Resolved once at import against the DEFAULT subject — the value tests and the default-guard
+// path read. With no `VIKE_AUTH_SUBJECT_TABLE` override this is byte-for-byte the previous
+// inline schema.
 export const uploadsSchema = uploadsSchemaFor()
+
+// The config-aware `schemas` contribution (#278 / #207 P3): build `uploads` against the
+// subject of the guard the app bound storage to — `config.storageGuard`, a guard name —
+// defaulting to the DEFAULT guard, whose subject is the env-configured `users`
+// (resolveSubject). So an app that sets no `storageGuard` gets byte-for-byte today's table,
+// and one that sets `storageGuard: 'admin'` FKs `uploads.user_id` into `admins` instead.
+// Vike hands this the resolved config (resolveSchemas(config.schemas, config)), the same
+// build-time seam vike-stripe's subscriptionSchemas(config) uses. An unknown / not-yet-
+// registered guard name falls back to the default subject rather than mint an FK to a table
+// no guard owns. The runtime owner resolution follows the same guard via VIKE_STORAGE_GUARD
+// (middleware.js) — the two halves are kept in sync by the app the way vike-stripe pairs
+// `segment` with `BILLING_SEGMENT`.
+export function uploadsSchemas(config) {
+  const guardName = config?.storageGuard || DEFAULT_GUARD_NAME
+  const guard = getGuard(guardName)
+  const usersTable = guard ? guard.subject.users : resolveSubject().users
+  return [uploadsSchemaFor(usersTable)]
+}
 
 export default uploadsSchema

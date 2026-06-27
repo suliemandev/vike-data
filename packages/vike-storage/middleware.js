@@ -11,8 +11,23 @@
 // most blob stores use - per-object ACLs / private buckets are a follow-up. Contributed through
 // the cumulative `middleware` config from +config.js.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
-import { resolveSessionUser } from 'vike-auth/server'
+import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
+import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { storeUpload, readUpload, deleteUpload, getMaxUploadBytes } from './index.js'
+
+// Resolve the upload owner from the guard the app bound storage to (VIKE_STORAGE_GUARD,
+// #278 / #207 P3). Set to a named guard, the owner is read from THAT guard's session cookie +
+// subject, so an admin-guard upload is owned by the `admins` subject, not the default `users`.
+// Unset / 'default' / an unregistered name falls back to the default-subject resolveSessionUser
+// — byte-for-byte today's behaviour. The runtime knob mirrors the build-time `storageGuard`
+// (schema.js); the app keeps them in sync the way vike-stripe pairs `segment` with
+// `BILLING_SEGMENT`.
+function resolveUploadOwner(request) {
+  const name = process.env.VIKE_STORAGE_GUARD
+  if (!name || name === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
+  const guard = getGuard(name)
+  return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
+}
 
 const json = (status, obj) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
@@ -50,7 +65,7 @@ export function createStorageMiddleware() {
 
     // POST /uploads - upload a file as the signed-in user.
     if (request.method === 'POST' && rest === '') {
-      const user = await resolveSessionUser(request)
+      const user = await resolveUploadOwner(request)
       if (!user) return json(401, { error: 'not-signed-in' })
       // Reject an over-size upload. Content-Length is the cheap pre-check that rejects an
       // honest multi-GB body BEFORE it is buffered into memory; we re-check the parsed file
@@ -85,7 +100,7 @@ export function createStorageMiddleware() {
     // DELETE /uploads/:id - remove the caller's own upload. Owner-scoped, idempotent (always
     // 200, no existence oracle), so guessing another user's id deletes nothing.
     if (request.method === 'DELETE' && rest) {
-      const user = await resolveSessionUser(request)
+      const user = await resolveUploadOwner(request)
       if (!user) return json(401, { error: 'not-signed-in' })
       await deleteUpload(user.id, rest)
       return json(200, { ok: true })

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
+import { defineGuard } from 'vike-auth/guards'
 import {
   storeUpload,
   readUpload,
@@ -331,4 +332,69 @@ test('setMaxUploadBytes rejects a non-positive value', () => {
   assert.throws(() => setMaxUploadBytes(0), /positive number/)
   assert.throws(() => setMaxUploadBytes(-1), /positive number/)
   assert.throws(() => setMaxUploadBytes(NaN), /positive number/)
+})
+
+// #278 / #207 P3: the upload OWNER follows the guard the app bound storage to via
+// VIKE_STORAGE_GUARD. Open a session against a named guard (its own cookie + subject table),
+// not the default subject.
+async function openGuardSessionCookie(guard, email) {
+  const { token } = await guard.instance.requestMagicLink(email)
+  const { session } = await guard.instance.redeemMagicLink(token)
+  return `${guard.cookieName}=${session.token}`
+}
+
+test('POST /uploads owns the file by the configured guard subject (VIKE_STORAGE_GUARD)', async () => {
+  const adapter = setup()
+  const admin = defineGuard('storage-admin', { table: 'admins' })
+  process.env.VIKE_STORAGE_GUARD = admin.name
+  try {
+    const cookie = await openGuardSessionCookie(admin, 'boss@example.com')
+    const mw = createStorageMiddleware()
+    const fd = new FormData()
+    fd.append('file', fileOf('memo.txt', 'text/plain', 72, 73))
+    const res = await mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+    assert.equal(res.status, 200)
+
+    // The owner is the ADMIN subject (from `admins`), and the upload row's user_id is its id —
+    // not a default `users` row.
+    const adminRow = (await adapter.find('admins', { email: 'boss@example.com' }))[0]
+    assert.ok(adminRow, 'the admin subject was created in its own `admins` table')
+    const rows = await adapter.find('uploads', {})
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].user_id, adminRow.id)
+  } finally {
+    delete process.env.VIKE_STORAGE_GUARD
+  }
+})
+
+test('with VIKE_STORAGE_GUARD set, a default-subject session cookie is not accepted as the owner', async () => {
+  setup()
+  const admin = defineGuard('storage-admin-x', { table: 'admins' })
+  process.env.VIKE_STORAGE_GUARD = admin.name
+  try {
+    // A DEFAULT guard session (the bare `vike_auth_session` cookie) must NOT authorize an upload
+    // when storage is bound to the admin guard — no cross-talk between audiences.
+    const cookie = await openSessionCookie('default-user@example.com')
+    const mw = createStorageMiddleware()
+    const fd = new FormData()
+    fd.append('file', fileOf('x.txt', 'text/plain', 1))
+    const res = await mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+    assert.equal(res.status, 401)
+  } finally {
+    delete process.env.VIKE_STORAGE_GUARD
+  }
+})
+
+test('without VIKE_STORAGE_GUARD the owner is the default subject (byte-for-byte)', async () => {
+  const adapter = setup()
+  delete process.env.VIKE_STORAGE_GUARD
+  const cookie = await openSessionCookie('plain@example.com')
+  const mw = createStorageMiddleware()
+  const fd = new FormData()
+  fd.append('file', fileOf('p.txt', 'text/plain', 5))
+  const res = await mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+  assert.equal(res.status, 200)
+  const user = (await adapter.find('users', { email: 'plain@example.com' }))[0]
+  const rows = await adapter.find('uploads', {})
+  assert.equal(rows[0].user_id, user.id)
 })
