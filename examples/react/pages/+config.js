@@ -118,6 +118,7 @@ export default {
   nav: [
     { label: 'Home', href: '/' },
     { label: 'Admin', href: '/admin' },
+    { label: 'Chat', href: '/chat' },
     { label: 'RPC', href: '/rpc-demo' },
     { label: 'Account', href: '/account' },
     { label: 'Login', href: '/login' },

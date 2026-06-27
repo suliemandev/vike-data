@@ -13,6 +13,12 @@ importers:
 
   examples/react:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.105.0
+        version: 0.105.0(zod@4.4.3)
+      '@gemstack/ai-sdk':
+        specifier: ^0.2.0
+        version: 0.2.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(react@18.3.1)(ws@8.21.0)
       '@universal-orm/core':
         specifier: workspace:*
         version: link:../../packages/universal-orm
@@ -37,6 +43,12 @@ importers:
       vike-admin:
         specifier: workspace:*
         version: link:../../packages/vike-admin
+      vike-ai:
+        specifier: workspace:*
+        version: link:../../packages/vike-ai
+      vike-ai-gemstack:
+        specifier: workspace:*
+        version: link:../../packages/vike-ai-gemstack
       vike-auth:
         specifier: workspace:*
         version: link:../../packages/vike-auth
@@ -309,7 +321,7 @@ importers:
     devDependencies:
       '@gemstack/ai-sdk':
         specifier: ^0.2.0
-        version: 0.2.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(ws@8.21.0)
+        version: 0.2.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(react@18.3.1)(ws@8.21.0)
 
   packages/vike-auth:
     dependencies:
@@ -3264,7 +3276,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@gemstack/ai-sdk@0.2.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(ws@8.21.0)':
+  '@gemstack/ai-sdk@0.2.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(react@18.3.1)(ws@8.21.0)':
     dependencies:
       zod: 4.4.3
     optionalDependencies:
@@ -3273,6 +3285,7 @@ snapshots:
       '@google/genai': 2.10.0
       cohere-ai: 8.0.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)
       openai: 6.44.0(ws@8.21.0)(zod@4.4.3)
+      react: 18.3.1
     transitivePeerDependencies:
       - '@aws-crypto/sha256-js'
       - '@aws-sdk/credential-providers'
