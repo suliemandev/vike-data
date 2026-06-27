@@ -8,22 +8,50 @@
 // Contributed through the cumulative `middleware` config from +config.js, so it composes
 // alongside vike-auth's (and vike-push's) endpoints.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
+import { getAdapter } from '@universal-orm/core'
 import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
+import { resolveSubject } from 'vike-auth/subject'
 import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { getFeed, unreadCount, markRead } from './database-channel.js'
 
-// Resolve the feed owner from the guard the app bound notifications to (VIKE_NOTIFICATIONS_GUARD,
-// #279 / #207 P3). Set to a named guard, the in-app feed is read from THAT guard's session cookie +
-// subject, so a customer sees the `clients` feed and never the default user's — no cross-talk
-// between audiences. Unset / 'default' / an unregistered name falls back to the default-subject
-// resolveSessionUser — byte-for-byte today's behaviour. The runtime knob mirrors the build-time
-// `notificationsGuard` (schema.js); the app keeps them in sync the way vike-stripe pairs `segment`
-// with `BILLING_SEGMENT`.
+// Resolve the signed-in USER for a feed request from the guard the app bound notifications to
+// (VIKE_NOTIFICATIONS_GUARD, #279 / #207 P3). Set to a named guard, the user is read from THAT
+// guard's session cookie + subject, so a customer authenticates against `clients` and never the
+// default user — no cross-talk between audiences. Unset / 'default' / an unregistered name falls
+// back to the default-subject resolveSessionUser — byte-for-byte today's behaviour. This is the
+// AUTH step; the OWNER id is derived from it below (they differ only under the #250 owner binding).
 function resolveFeedUser(request) {
   const name = process.env.VIKE_NOTIFICATIONS_GUARD
   if (!name || name === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
   const guard = getGuard(name)
   return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
+}
+
+// The subject table the signed-in user lives in (the guard's subject, or the default `users`).
+// Used to load the full subject row when the owner id lives on a column other than `.id`.
+function userSubjectTable() {
+  const name = process.env.VIKE_NOTIFICATIONS_GUARD
+  if (!name || name === DEFAULT_GUARD_NAME) return resolveSubject().users
+  const guard = getGuard(name)
+  return guard ? guard.subject.users : resolveSubject().users
+}
+
+// Resolve the OWNER id whose feed this request reads (#250). By default the owner IS the user, so
+// the owner id is `user.id` and the feed stays single-user. When the app binds the feed to a
+// different owner (e.g. an organization) it sets VIKE_NOTIFICATIONS_OWNER_FROM to the subject-row
+// field that holds the owner id (e.g. `current_organization_id`); that field lives on the full
+// subject row, not the normalized { id, email, name }, so we load the row by id and read it.
+// Returns null when the user has no such owner (e.g. belongs to no org) — the caller answers 403,
+// never reading/marking a feed by a missing/blank owner. Matches the build-time `notificationsOwner`
+// column the app set.
+async function resolveOwnerId(user) {
+  const from = process.env.VIKE_NOTIFICATIONS_OWNER_FROM
+  if (!from || from.trim() === '' || from.trim() === 'id') return user.id
+  const adapter = getAdapter()
+  if (!adapter) return null
+  const row = (await adapter.find(userSubjectTable(), { id: user.id }))[0]
+  const ownerId = row?.[from.trim()]
+  return ownerId != null && ownerId !== '' ? ownerId : null
 }
 
 const json = (status, obj) =>
@@ -39,17 +67,21 @@ export function createNotificationsMiddleware() {
     if (url.pathname === '/notifications' && request.method === 'GET') {
       const user = await resolveFeedUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
-      const [items, unread] = await Promise.all([getFeed(user.id), unreadCount(user.id)])
+      const ownerId = await resolveOwnerId(user)
+      if (!ownerId) return json(403, { error: 'no-owner' })
+      const [items, unread] = await Promise.all([getFeed(ownerId), unreadCount(ownerId)])
       return json(200, { items, unread })
     }
 
     if (url.pathname === '/notifications/read' && request.method === 'POST') {
       const user = await resolveFeedUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
+      const ownerId = await resolveOwnerId(user)
+      if (!ownerId) return json(403, { error: 'no-owner' })
       const body = await readJson(request)
       // omit ids (or send null) to mark everything read; otherwise mark the given id(s).
       const ids = body && body.ids != null ? body.ids : null
-      const marked = await markRead(user.id, ids)
+      const marked = await markRead(ownerId, ids)
       return json(200, { ok: true, marked })
     }
 

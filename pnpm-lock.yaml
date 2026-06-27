@@ -426,6 +426,9 @@ importers:
       '@universal-orm/core':
         specifier: workspace:*
         version: link:../universal-orm
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema

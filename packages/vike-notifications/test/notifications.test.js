@@ -363,3 +363,76 @@ test('without VIKE_NOTIFICATIONS_GUARD the feed is the default subject (byte-for
   assert.equal(res.status, 200)
   assert.deepEqual((await res.json()).items.map((i) => i.id), ['p1'])
 })
+
+// #283 / #250: the OWNER binding (orthogonal to the guard axis above). With
+// VIKE_NOTIFICATIONS_OWNER_COLUMN='organization_id' + VIKE_NOTIFICATIONS_OWNER_FROM=
+// 'current_organization_id' the feed is owned by the reader's ORGANIZATION (the column vike-teams
+// stamps on the user row), not the user — so it is shared across the org's members. Helper: open a
+// session and stamp the user row with its current org (the session lookup reads it back).
+async function openMemberCookie(adapter, email, orgId) {
+  const cookie = await openSessionCookie(email)
+  await adapter.update('users', { email }, { current_organization_id: orgId })
+  return cookie
+}
+
+test('org binding: the feed is owned by the org and shared across its members (#283 / #250)', async () => {
+  const adapter = setup()
+  delete process.env.VIKE_NOTIFICATIONS_GUARD
+  process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_NOTIFICATIONS_OWNER_FROM = 'current_organization_id'
+  try {
+    const cookieA = await openMemberCookie(adapter, 'a@org1.com', 'org-1')
+    const cookieB = await openMemberCookie(adapter, 'b@org1.com', 'org-1') // same org as A
+    const cookieC = await openMemberCookie(adapter, 'c@org2.com', 'org-2') // a different org
+
+    // Notify the ORG (an object notifiable, taken as-is): the database channel writes a feed row
+    // owned by organization_id='org-1', not any user_id.
+    await notify({ id: 'org-1' }, {
+      via: () => ['database'],
+      toDatabase: () => ({ type: 'team', data: { title: 'Org notice' } }),
+    })
+    const rows = await adapter.find('notifications', {})
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].organization_id, 'org-1')
+    assert.equal(rows[0].user_id, undefined) // owned by the org, not a user
+
+    const mw = createNotificationsMiddleware()
+    // Member A sees the org feed.
+    let res = await mw(new Request('http://localhost/notifications', { headers: { cookie: cookieA } }))
+    assert.equal((await res.json()).unread, 1)
+    // A DIFFERENT member of the SAME org sees it too (org-shared), and can mark it read.
+    res = await mw(new Request('http://localhost/notifications', { headers: { cookie: cookieB } }))
+    assert.equal((await res.json()).unread, 1)
+    res = await mw(new Request('http://localhost/notifications/read', {
+      method: 'POST', headers: { cookie: cookieB, 'content-type': 'application/json' }, body: '{}',
+    }))
+    assert.deepEqual(await res.json(), { ok: true, marked: 1 })
+    // A member of ANOTHER org sees an empty feed — never the org-1 notice.
+    res = await mw(new Request('http://localhost/notifications', { headers: { cookie: cookieC } }))
+    const bodyC = await res.json()
+    assert.equal(bodyC.unread, 0)
+    assert.deepEqual(bodyC.items, [])
+  } finally {
+    delete process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN
+    delete process.env.VIKE_NOTIFICATIONS_OWNER_FROM
+  }
+})
+
+test('org binding: a signed-in user with no org cannot read a feed (403 no-owner)', async () => {
+  setup()
+  delete process.env.VIKE_NOTIFICATIONS_GUARD
+  process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_NOTIFICATIONS_OWNER_FROM = 'current_organization_id'
+  try {
+    // Signed in, but the user row carries no current_organization_id — there is no owner whose feed
+    // to read, so the request is refused rather than leaking/serving a null-owner feed.
+    const cookie = await openSessionCookie('orphan@example.com')
+    const mw = createNotificationsMiddleware()
+    const res = await mw(new Request('http://localhost/notifications', { headers: { cookie } }))
+    assert.equal(res.status, 403)
+    assert.deepEqual(await res.json(), { error: 'no-owner' })
+  } finally {
+    delete process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN
+    delete process.env.VIKE_NOTIFICATIONS_OWNER_FROM
+  }
+})
