@@ -14,9 +14,10 @@ leaves the other untouched.
 > up the single-audience skeleton; Phase 1 ([#267](https://github.com/suleimansh/vike-data/issues/267))
 > added the named guards documented here;
 > [#278](https://github.com/suleimansh/vike-data/issues/278) bound vike-storage to the staff
-> guard (the downstream "which subject" seam, [#207](https://github.com/suleimansh/vike-data/issues/207)
-> P3). Org ownership ([#250](https://github.com/suleimansh/vike-data/issues/250)) and a Vue twin
-> are later phases.
+> guard and [#279](https://github.com/suleimansh/vike-data/issues/279) bound vike-notifications to
+> the client guard (the downstream "which subject" seam,
+> [#207](https://github.com/suleimansh/vike-data/issues/207) P3). Org ownership
+> ([#250](https://github.com/suleimansh/vike-data/issues/250)) and a Vue twin are later phases.
 
 ## The guards
 
@@ -54,6 +55,8 @@ the API.
 - **vike-layouts/react** — the app shell (`topbar`; the login pages use `centered`).
 - **vike-storage** — bound to the staff guard (`storageGuard: 'admin'`), so a staff upload is
   owned by the `admins` subject. See below.
+- **vike-notifications** — bound to the client guard (`notificationsGuard: 'client'`), so the
+  in-app feed is owned by the `clients` subject. See below.
 
 ## Storage owned by the staff guard (#278 / #207 P3)
 
@@ -83,6 +86,37 @@ Leave both unset and storage owns uploads by the default `users` subject, byte-f
 page shows a **staff-only uploader** and lists the signed-in admin's own files (loaded server-side
 in `pages/index/+data.js`); a client or the default user sees a prompt, never another audience's
 files.
+
+## Notifications owned by the client guard (#279 / #207 P3)
+
+The notifications half of the **same seam**: vike-notifications also hardcodes neither the owner
+table nor the session its feed reads. This app binds it to the **customer** audience, so a
+notification sent to a client is owned by the `clients` subject and read from the client's own feed
+— the mirror image of storage binding to staff.
+
+```js
+// pages/+config.js
+notificationsGuard: 'client',          // build-time: notifications.user_id FKs into `clients`, not `users`
+```
+
+```js
+// pages/+onCreateGlobalContext.js
+process.env.VIKE_NOTIFICATIONS_GUARD ??= 'client'   // runtime: resolve the reader from the client cookie
+// ...and the literal "notify a client subject" the seam is for:
+await notify('c-1', { via: () => ['database'], toDatabase: () => ({ type: 'welcome', data: { title: 'Welcome aboard', body: '...' } }) })
+```
+
+The same two-knob, config/env split as storage:
+
+| half | knob | effect |
+|---|---|---|
+| schema (build) | `notificationsGuard: 'client'` | the `notifications.user_id` FK target follows the client guard's subject (`clients`) |
+| runtime (request) | `VIKE_NOTIFICATIONS_GUARD=client` | the `/notifications` feed + a bare-id `notify()` resolve against the **client** guard |
+
+Leave both unset and notifications own the feed by the default `users` subject, byte-for-byte. The
+seed `notify()`s the client; the home page shows a **client-only feed** of those notifications
+(loaded server-side in `pages/index/+data.js`); staff or the default user sees a prompt, never the
+client's notifications.
 
 Everything runs on an in-process **memory adapter** (zero database) registered in
 `pages/+onCreateGlobalContext.js`, seeded with one row per audience: staff

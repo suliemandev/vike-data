@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { notificationsSchema, notificationsSchemaFor } from '../schema.js'
+import { notificationsSchema, notificationsSchemaFor, notificationsSchemas } from '../schema.js'
+import { defineGuard } from 'vike-auth/guards'
 
 // The `notifications` table vike-notifications owns (the Stem pattern). Pins the fragment
 // the database channel + feed read helpers depend on, so the user_id FK + read_at contract
@@ -48,4 +49,32 @@ test('the FK target follows a renamed vike-auth subject table (the FK column sta
   const renamed = notificationsSchemaFor('members')
   const fk = renamed.columns.find((c) => c.name === 'user_id')
   assert.deepEqual(fk.references, { table: 'members', column: 'id' })
+})
+
+// The config-aware `schemas` contribution (#279 / #207 P3): the FK target follows the guard the
+// app bound notifications to via `config.notificationsGuard`, defaulting to the default `users`
+// subject so an app that sets nothing is byte-for-byte unchanged.
+const notificationsFkOf = (config) => notificationsSchemas(config)[0].columns.find((c) => c.name === 'user_id')
+
+test('notificationsSchemas() defaults the FK target to the default users subject', () => {
+  assert.deepEqual(notificationsFkOf(undefined).references, { table: 'users', column: 'id' })
+  assert.deepEqual(notificationsFkOf({}).references, { table: 'users', column: 'id' })
+})
+
+test('notificationsSchemas({ notificationsGuard }) targets the named guard subject table', () => {
+  // A customer (client) guard owns its own `clients` subject; binding notifications to it points
+  // the feed FK at `clients`, not the default `users`.
+  defineGuard('client', { table: 'clients' })
+  assert.deepEqual(notificationsFkOf({ notificationsGuard: 'client' }).references, { table: 'clients', column: 'id' })
+})
+
+test("notificationsSchemas({ notificationsGuard: 'default' }) is the default users subject", () => {
+  // The default subject is itself a guard (#276); naming it explicitly resolves to `users`.
+  assert.deepEqual(notificationsFkOf({ notificationsGuard: 'default' }).references, { table: 'users', column: 'id' })
+})
+
+test('notificationsSchemas falls back to the default subject for an unregistered guard name', () => {
+  // Never mint an FK to a table no guard owns: an unknown name degrades to the default subject
+  // rather than a dangling reference.
+  assert.deepEqual(notificationsFkOf({ notificationsGuard: 'never-registered' }).references, { table: 'users', column: 'id' })
 })

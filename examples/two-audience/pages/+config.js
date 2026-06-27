@@ -21,13 +21,14 @@ import vikeReact from 'vike-react/config'
 import authExt from 'vike-auth/react'
 import authGuardsExt from 'vike-auth/react/guards'
 import storageExt from 'vike-storage/config'
+import notifsExt from 'vike-notifications/config'
 import themesExt from 'vike-themes/react'
 import layoutsExt from 'vike-layouts/react'
 import emeraldExt from 'vike-theme-emerald/config'
 import { guards } from '../guards.js'
 
 export default {
-  extends: [vikeReact, authExt, authGuardsExt, storageExt, themesExt, layoutsExt, emeraldExt],
+  extends: [vikeReact, authExt, authGuardsExt, storageExt, notifsExt, themesExt, layoutsExt, emeraldExt],
 
   // guards: contribute each guard's tables (`admins` + `admin_sessions` + ..., and the
   // client trio) to the cumulative `schemas` point — they merge + derive alongside the
@@ -56,6 +57,17 @@ export default {
   // `segment`/`BILLING_SEGMENT`). Unset = the default `users` subject, byte-for-byte. The home
   // page shows a staff-only uploader and lists the signed-in admin's own files.
   storageGuard: 'admin',
+
+  // notifications: install vike-notifications (adds the `notifications` table + the
+  // /notifications feed endpoint) and BIND it to the customer audience with `notificationsGuard`
+  // (#279 / #207 P3) — the notifications half of the same "which subject" seam storage uses. The
+  // `notifications.user_id` FK now targets the client guard's subject (`clients`) instead of the
+  // default `users`, and the feed endpoint resolves the reader from the client session cookie. The
+  // runtime half reads the guard from VIKE_NOTIFICATIONS_GUARD, set in +onCreateGlobalContext.js
+  // (the same config/env split as storage's `storageGuard`/`VIKE_STORAGE_GUARD`). Unset = the
+  // default `users` subject, byte-for-byte. The seed in +onCreateGlobalContext.js notifies the
+  // client, and the home page shows a client-only in-app feed of those notifications.
+  notificationsGuard: 'client',
 
   // themes: two axes — which brand (`theme`, from the cumulative themes registry; the
   // emerald package contributes 'emerald'), and which mode (`appearance`: 'system'
