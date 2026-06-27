@@ -112,6 +112,24 @@ test('`{ col: null }` filters by IS NULL across find/count/update/delete', async
   assert.deepEqual((await db.users.find()).map((r) => r.email), ['a@b.com'])
 })
 
+// An empty patch is a no-op that returns the matched rows unchanged on the memory
+// adapter (`Object.assign(r, {})`), but Drizzle's `.set({})` throws "No values to
+// set". The adapter must match memory: return the matched rows, do not throw.
+test('update with an empty patch is a no-op returning the matched rows (not a throw)', async () => {
+  await db.users.insert({ id: ID, email: 'a@b.com', password_hash: 'h', active: true })
+  const rows = await db.users.update({ id: ID }, {})
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].email, 'a@b.com')
+  assert.equal(rows[0].password_hash, 'h') // unchanged, neutral snake_case shape
+  // the row was not mutated.
+  assert.equal((await db.users.findOne({ id: ID })).password_hash, 'h')
+})
+
+test('update with an empty patch and a non-matching filter returns []', async () => {
+  await db.users.insert({ id: ID, email: 'a@b.com', active: true })
+  assert.deepEqual(await db.users.update({ email: 'nope@b.com' }, {}), [])
+})
+
 test('an unregistered table is a clear error', async () => {
   await assert.rejects(createDrizzleAdapter(drizzle(client), []).insert('ghost', {}), /no Drizzle table registered for "ghost"/)
 })

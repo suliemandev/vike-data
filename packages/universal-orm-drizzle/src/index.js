@@ -141,7 +141,17 @@ export function createDrizzleAdapter(db, tables) {
     async update(table, filter, patch) {
       const { table: t, meta } = resolve(table)
       const where = whereOf(filter, meta)
-      const query = db.update(t).set(toInput(patch, meta))
+      const set = toInput(patch, meta)
+      // Empty patch => memory-parity no-op: the in-memory reference adapter does
+      // `Object.assign(r, {})` and returns the matched rows unchanged, but Drizzle's
+      // `.set({})` throws "No values to set". Select the matched rows and return them
+      // unchanged instead of issuing a (failing) UPDATE.
+      if (Object.keys(set).length === 0) {
+        let q = db.select().from(t)
+        if (where) q = q.where(where)
+        return (await q).map((r) => fromRow(r, meta))
+      }
+      const query = db.update(t).set(set)
       const rows = await (where ? query.where(where) : query).returning()
       return rows.map((r) => fromRow(r, meta))
     },
