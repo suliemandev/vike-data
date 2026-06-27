@@ -28,7 +28,7 @@ export default function Page() {
   }, [])
 
   return (
-    <main style={{ display: 'grid', gap: '1rem', maxWidth: 560 }}>
+    <main style={{ display: 'grid', gap: '1rem', maxWidth: 560, margin: '0 auto' }}>
       <h1>RPC authorization</h1>
       <p>
         These results come from <code>*.telefunc.js</code> server functions called directly from the browser. The

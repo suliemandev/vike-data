@@ -38,7 +38,7 @@ export default function Page() {
   }
 
   return (
-    <main style={{ display: 'grid', gap: '1rem', maxWidth: 640 }}>
+    <main style={{ display: 'grid', gap: '1rem', maxWidth: 640, margin: '0 auto' }}>
       <header>
         <h1 style={{ marginBottom: '0.25rem' }}>Chat</h1>
         <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: 14, lineHeight: 1.6 }}>
@@ -115,13 +115,14 @@ export default function Page() {
 function Bubble({ role, content }) {
   const isUser = role === 'user'
   return (
-    <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+    <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', alignItems: 'flex-start' }}>
       <div
         style={{
           maxWidth: '80%',
-          padding: '0.5rem 0.75rem',
+          padding: '0.4rem 0.7rem',
           borderRadius: 'var(--radius, 6px)',
           whiteSpace: 'pre-wrap',
+          lineHeight: 1.45,
           background: isUser ? 'var(--color-primary)' : 'var(--color-bg)',
           color: isUser ? 'var(--color-primary-text)' : 'var(--color-text)',
           border: isUser ? 'none' : '1px solid var(--color-border)',
