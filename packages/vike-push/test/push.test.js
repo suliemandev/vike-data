@@ -336,3 +336,76 @@ test('saveSubscription normalizes a missing/partial keys object to null columns'
   assert.equal(byEndpoint['https://push/partial'].p256dh, 'only-pub')
   assert.equal(byEndpoint['https://push/partial'].auth_secret, null)
 })
+
+// #282 / #250: the OWNER binding. With VIKE_PUSH_OWNER_COLUMN='organization_id' +
+// VIKE_PUSH_OWNER_FROM='current_organization_id' a subscription is owned by the subscriber's
+// ORGANIZATION (the column vike-teams stamps on the user row), not the user — so an org push
+// reaches every member's device. Helper: open a session and stamp the user row with its current
+// org (the session lookup reads it back).
+async function openMemberCookie(adapter, email, orgId) {
+  const cookie = await openSessionCookie(email)
+  await adapter.update('users', { email }, { current_organization_id: orgId })
+  return cookie
+}
+
+const subscribeReq = (cookie, endpoint) =>
+  new Request('http://localhost/push/subscribe', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify(sub(endpoint)),
+  })
+
+test('org binding: subscriptions are owned by the org and an org push reaches every member (#282 / #250)', async () => {
+  const adapter = setup()
+  process.env.VIKE_PUSH_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_PUSH_OWNER_FROM = 'current_organization_id'
+  try {
+    const cookieA = await openMemberCookie(adapter, 'a@org1.com', 'org-1')
+    const cookieB = await openMemberCookie(adapter, 'b@org1.com', 'org-1') // same org as A
+    const cookieC = await openMemberCookie(adapter, 'c@org2.com', 'org-2') // a different org
+    const mw = createPushMiddleware()
+
+    // Each member subscribes their own device; all of org-1's land under organization_id='org-1'.
+    assert.equal((await mw(subscribeReq(cookieA, 'https://push/a-device'))).status, 200)
+    assert.equal((await mw(subscribeReq(cookieB, 'https://push/b-device'))).status, 200)
+    assert.equal((await mw(subscribeReq(cookieC, 'https://push/c-device'))).status, 200)
+    const rows = await adapter.find('push_subscriptions', {})
+    assert.equal(rows.length, 3)
+    assert.deepEqual(rows.map((r) => r.organization_id).sort(), ['org-1', 'org-1', 'org-2'])
+    assert.equal(rows.every((r) => r.user_id === undefined), true) // owned by the org, not the user
+
+    // An ORG push reaches both org-1 members' devices, never org-2's.
+    await sendPush('org-1', { title: 'Team' })
+    const endpoints = getPushOutbox().map((o) => o.subscription.endpoint).sort()
+    assert.deepEqual(endpoints, ['https://push/a-device', 'https://push/b-device'])
+
+    // A member of ANOTHER org cannot unsubscribe org-1's endpoint (owner-scoped; idempotent 200).
+    await mw(new Request('http://localhost/push/unsubscribe', {
+      method: 'POST', headers: { cookie: cookieC, 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: 'https://push/a-device' }),
+    }))
+    assert.ok((await adapter.find('push_subscriptions', { endpoint: 'https://push/a-device' }))[0]) // still there
+    // A DIFFERENT member of the SAME org can: org-shared ownership.
+    await mw(new Request('http://localhost/push/unsubscribe', {
+      method: 'POST', headers: { cookie: cookieB, 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: 'https://push/a-device' }),
+    }))
+    assert.equal((await adapter.find('push_subscriptions', { endpoint: 'https://push/a-device' })).length, 0)
+  } finally {
+    delete process.env.VIKE_PUSH_OWNER_COLUMN
+    delete process.env.VIKE_PUSH_OWNER_FROM
+  }
+})
+
+test('org binding: a signed-in user with no org cannot subscribe (403 no-owner)', async () => {
+  const adapter = setup()
+  process.env.VIKE_PUSH_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_PUSH_OWNER_FROM = 'current_organization_id'
+  try {
+    const cookie = await openSessionCookie('orphan@example.com') // no current_organization_id
+    const mw = createPushMiddleware()
+    const res = await mw(subscribeReq(cookie, 'https://push/orphan'))
+    assert.equal(res.status, 403)
+    assert.deepEqual(await res.json(), { error: 'no-owner' })
+    assert.equal((await adapter.find('push_subscriptions', {})).length, 0)
+  } finally {
+    delete process.env.VIKE_PUSH_OWNER_COLUMN
+    delete process.env.VIKE_PUSH_OWNER_FROM
+  }
+})

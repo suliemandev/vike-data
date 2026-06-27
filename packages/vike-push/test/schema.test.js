@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pushSubscriptionsSchema, pushSubscriptionsSchemaFor } from '../schema.js'
+import { pushSubscriptionsSchema, pushSubscriptionsSchemaFor, pushSubscriptionsSchemas } from '../schema.js'
 
 // The push_subscriptions table vike-push owns (the Stem pattern). These pin the
 // fragment shape the merge/derive layers read, so the columns + the user_id FK +
@@ -52,4 +52,27 @@ test('the FK target follows a renamed vike-auth subject table (the FK column sta
   const renamed = pushSubscriptionsSchemaFor('members')
   const fk = renamed.columns.find((c) => c.name === 'user_id')
   assert.deepEqual(fk.references, { table: 'members', column: 'id' })
+})
+
+// The #250 owner binding: `pushOwner` swaps the owner COLUMN + table so a subscription can be
+// owned by an organization, not just a user. The owner FK is the single column carrying
+// `references` (id is primary, endpoint is unique-but-unreferenced).
+const ownerFkOf = (config) => pushSubscriptionsSchemas(config)[0].columns.find((c) => c.references)
+
+test('pushSubscriptionsSchemas defaults to owning by user_id on the default subject (unchanged)', () => {
+  const fk = ownerFkOf(undefined)
+  assert.equal(fk.name, 'user_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
+})
+
+test('pushSubscriptionsSchemas({ pushOwner }) owns by organization_id on organizations', () => {
+  const fk = ownerFkOf({ pushOwner: { table: 'organizations', column: 'organization_id' } })
+  assert.equal(fk.name, 'organization_id')
+  assert.deepEqual(fk.references, { table: 'organizations', column: 'id' })
+})
+
+test('a column-only owner binding keeps the subject table, owns by the given column', () => {
+  const fk = ownerFkOf({ pushOwner: { column: 'account_id' } })
+  assert.equal(fk.name, 'account_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
 })
