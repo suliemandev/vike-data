@@ -62,3 +62,36 @@ test('uploadsSchemas falls back to the default subject for an unregistered guard
   // subject rather than a dangling reference.
   assert.deepEqual(uploadsFkOf({ storageGuard: 'never-registered' }).references, { table: 'users', column: 'id' })
 })
+
+// The #250 owner binding: `storageOwner` swaps the owner COLUMN + table so an upload can be owned
+// by an organization, not just a user. Orthogonal to `storageGuard` (which picks WHICH user
+// subject table). The owner FK is the single column carrying `references` (id is primary,
+// storage_key is unique-but-unreferenced).
+const ownerFkOf = (config) => uploadsSchemas(config)[0].columns.find((c) => c.references)
+
+test('uploadsSchemas defaults to owning by user_id on the default subject (unchanged)', () => {
+  const fk = ownerFkOf(undefined)
+  assert.equal(fk.name, 'user_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
+})
+
+test('uploadsSchemas({ storageOwner }) owns by organization_id on organizations', () => {
+  const fk = ownerFkOf({ storageOwner: { table: 'organizations', column: 'organization_id' } })
+  assert.equal(fk.name, 'organization_id')
+  assert.deepEqual(fk.references, { table: 'organizations', column: 'id' })
+})
+
+test('the owner binding table wins over the guard subject table', () => {
+  // storageGuard picks WHICH user table; an org owner binding overrides the table entirely. With
+  // both set, the owner binding is the FK target — org ownership supersedes the per-guard user.
+  defineGuard('owner-admin', { table: 'admins' })
+  const fk = ownerFkOf({ storageGuard: 'owner-admin', storageOwner: { table: 'organizations', column: 'organization_id' } })
+  assert.equal(fk.name, 'organization_id')
+  assert.deepEqual(fk.references, { table: 'organizations', column: 'id' })
+})
+
+test('a column-only owner binding keeps the subject table, owns by the given column', () => {
+  const fk = ownerFkOf({ storageOwner: { column: 'account_id' } })
+  assert.equal(fk.name, 'account_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
+})

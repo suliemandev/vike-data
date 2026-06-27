@@ -19,9 +19,18 @@
 // /uploads. Keep it that way so the client build stays clean.
 import { randomUUID } from 'node:crypto'
 import { getAdapter } from '@universal-orm/core'
-import { createPort } from '@vike-data/kit'
+import { createPort, DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
 
 const TABLE = 'uploads'
+
+// The column an upload row is OWNED by (#250). Default `user_id`; an app that binds storage to an
+// organization (storageOwner in +config.js) sets VIKE_STORAGE_OWNER_COLUMN to the matching column
+// (e.g. `organization_id`) so the runtime write/scope matches the build-time FK. Read per call so
+// the knob is honoured; blank falls back to the default.
+function ownerColumn() {
+  const c = process.env.VIKE_STORAGE_OWNER_COLUMN
+  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+}
 
 // A storage key is always a UUID we minted (see `randomUUID` in storeUpload); nothing else is
 // a key we would ever issue. Validating the key before it reaches a provider stops a path
@@ -119,12 +128,14 @@ function requireAdapter() {
 }
 
 /**
- * Store a file for a user: write the bytes through the provider under a fresh unguessable
- * key, then record a metadata row in `uploads`. `file` is `{ filename, mime, bytes }`, bytes
- * a Uint8Array/Buffer. Returns `{ id, key, url, filename, mime, size }` - the row id, the
- * provider key, and a URL to fetch it.
+ * Store a file owned by `ownerId`: write the bytes through the provider under a fresh
+ * unguessable key, then record a metadata row in `uploads`. The owner is the signed-in user by
+ * default; with the #250 owner binding it is whatever the app owns uploads by (e.g. an
+ * organization id), recorded under the configured owner column. `file` is
+ * `{ filename, mime, bytes }`, bytes a Uint8Array/Buffer. Returns
+ * `{ id, key, url, filename, mime, size }` - the row id, the provider key, and a URL to fetch it.
  */
-export async function storeUpload(userId, file) {
+export async function storeUpload(ownerId, file) {
   const adapter = requireAdapter()
   const provider = getStorageProvider()
   const bytes = file.bytes ?? new Uint8Array()
@@ -136,7 +147,7 @@ export async function storeUpload(userId, file) {
   const ts = new Date().toISOString()
   const row = {
     id: randomUUID(),
-    user_id: userId,
+    [ownerColumn()]: ownerId,
     storage_key: key,
     filename,
     mime,
@@ -161,17 +172,20 @@ export async function readUpload(key) {
 }
 
 /**
- * Delete one of a user's uploads by row id. Scoped to `userId` so a caller can only ever
- * delete its OWN file, never another user's row by guessing its id (the #141 row-scope
- * lesson). Removes the bytes through the provider and the metadata row. Returns the number of
- * rows deleted (0 when the user has no such upload).
+ * Delete one of an owner's uploads by row id. Scoped to `ownerId` on the configured owner column
+ * so a caller can only ever delete a file its owner owns, never another owner's row by guessing
+ * its id (the #141 row-scope lesson). With the #250 owner binding the scope is the org, so any
+ * member resolving to that org can delete the org's file; without it, it is the single user, as
+ * today. Removes the bytes through the provider and the metadata row. Returns the number of rows
+ * deleted (0 when the owner has no such upload).
  */
-export async function deleteUpload(userId, id) {
+export async function deleteUpload(ownerId, id) {
   const adapter = requireAdapter()
-  const row = (await adapter.find(TABLE, { id, user_id: userId }))[0]
+  const col = ownerColumn()
+  const row = (await adapter.find(TABLE, { id, [col]: ownerId }))[0]
   if (!row) return 0
   await getStorageProvider().delete(row.storage_key)
-  return adapter.delete(TABLE, { id, user_id: userId })
+  return adapter.delete(TABLE, { id, [col]: ownerId })
 }
 
 /** The URL to fetch an object by its storage key (provider-defined). */

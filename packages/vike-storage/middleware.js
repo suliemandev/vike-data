@@ -11,22 +11,49 @@
 // most blob stores use - per-object ACLs / private buckets are a follow-up. Contributed through
 // the cumulative `middleware` config from +config.js.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
+import { getAdapter } from '@universal-orm/core'
 import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
+import { resolveSubject } from 'vike-auth/subject'
 import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { storeUpload, readUpload, deleteUpload, getMaxUploadBytes } from './index.js'
 
-// Resolve the upload owner from the guard the app bound storage to (VIKE_STORAGE_GUARD,
-// #278 / #207 P3). Set to a named guard, the owner is read from THAT guard's session cookie +
-// subject, so an admin-guard upload is owned by the `admins` subject, not the default `users`.
-// Unset / 'default' / an unregistered name falls back to the default-subject resolveSessionUser
-// — byte-for-byte today's behaviour. The runtime knob mirrors the build-time `storageGuard`
-// (schema.js); the app keeps them in sync the way vike-stripe pairs `segment` with
-// `BILLING_SEGMENT`.
-function resolveUploadOwner(request) {
+// Resolve the signed-in USER for an upload from the guard the app bound storage to
+// (VIKE_STORAGE_GUARD, #278 / #207 P3). Set to a named guard, the user is read from THAT guard's
+// session cookie + subject, so an admin-guard request authenticates against `admins`, not the
+// default `users`. Unset / 'default' / an unregistered name falls back to the default-subject
+// resolveSessionUser — byte-for-byte today's behaviour. This is the AUTH step; the OWNER id is
+// derived from it below (they differ only under the #250 owner binding).
+function resolveUploadUser(request) {
   const name = process.env.VIKE_STORAGE_GUARD
   if (!name || name === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
   const guard = getGuard(name)
   return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
+}
+
+// The subject table the signed-in user lives in (the guard's subject, or the default `users`).
+// Used to load the full subject row when the owner id lives on a column other than `.id`.
+function userSubjectTable() {
+  const name = process.env.VIKE_STORAGE_GUARD
+  if (!name || name === DEFAULT_GUARD_NAME) return resolveSubject().users
+  const guard = getGuard(name)
+  return guard ? guard.subject.users : resolveSubject().users
+}
+
+// Resolve the OWNER id for a request from the signed-in user (#250). By default the owner IS the
+// user, so the owner id is `user.id` and storage stays single-owner. When the app binds uploads to
+// a different owner (e.g. an organization) it sets VIKE_STORAGE_OWNER_FROM to the subject-row field
+// that holds the owner id (e.g. `current_organization_id`); that field lives on the full subject
+// row, not the normalized { id, email, name }, so we load the row by id and read it. Returns null
+// when the user has no such owner (e.g. belongs to no org) — the caller answers 403, never owning a
+// file by a missing/blank owner. Matches the build-time `storageOwner` column the app set.
+async function resolveOwnerId(user) {
+  const from = process.env.VIKE_STORAGE_OWNER_FROM
+  if (!from || from.trim() === '' || from.trim() === 'id') return user.id
+  const adapter = getAdapter()
+  if (!adapter) return null
+  const row = (await adapter.find(userSubjectTable(), { id: user.id }))[0]
+  const ownerId = row?.[from.trim()]
+  return ownerId != null && ownerId !== '' ? ownerId : null
 }
 
 const json = (status, obj) =>
@@ -63,10 +90,12 @@ export function createStorageMiddleware() {
       url.pathname === '/uploads' ? '' : url.pathname.startsWith('/uploads/') ? url.pathname.slice('/uploads/'.length) : null
     if (rest === null) return
 
-    // POST /uploads - upload a file as the signed-in user.
+    // POST /uploads - upload a file owned by the signed-in user (or their bound owner, e.g. org).
     if (request.method === 'POST' && rest === '') {
-      const user = await resolveUploadOwner(request)
+      const user = await resolveUploadUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
+      const ownerId = await resolveOwnerId(user)
+      if (!ownerId) return json(403, { error: 'no-owner' })
       // Reject an over-size upload. Content-Length is the cheap pre-check that rejects an
       // honest multi-GB body BEFORE it is buffered into memory; we re-check the parsed file
       // size below for a request that sent no/an understated Content-Length.
@@ -83,7 +112,7 @@ export function createStorageMiddleware() {
       if (!file || typeof file.arrayBuffer !== 'function') return json(400, { error: 'no-file' })
       if (typeof file.size === 'number' && file.size > max) return json(413, { error: 'upload-too-large', max })
       const bytes = new Uint8Array(await file.arrayBuffer())
-      const saved = await storeUpload(user.id, { filename: file.name, mime: file.type, bytes })
+      const saved = await storeUpload(ownerId, { filename: file.name, mime: file.type, bytes })
       return json(200, { ok: true, ...saved })
     }
 
@@ -97,12 +126,15 @@ export function createStorageMiddleware() {
       })
     }
 
-    // DELETE /uploads/:id - remove the caller's own upload. Owner-scoped, idempotent (always
-    // 200, no existence oracle), so guessing another user's id deletes nothing.
+    // DELETE /uploads/:id - remove an upload the caller's owner owns. Owner-scoped, idempotent
+    // (always 200, no existence oracle), so guessing another owner's id deletes nothing. Under the
+    // #250 org binding the scope is the org, so any member of the owning org can delete its file.
     if (request.method === 'DELETE' && rest) {
-      const user = await resolveUploadOwner(request)
+      const user = await resolveUploadUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
-      await deleteUpload(user.id, rest)
+      const ownerId = await resolveOwnerId(user)
+      if (!ownerId) return json(403, { error: 'no-owner' })
+      await deleteUpload(ownerId, rest)
       return json(200, { ok: true })
     }
 

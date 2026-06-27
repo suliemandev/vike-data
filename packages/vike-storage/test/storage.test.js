@@ -398,3 +398,72 @@ test('without VIKE_STORAGE_GUARD the owner is the default subject (byte-for-byte
   const rows = await adapter.find('uploads', {})
   assert.equal(rows[0].user_id, user.id)
 })
+
+// #250: the OWNER binding (orthogonal to the guard axis above). With
+// VIKE_STORAGE_OWNER_COLUMN='organization_id' + VIKE_STORAGE_OWNER_FROM='current_organization_id'
+// an upload is owned by the uploader's ORGANIZATION (the column vike-teams stamps on the user
+// row), not the user — so it is shared across the org's members. Helper: open a session and stamp
+// the user row with its current org (the session lookup reads it back).
+async function openMemberCookie(adapter, email, orgId) {
+  const cookie = await openSessionCookie(email)
+  await adapter.update('users', { email }, { current_organization_id: orgId })
+  return cookie
+}
+
+const uploadAs = (mw, cookie) => {
+  const fd = new FormData()
+  fd.append('file', fileOf('team.txt', 'text/plain', 1, 2, 3))
+  return mw(new Request('http://localhost/uploads', { method: 'POST', headers: { cookie }, body: fd }))
+}
+
+test('org binding: an upload is owned by the org and shared across its members (#250)', async () => {
+  const adapter = setup()
+  process.env.VIKE_STORAGE_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_STORAGE_OWNER_FROM = 'current_organization_id'
+  try {
+    const cookieA = await openMemberCookie(adapter, 'a@org1.com', 'org-1')
+    const cookieB = await openMemberCookie(adapter, 'b@org1.com', 'org-1') // same org as A
+    const cookieC = await openMemberCookie(adapter, 'c@org2.com', 'org-2') // a different org
+    const mw = createStorageMiddleware()
+
+    // Member A uploads. The row is owned by the ORG (organization_id), not A's user_id.
+    const res = await uploadAs(mw, cookieA)
+    assert.equal(res.status, 200)
+    const saved = await res.json()
+    const rows = await adapter.find('uploads', {})
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].organization_id, 'org-1')
+    assert.equal(rows[0].user_id, undefined) // owned by the org, not the user
+
+    // A member of ANOTHER org cannot delete it (owner-scoped to org-1; idempotent 200, no-op).
+    const delC = await mw(new Request(`http://localhost/uploads/${saved.id}`, { method: 'DELETE', headers: { cookie: cookieC } }))
+    assert.equal(delC.status, 200)
+    assert.equal((await adapter.find('uploads', {})).length, 1) // still there
+
+    // A DIFFERENT member of the SAME org can: org-shared ownership, not per-user.
+    const delB = await mw(new Request(`http://localhost/uploads/${saved.id}`, { method: 'DELETE', headers: { cookie: cookieB } }))
+    assert.equal(delB.status, 200)
+    assert.equal((await adapter.find('uploads', {})).length, 0)
+  } finally {
+    delete process.env.VIKE_STORAGE_OWNER_COLUMN
+    delete process.env.VIKE_STORAGE_OWNER_FROM
+  }
+})
+
+test('org binding: a signed-in user with no org cannot own an upload (403 no-owner)', async () => {
+  const adapter = setup()
+  process.env.VIKE_STORAGE_OWNER_COLUMN = 'organization_id'
+  process.env.VIKE_STORAGE_OWNER_FROM = 'current_organization_id'
+  try {
+    // Signed in, but the user row carries no current_organization_id — there is no owner to bind
+    // the file to, so the upload is refused rather than written with a null/blank owner.
+    const cookie = await openSessionCookie('orphan@example.com')
+    const res = await uploadAs(createStorageMiddleware(), cookie)
+    assert.equal(res.status, 403)
+    assert.deepEqual(await res.json(), { error: 'no-owner' })
+    assert.equal((await adapter.find('uploads', {})).length, 0)
+  } finally {
+    delete process.env.VIKE_STORAGE_OWNER_COLUMN
+    delete process.env.VIKE_STORAGE_OWNER_FROM
+  }
+})

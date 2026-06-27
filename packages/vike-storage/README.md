@@ -62,6 +62,26 @@ VIKE_STORAGE_GUARD=admin
 
 Two knobs, one per half (schema vs request), the same config/env split vike-stripe uses for `segment`/`BILLING_SEGMENT`; keep them pointed at the same guard. The FK **column** stays `user_id`, only its **target table** follows the guard. Leave both unset and storage owns uploads by the default `users` subject, byte-for-byte. An unknown guard name degrades to the default subject rather than minting an FK to a table no guard owns. See the [two-audience example](../../examples/two-audience) for a worked staff-owned upload.
 
+## Owned by a team, not a user (`storageOwner`, #250)
+
+`storageGuard` (above) picks **which user** owns a file. `storageOwner` is the orthogonal axis: it picks **what kind of owner** — let a file belong to an *organization* (so every member of the org shares it), not a single user. This is the same move [vike-stripe's `segment`](../vike-stripe/README.md) makes when it flips a subscription's FK between `user_id`/`users` and `organization_id`/`organizations`.
+
+With [vike-teams](../vike-teams) supplying `organizations` (and stamping each user's active org onto `current_organization_id`):
+
+```js
+// +config.js — build-time: the uploads FK becomes organization_id -> organizations.id
+storageOwner: { table: 'organizations', column: 'organization_id' },
+```
+```bash
+# runtime, two halves:
+VIKE_STORAGE_OWNER_COLUMN=organization_id          # where to write/scope the owner id
+VIKE_STORAGE_OWNER_FROM=current_organization_id    # which field of the signed-in user holds it
+```
+
+The request is still authenticated as the signed-in user; the **owner** is then resolved from that user's `current_organization_id`, so an upload is owned by the org and any member of it can read or delete it. A signed-in user who belongs to no org gets `403 no-owner` rather than a file with a blank owner. Leave `storageOwner` unset (and the env vars) and ownership stays the single-user default, byte-for-byte. vike-storage stays decoupled — it never imports vike-teams; the app names the table/column/source field, exactly as vike-stripe takes the resolved subject from the app.
+
+> The owner contract is a shared `@vike-data/kit` primitive (`resolveOwner`), so the same `{ ownerTable, ownerColumn }` binding will land in vike-push and vike-notifications next.
+
 ## Upload controls
 
 Framework-agnostic helpers (`vike-storage/client`): `uploadFile(file)` and `deleteUpload(id)`. Thin React and Vue controls wrap them:
