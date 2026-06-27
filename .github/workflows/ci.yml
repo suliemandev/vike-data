@@ -8,6 +8,29 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # A real Postgres for the adapter integration tests. The @universal-orm/rudder pg
+    # suite runs only when RUDDER_PG_URL is set (it skips cleanly otherwise), so this
+    # is what exercises the porsager `pg` driver path in CI — every other adapter test
+    # runs on sqlite/pglite.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vike_data_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RUDDER_PG_URL: postgres://postgres:postgres@localhost:5432/vike_data_test
+
     steps:
       - uses: actions/checkout@v4
 

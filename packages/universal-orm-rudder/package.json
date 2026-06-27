@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@rudderjs/database": "^1.5.5",
-    "better-sqlite3": "^12.0.0"
+    "better-sqlite3": "^12.0.0",
+    "postgres": "^3.4.9"
   }
 }
