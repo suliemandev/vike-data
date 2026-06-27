@@ -24,8 +24,6 @@
 // single middleware owns it in dev too (#128), retiring the old dev-only Vite plugin.
 // Row/resource scoping stays the separate `scope(user)` layer vike-admin has (#105),
 // orthogonal to can().
-import { rbacSchemas } from './schema.js'
-
 export default {
   name: 'vike-rbac',
   extends: ['import:vike-auth/config:default'],
@@ -33,6 +31,13 @@ export default {
     // The registry extensions advertise into: a list of permission definitions
     // ({ name, label?, roles?: string[] }). Plain DATA, cumulative, like `schemas`.
     permissions: { env: { config: true, server: true, client: true }, cumulative: true },
+    // `rbacGuard` (#291 / #207 P3): the named guard whose subject the role grants belong to,
+    // defaulting to the default subject (`users`) so the common single-subject app is unchanged.
+    // Read at schema build (rbacSchemasFromConfig -> `role_user.user_id` FK target) AND at render
+    // (resolve.js enriches THAT guard's user). The runtime/RPC half is bound through VIKE_RBAC_GUARD,
+    // the same config/env split vike-storage uses for `storageGuard`/VIKE_STORAGE_GUARD. Declaring it
+    // here is what lets an app set it in +config.js (an undeclared config key is rejected by Vike).
+    rbacGuard: { env: { config: true, server: true } },
     // The role names a brand-new user is granted on first authenticated request
     // (the "default roles on signup" seam). Cumulative + server-only: each extension
     // or the app can contribute one, and the resolver assigns the union to a user who
@@ -49,7 +54,12 @@ export default {
   },
   permissions: [],
   defaultRoles: [],
-  schemas: rbacSchemas,
+  // COMPUTED schema (a function Vike calls with the resolved config) so `role_user.user_id`
+  // follows `rbacGuard` (default unset = the default-subject table, byte-for-byte today's
+  // schema). Wired as a POINTER IMPORT, not an inline function, because a function placed
+  // directly in a serialized config is rejected ("runtime-in-config"); the exact shape
+  // vike-storage's `uploadsSchemas` uses.
+  schemas: 'import:vike-rbac/schema:rbacSchemasFromConfig',
   // Plug the resolver into vike-auth's user-enricher seam: auth runs it right after
   // it resolves pageContext.user, on every page, so can(user, ...) works everywhere
   // (vike-admin canView/canEdit, page guards, a future Telefunc check). A

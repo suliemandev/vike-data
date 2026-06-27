@@ -11,8 +11,20 @@
 // orgRoles, orgPermissions } object the page enricher attaches, so a telefunction's
 // requirePermission('x', { org }) runs exactly what the admin's canView: can(user, 'x',
 // { org }) runs — page and RPC authorize identically (#235).
-import { resolveSessionUser } from 'vike-auth/server'
+import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
+import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { resolveAccessForUser } from './resolve.js'
+
+// Which guard the RPC authenticates against (#291 / #207 P3). Mirrors the page's `rbacGuard`
+// config, but the RPC runs its own lifecycle with no pageContext, so it reads the runtime env
+// VIKE_RBAC_GUARD — the same config/env split vike-storage uses (storageGuard / VIKE_STORAGE_GUARD).
+// Unset / 'default' / an unregistered name = the default subject, so the RPC reads the same session
+// the page does, byte-for-byte today's behaviour.
+function rbacGuard() {
+  const name = process.env.VIKE_RBAC_GUARD
+  if (!name || name === DEFAULT_GUARD_NAME) return null
+  return getGuard(name)
+}
 
 /**
  * Resolve the RPC caller from a Web `Request`'s session cookie and enrich with
@@ -21,7 +33,9 @@ import { resolveAccessForUser } from './resolve.js'
  * means — currentUser()/requirePermission() abort).
  */
 export async function resolveRpcUser(request) {
-  const base = await resolveSessionUser(request)
+  // Authenticate against the bound guard's own cookie + subject when set, else the default session.
+  const guard = rbacGuard()
+  const base = guard ? await resolveGuardUser(request, guard) : await resolveSessionUser(request)
   if (!base) return null
   // resolveAccessForUser folds in org grants (from the remembered orgRoleSource), so an
   // org-scoped guard — requirePermission('x', { org }) — authorizes the SAME on the RPC as

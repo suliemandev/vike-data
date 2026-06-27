@@ -12,7 +12,8 @@ import {
   requirePermission,
   resolveUserAccess,
 } from '../index.js'
-import { rbacSchemas } from '../schema.js'
+import { rbacSchemas, rbacSchemasFor, rbacSchemasFromConfig } from '../schema.js'
+import { defineGuard } from 'vike-auth/guards'
 import config from '../+config.js'
 
 const DATA = {
@@ -134,10 +135,33 @@ test('definePermissions/allPermissions pass data through + flatten the registry'
   )
 })
 
-test('+config declares the permissions registry (cumulative) + contributes the schema', () => {
+test('+config declares the permissions registry (cumulative) + contributes a computed schema', () => {
   assert.equal(config.meta.permissions.cumulative, true)
   assert.ok(config.extends.includes('import:vike-auth/config:default'))
-  assert.equal(config.schemas, rbacSchemas)
+  // The schema is now COMPUTED (a pointer import Vike calls with config) so the FK follows rbacGuard.
+  assert.equal(config.schemas, 'import:vike-rbac/schema:rbacSchemasFromConfig')
+  // rbacGuard is declared so an app can set it in +config.js.
+  assert.deepEqual(config.meta.rbacGuard.env, { config: true, server: true })
+})
+
+test('rbacSchemasFromConfig points role_user.user_id at the bound guard subject (#291)', () => {
+  // Default (no rbacGuard) = the default-subject `users`, byte-for-byte.
+  const def = rbacSchemasFromConfig({}).find((s) => s.table === 'role_user')
+  assert.deepEqual(def.columns.find((c) => c.name === 'user_id').references, { table: 'users', column: 'id' })
+
+  // A named guard retargets the FK at that guard's subject table.
+  defineGuard('rbacadmin', { table: 'admins' })
+  const bound = rbacSchemasFromConfig({ rbacGuard: 'rbacadmin' }).find((s) => s.table === 'role_user')
+  assert.deepEqual(bound.columns.find((c) => c.name === 'user_id').references, { table: 'admins', column: 'id' })
+
+  // An unknown / not-yet-registered guard falls back to the default subject (no FK to a phantom table).
+  const unknown = rbacSchemasFromConfig({ rbacGuard: 'nope' }).find((s) => s.table === 'role_user')
+  assert.deepEqual(unknown.columns.find((c) => c.name === 'user_id').references, { table: 'users', column: 'id' })
+})
+
+test('rbacSchemasFor builds all four tables against an explicit subject table', () => {
+  const tables = rbacSchemasFor('accounts').map((s) => s.table).sort()
+  assert.deepEqual(tables, ['permission_role', 'permissions', 'role_user', 'roles'])
 })
 
 test('the RBAC schema merges into four tables with the join FKs', () => {
