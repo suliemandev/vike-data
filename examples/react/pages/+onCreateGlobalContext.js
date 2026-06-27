@@ -54,6 +54,21 @@ async function registerProductionTransports() {
         vapidPrivateKey: env.VAPID_PRIVATE_KEY,
       }))
     }
+    // AI (#297): with a key set, register the GemStack provider on vike-ai's neutral port, the
+    // AI twin of swapping the memory adapter for vike-drizzle above. The app wires GemStack's
+    // own AiRegistry (the one source of truth for providers + keys) and vike-ai-gemstack is the
+    // thin bridge over it; vike-ai forwards each call's model/provider onto GemStack's
+    // "provider/model" selector. With ANTHROPIC_API_KEY unset, vike-ai keeps its built-in echo
+    // provider, so /chat works offline and in CI with zero config. Pull /chat's calls onto a
+    // different vendor by setting ANTHROPIC_MODEL (or extending this with another provider).
+    if (env.ANTHROPIC_API_KEY) {
+      const { AiRegistry, AnthropicProvider } = await import('@gemstack/ai-sdk')
+      const { registerGemstackAi } = await import('vike-ai-gemstack')
+      const model = env.ANTHROPIC_MODEL || 'anthropic/claude-haiku-4-5-20251001'
+      AiRegistry.register(new AnthropicProvider({ apiKey: env.ANTHROPIC_API_KEY }))
+      AiRegistry.setDefault(model)
+      registerGemstackAi({ model })
+    }
   }
 }
 
