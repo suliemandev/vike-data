@@ -117,6 +117,27 @@ test('update on a non-matching filter is a no-op returning []', async () => {
   assert.deepEqual(await db.update('items', { slug: 'nope' }, { qty: 9 }), [])
 })
 
+// An empty patch is a no-op that returns the matched rows unchanged on the memory
+// adapter (`Object.assign(r, {})`), but Rudder's `updateAll({})` throws ("no columns
+// to set"). The adapter must match memory: return the matched rows, do not throw.
+test('update with an empty patch is a no-op returning the matched rows (not a throw)', async () => {
+  await seed([
+    { slug: 'a', display_name: 'A', qty: 1 },
+    { slug: 'b', display_name: 'B', qty: 1 },
+    { slug: 'c', display_name: 'C', qty: 5 },
+  ])
+  const rows = await db.update('items', { qty: 1 }, {})
+  assert.equal(rows.length, 2)
+  assert.deepEqual(rows.map((r) => r.display_name).sort(), ['A', 'B'])
+  // nothing changed in the DB.
+  assert.equal(await db.count('items', { qty: 1 }), 2)
+})
+
+test('update with an empty patch and a non-matching filter returns []', async () => {
+  await seed([{ slug: 'a', display_name: 'A', qty: 1 }])
+  assert.deepEqual(await db.update('items', { slug: 'nope' }, {}), [])
+})
+
 test('update returns the changed rows on a table whose PK is not `id` (#142)', async () => {
   await db.insert('tokens', { token: 'tok_a', used: 0 })
   await db.insert('tokens', { token: 'tok_b', used: 0 })

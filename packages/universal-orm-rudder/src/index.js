@@ -94,6 +94,11 @@ export function createRudderAdapter(native) {
     async update(table, filter, patch) {
       const matched = await applyWhere(q(table), filter).get()
       if (!matched.length) return []
+      // Empty patch => memory-parity no-op: the in-memory reference adapter does
+      // `Object.assign(r, {})` and returns the matched rows unchanged, but Rudder's
+      // `updateAll({})` throws ("compileUpdate called with no columns to set"). Return
+      // the matched rows unchanged instead of issuing a (failing) UPDATE.
+      if (Object.keys(patch ?? {}).length === 0) return matched
       await applyWhere(q(table), filter).updateAll(patch)
       return matched.map((row) => ({ ...row, ...patch }))
     },
