@@ -90,6 +90,40 @@ export default {
 Read and write through the neutral repository (`@universal-orm/core`'s `getAdapter()`),
 never an ORM directly. The app registers one adapter; every extension shares it.
 
+**Owning a row: two axes, both build-time data.** When your table FKs to the auth subject,
+resolve the FK target instead of hardcoding `users` so it follows the app's configuration:
+
+- **Which subject (rename).** Resolve the subject table with `resolveSubject()` (vike-auth)
+  so a renamed `users` table is followed automatically; a named-guard binding points the same
+  FK at another user table (`admins`/`clients`). The FK **column** stays `user_id`; only its
+  **target table** changes.
+- **Which kind of owner (the owner contract, #250).** Let the app rebind the row to a different
+  *kind* of owner (an organization, not a user) with `@vike-data/kit`'s `resolveOwner(defaultTable, binding)`
+  → `{ ownerTable, ownerColumn }`. This is the [vike-stripe](packages/vike-stripe) `segment` move
+  lifted into one shared vocabulary. The column itself swaps (`user_id` → `organization_id`). Default
+  binding = the auth subject on `user_id`, byte-for-byte the single-owner table.
+
+```js
+// schema.js — a config-aware (computed) schema that follows both axes
+import { resolveSubject } from 'vike-auth/subject'
+import { resolveOwner } from '@vike-data/kit'
+
+export function myThingsSchemas(config) {
+  const { ownerTable, ownerColumn } = resolveOwner(resolveSubject().users, config?.myThingOwner)
+  return [defineSchema('my_things', (t) => {
+    t.uuid('id').primary()
+    t.uuid(ownerColumn).references(`${ownerTable}.id`, { onDelete: 'cascade' })
+    t.timestamps()
+  })]
+}
+```
+
+`vike-storage`, `vike-push`, and `vike-notifications` are the reference consumers; see
+[@vike-data/kit](packages/kit/README.md#resolveowner) for the contract and each package's
+"Owned by a team" README section for the matching runtime env (`VIKE_<PKG>_OWNER_COLUMN`/`_FROM`).
+Declare the config key in `+config.js` `meta` (an undeclared config key is rejected by Vike), the
+same way vike-stripe declares `segment`.
+
 ### 3. The runtime port (a live provider)
 
 When the app needs to plug in a LIVE thing (a transport, a driver, a connection), use a

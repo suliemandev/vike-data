@@ -80,7 +80,7 @@ VIKE_STORAGE_OWNER_FROM=current_organization_id    # which field of the signed-i
 
 The request is still authenticated as the signed-in user; the **owner** is then resolved from that user's `current_organization_id`, so an upload is owned by the org and any member of it can read or delete it. A signed-in user who belongs to no org gets `403 no-owner` rather than a file with a blank owner. Leave `storageOwner` unset (and the env vars) and ownership stays the single-user default, byte-for-byte. vike-storage stays decoupled — it never imports vike-teams; the app names the table/column/source field, exactly as vike-stripe takes the resolved subject from the app.
 
-> The owner contract is a shared `@vike-data/kit` primitive (`resolveOwner`), so the same `{ ownerTable, ownerColumn }` binding will land in vike-push and vike-notifications next.
+> The owner contract is a shared [`@vike-data/kit`](../kit/README.md#resolveowner) primitive (`resolveOwner`); the same `{ ownerTable, ownerColumn }` binding also backs [vike-push](../vike-push/README.md) and [vike-notifications](../vike-notifications/README.md). See [AUTHORING.md](../../AUTHORING.md#2-own-your-tables-the-stem-pattern) to bind your own extension to it.
 
 ## Upload controls
 
