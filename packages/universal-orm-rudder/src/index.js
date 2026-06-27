@@ -38,6 +38,26 @@ export function createRudderAdapter(native) {
   // conditions across calls.
   const q = (table) => native.query(table)
 
+  // Normalise a row READ back from the DB to universal-orm's value contract. universal-orm
+  // speaks UTC ISO strings for timestamps (its isoNow(), the same the memory adapter stores),
+  // but the Postgres driver (porsager) parses a `timestamp`/`timestamptz` column to a JS `Date`
+  // on read, while SQLite returns the verbatim ISO string. Left as-is, the same neutral call
+  // would return a `Date` on pg and a string on sqlite/memory, breaking equality filters and
+  // string comparisons on the pg path. Coerce any `Date` back to an ISO string so reads are
+  // uniform across drivers. A no-op on sqlite (no Date values) and for non-timestamp columns.
+  const fromRow = (row) => {
+    if (!row || typeof row !== 'object') return row
+    let out = row
+    for (const k in row) {
+      if (row[k] instanceof Date) {
+        if (out === row) out = { ...row }
+        out[k] = row[k].toISOString()
+      }
+    }
+    return out
+  }
+  const fromRows = (rows) => rows.map(fromRow)
+
   // Apply a neutral filter (equality + `in`, the narrow surface) onto a builder. An empty
   // filter adds no WHERE, so it matches every row. Returns the builder for chaining.
   const applyWhere = (b, filter) => {
@@ -52,7 +72,7 @@ export function createRudderAdapter(native) {
     // INSERT -> the inserted row. `.create()` returns the stored row via RETURNING * (sqlite /
     // pg), so DB-generated columns (id, defaults) come back. Snake_case keys, no mapping.
     async insert(table, row) {
-      return q(table).create(row)
+      return fromRow(await q(table).create(row))
     },
 
     // FIND -> matching rows. Builds where -> orderBy -> limit -> offset, so a call with none of
@@ -62,7 +82,7 @@ export function createRudderAdapter(native) {
       for (const { column, dir } of normalizeOrderBy(opts.orderBy)) b.orderBy(column, DIR[dir] ?? 'ASC')
       if (opts.limit != null) b.limit(Number(opts.limit))
       if (opts.offset) b.offset(Number(opts.offset))
-      return b.get()
+      return fromRows(await b.get())
     },
 
     // COUNT -> number of matching rows (Rudder counts in the DB; no rows fetched).
@@ -75,11 +95,11 @@ export function createRudderAdapter(native) {
     // conflict key to honour the "return the row" contract. updateCols = every non-conflict
     // column, so a replayed event converges the row.
     async upsert(table, row, { onConflict } = {}) {
-      if (!onConflict || !onConflict.length) return q(table).create(row)
+      if (!onConflict || !onConflict.length) return fromRow(await q(table).create(row))
       const updateCols = Object.keys(row).filter((c) => !onConflict.includes(c))
       await q(table).upsert([row], onConflict, updateCols)
       const key = Object.fromEntries(onConflict.map((c) => [c, row[c]]))
-      return applyWhere(q(table), key).first()
+      return fromRow(await applyWhere(q(table), key).first())
     },
 
     // UPDATE -> the updated rows. Rudder's bulk `updateAll` returns only an affected-row COUNT
@@ -98,9 +118,9 @@ export function createRudderAdapter(native) {
       // `Object.assign(r, {})` and returns the matched rows unchanged, but Rudder's
       // `updateAll({})` throws ("compileUpdate called with no columns to set"). Return
       // the matched rows unchanged instead of issuing a (failing) UPDATE.
-      if (Object.keys(patch ?? {}).length === 0) return matched
+      if (Object.keys(patch ?? {}).length === 0) return fromRows(matched)
       await applyWhere(q(table), filter).updateAll(patch)
-      return matched.map((row) => ({ ...row, ...patch }))
+      return matched.map((row) => fromRow({ ...row, ...patch }))
     },
 
     // DELETE -> number of rows deleted (`deleteAll` returns the affected-row count).
