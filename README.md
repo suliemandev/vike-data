@@ -94,8 +94,8 @@ bundle entirely.
 > **[AUTHORING.md](AUTHORING.md)**. Per-package detail is in each package's README.
 
 Packages are grouped by layer. Each row is a one-line summary; the full design for a
-package is in its own README. A `(+ /react, /vue)` note after a package name means the
-framework-specific UI ships as a subpath of the same package.
+package is in its own README. A trailing _Subpaths:_ note in the Owns column lists the
+subpaths a package ships (its per-framework UI, language packs, or plugin/RPC seams).
 
 <!-- Package-name cells use a non-breaking hyphen (U+2011) so names like `vike-notifications-mail` do not wrap mid-name in GitHub's tables. The real install names (normal hyphens) are in each package's README and package.json. -->
 
@@ -121,9 +121,9 @@ Extensions that own real business tables and self-install their base.
 
 | Package | Owns |
 |---|---|
-| `vike‑auth` <br>(+ `/react`, `/vue`, `/fr`, `/ar`) | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (`pageContext.user`); the link is delivered through the `vike-mail` port. UI + the `/login` + `/account` pages ship as framework subpaths; `/fr` + `/ar` are language subpaths. |
+| `vike‑auth` | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (`pageContext.user`); the link is delivered through the `vike-mail` port. UI + the `/login` + `/account` pages ship as framework subpaths; `/fr` + `/ar` are language subpaths. _Subpaths:_ `/react`, `/vue`, `/fr`, `/ar`. |
 | `vike‑teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
-| `vike‑rbac` <br>(+ `/telefunc`) | Roles & permissions: owns the role/permission tables + a cumulative `permissions` registry + one `can(user, permission)` / `hasRole(user, role)` that pages, vike-admin, and a Telefunc RPC seam all share. Self-installs vike-auth. |
+| `vike‑rbac` | Roles & permissions: owns the role/permission tables + a cumulative `permissions` registry + one `can(user, permission)` / `hasRole(user, role)` that pages, vike-admin, and a Telefunc RPC seam all share. Self-installs vike-auth. _Subpaths:_ `/telefunc`. |
 | `vike‑stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert); subject FK *computed* from `segment` (`b2b`/`b2c`); writes via universal-orm on a signature-verified webhook. Self-installs vike-teams. |
 
 ### Background jobs, mail, notifications & AI
@@ -134,12 +134,12 @@ The async base layer, the delivery ports, and the channels layered on them.
 |---|---|
 | `vike‑queue` | Background-job seam: a job registry + `dispatch()` over a swappable driver (inline for dev, a universal-orm `jobs` table, or a broker later). The base everything else queues onto. |
 | `vike‑mail` | The mail port: `sendMail()` + a swappable transport (console/outbox in dev, Resend/SES/SMTP in prod), sending through `vike-queue`. |
-| `vike‑notifications` <br>(+ `/react`, `/vue`) | Multi-channel director: `notify(user, notification)` fans one intent to email + push + an in-app feed per `via()`, over `vike-queue`. Owns the `notifications` table + `/notifications` feed + a per-framework bell. Concrete channels are separate adapter packages. |
+| `vike‑notifications` | Multi-channel director: `notify(user, notification)` fans one intent to email + push + an in-app feed per `via()`, over `vike-queue`. Owns the `notifications` table + `/notifications` feed + a per-framework bell. Concrete channels are separate adapter packages. _Subpaths:_ `/react`, `/vue`. |
 | `vike‑notifications‑mail` | Mail channel adapter: delivers a notification's `toMail()` through vike-mail's `sendMail`. Separate so the core stays closed for modification. |
 | `vike‑notifications‑push` | Push channel adapter: delivers a notification's `toPush()` through vike-push's `sendPush`. Separate so the core stays closed for modification. |
 | `vike‑notifications‑stripe` | Billing-to-notifications bridge: notifies the user when a subscription goes `past_due`. Depends on vike-stripe + vike-notifications; neither depends on it. |
-| `vike‑push` <br>(+ `/react`, `/vue`) | Web Push channel: `sendPush(userId, payload)` over stored subscriptions + a swappable transport (console/outbox in dev, Web Push/VAPID in prod). Owns `push_subscriptions` + a `/push/subscribe` endpoint + a client control + service worker. |
-| `vike‑storage` <br>(+ `/react`, `/vue`) | File storage / uploads: a swappable storage port (`put` / `get` / `delete` / `url`), an `uploads` table + a multipart `POST /uploads` + owner-scoped `DELETE /uploads/:id`. Registers a `file` widget into the shared field-widget registry, so `.as('file')` renders an uploader in any consumer. |
+| `vike‑push` | Web Push channel: `sendPush(userId, payload)` over stored subscriptions + a swappable transport (console/outbox in dev, Web Push/VAPID in prod). Owns `push_subscriptions` + a `/push/subscribe` endpoint + a client control + service worker. _Subpaths:_ `/react`, `/vue`. |
+| `vike‑storage` | File storage / uploads: a swappable storage port (`put` / `get` / `delete` / `url`), an `uploads` table + a multipart `POST /uploads` + owner-scoped `DELETE /uploads/:id`. Registers a `file` widget into the shared field-widget registry, so `.as('file')` renders an uploader in any consumer. _Subpaths:_ `/react`, `/vue`. |
 | `vike‑ai` | The AI port: `generate()` / `chat()` / `stream()` + a swappable, server-only provider (echo in dev; Rudder AI / Vercel AI SDK / Anthropic in prod). Multi-vendor lives inside the provider via a per-call `model` / `provider` selector. |
 | `vike‑ai‑gemstack` | GemStack provider for `vike-ai`: `registerGemstackAi()` routes the port's calls to the [`@gemstack/ai-sdk`](https://github.com/gemstack-land/gemstack) engine, mapping vike-ai's `model` / `provider` onto GemStack's `"provider/model"` selector. |
 
@@ -149,12 +149,12 @@ The frontend concerns, each a framework-agnostic core plus a thin per-framework 
 
 | Package | Owns |
 |---|---|
-| `vike‑admin` <br>(+ `/react`) | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). |
-| `vike‑themes` <br>(+ `/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
+| `vike‑admin` | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). _Subpaths:_ `/react`. |
+| `vike‑themes` | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. _Subpaths:_ `/react`. |
 | `vike‑theme‑emerald` | Example theme package (composes via the cumulative `themes` config). |
-| `vike‑layouts` <br>(+ `/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
-| `vike‑toolbar` <br>(+ `/react`) | A fixed logo button + settings popover; a cumulative `toolbarItems` seam other extensions (the locale + theme pickers) teleport their controls into. |
-| `vike‑i18n` <br>(+ `/react`, `/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin; the `vike translate` CLI (tier-2 long-tail translations). |
+| `vike‑layouts` | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. _Subpaths:_ `/react`. |
+| `vike‑toolbar` | A fixed logo button + settings popover; a cumulative `toolbarItems` seam other extensions (the locale + theme pickers) teleport their controls into. _Subpaths:_ `/react`. |
+| `vike‑i18n` | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin; the `vike translate` CLI (tier-2 long-tail translations). _Subpaths:_ `/react`, `/plugin`. |
 
 ### Examples & fixtures
 
