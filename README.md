@@ -93,47 +93,75 @@ bundle entirely.
 > **[Architecture.md](Architecture.md)**. To build an extension, see
 > **[AUTHORING.md](AUTHORING.md)**. Per-package detail is in each package's README.
 
-<table>
-<thead>
-<tr><th align="left" width="240">Package</th><th align="left">Owns</th></tr>
-</thead>
-<tbody>
-<tr><td colspan="2"><strong>Data layer</strong></td></tr>
-<tr><td><code>universal-schema</code></td><td>The neutral schema IR + DSL, merge/derive logic, per-ORM compilers. <strong>Zero Vike imports.</strong></td></tr>
-<tr><td><code>universal-orm</code><br><code>@universal-orm/core</code></td><td>The neutral, narrow repository (<code>db.&lt;table&gt;.insert/find/findOne/upsert/update/delete</code>, paging + <code>count</code>) over the composed schema, plus the 6-op adapter contract. Runtime twin of <code>universal-schema</code>. <strong>Zero Vike, zero ORM imports.</strong></td></tr>
-<tr><td><code>@universal-orm/memory</code></td><td>In-process adapter over plain Maps. Zero database; for tests, demos, and the proof.</td></tr>
-<tr><td><code>@universal-orm/drizzle</code></td><td>Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (via PGlite).</td></tr>
-<tr><td><code>@universal-orm/rudder</code></td><td>Rudder adapter: runs the neutral calls against the <code>@rudderjs/database</code> native engine (snake_case keys pass straight through).</td></tr>
-<tr><td><code>@vike-data/kit</code></td><td>Authoring primitives the runtime ports are built on: <code>createPort</code> (a set/get/clear provider registry with a default + validate-on-set, the <code>setAdapter</code> / <code>setMailTransport</code> shape) and <code>createOutbox</code> (a dev capture list). Zero deps, zero Vike imports.</td></tr>
-<tr><td><code>vike-schema</code><br><code>@vike-data/vike-schema</code></td><td>Vike binding: the cumulative <code>schemas</code> config point + the codegen Vite plugin.</td></tr>
-<tr><td><code>vike-drizzle</code></td><td>Vike binding: <code>registerDrizzle(db, schema)</code> makes your Drizzle connection the <code>universal-orm</code> adapter, so extensions write to your database with no manual <code>setAdapter</code> wiring.</td></tr>
-<tr><td><code>vike-rudder</code></td><td>Vike binding: <code>registerRudder({ driver, url })</code> makes the Rudder engine the <code>universal-orm</code> adapter (the twin of <code>vike-drizzle</code>).</td></tr>
-<tr><td><code>vike-auth</code></td><td>Auth core: owns <code>users</code> / <code>sessions</code> / <code>login_tokens</code> + a magic-link server tier (universal middleware + <code>pageContext.user</code>); the magic link is delivered through the <code>vike-mail</code> port. UI + its <code>/login</code> + <code>/account</code> pages ship as the <code>vike-auth/react</code> and <code>vike-auth/vue</code> subpaths; <code>vike-auth/fr</code> + <code>/ar</code> are language subpaths.</td></tr>
-<tr><td><code>vike-teams</code></td><td>Orgs + memberships; references and extends <code>users</code>. Self-installs vike-auth.</td></tr>
-<tr><td><code>vike-rbac</code></td><td>Roles &amp; permissions: owns <code>roles</code> / <code>permissions</code> / <code>role_user</code> / <code>permission_role</code>, a cumulative <code>permissions</code> registry, and one <code>can(user, permission)</code> / <code>hasRole(user, role)</code> the app, vike-admin, and a Telefunc RPC seam (<code>vike-rbac/telefunc</code>) all share. Resolves onto the user via vike-auth's <code>resolveUser</code> seam. Self-installs vike-auth.</td></tr>
-<tr><td><code>vike-stripe</code></td><td>Stripe billing as subpath models: <code>subscription</code> (upsert) + <code>purchase</code> (insert). Subject FK <em>computed</em> from <code>segment</code> (<code>b2b</code>/<code>b2c</code>); server tier writes via universal-orm on a signature-verified webhook. Self-installs vike-teams.</td></tr>
-<tr><td colspan="2"><strong>Background jobs, mail &amp; push</strong></td></tr>
-<tr><td><code>vike-queue</code></td><td>Background-job seam: a runtime job registry + <code>dispatch()</code> over a swappable driver (the inline driver for dev, a universal-orm <code>jobs</code>-table driver, or a production broker later). The base layer other extensions queue work onto.</td></tr>
-<tr><td><code>vike-mail</code></td><td>The mail port (the mail twin of <code>@universal-orm/core</code>): <code>sendMail()</code> + a swappable transport (console/outbox in dev, Resend/SES/SMTP in prod), sending through <code>vike-queue</code>. Producers depend on the port; the app registers the transport.</td></tr>
-<tr><td><code>vike-notifications</code><br><code>vike-notifications/react</code><br><code>vike-notifications/vue</code></td><td>The multi-channel notifications layer (the director over the channels): <code>notify(user, notification)</code> fans one intent out to email + push + an in-app feed per the notification's <code>via()</code>, over <code>vike-queue</code>. A runtime channel registry + a built-in <code>database</code> channel owning the <code>notifications</code> table + session-scoped <code>/notifications</code> feed endpoints + a per-framework bell. Closed for modification: concrete mail/push channels are separate adapter packages. Layered on top of the channels (uses <code>sendMail</code>/<code>sendPush</code>), not parallel to them.</td></tr>
-<tr><td><code>vike-push</code><br><code>vike-push/react</code><br><code>vike-push/vue</code></td><td>The Web Push channel: <code>sendPush(userId, payload)</code> over stored subscriptions + a swappable transport (console/outbox in dev, Web Push/VAPID in prod), owning the <code>push_subscriptions</code> table and a <code>/push/subscribe</code> endpoint, plus a client subscribe control + service worker. Sends through <code>vike-queue</code>.</td></tr>
-<tr><td><code>vike-storage</code><br><code>vike-storage/react</code><br><code>vike-storage/vue</code></td><td>File storage / uploads: a swappable storage port (<code>put</code> / <code>get</code> / <code>delete</code> / <code>url</code>, in-memory in dev, S3/R2/disk in prod), owning an <code>uploads</code> metadata table and a multipart <code>POST /uploads</code> + owner-scoped <code>DELETE /uploads/:id</code> bound to the signed-in user, plus a per-framework upload control. Registers a <code>file</code> widget into the shared (kit) field-widget registry, so a column marked <code>.as('file')</code> renders an uploader in any consumer (vike-admin today) with no bespoke code. Stateful, like vike-push.</td></tr>
-<tr><td><code>vike-ai</code></td><td>The AI port (the AI twin of <code>@universal-orm/core</code>): <code>generate()</code> / <code>chat()</code> / <code>stream()</code> + a swappable, server-only provider (an echo provider in dev; Rudder AI / a Vercel AI SDK / a direct Anthropic provider in prod). App code depends on the port; the app registers the provider. Multi-vendor (claude / gemini / openai) lives inside the provider via a per-call <code>model</code> / <code>provider</code> selector.</td></tr>
-<tr><td><code>vike-ai-gemstack</code></td><td>GemStack provider for <code>vike-ai</code> (the AI twin of <code>@universal-orm/rudder</code>): <code>registerGemstackAi()</code> routes the port's calls to the <a href="https://github.com/gemstack-land/gemstack"><code>@gemstack/ai-sdk</code></a> engine. A thin bridge — the app wires GemStack's own <code>AiRegistry</code> (providers + keys); this maps <code>vike-ai</code>'s <code>model</code> / <code>provider</code> onto GemStack's <code>"provider/model"</code> selector.</td></tr>
-<tr><td colspan="2"><strong>UI tier</strong> (core + React / Vue bindings)</td></tr>
-<tr><td><code>vike-admin</code><br><code>vike-admin/react</code></td><td>An admin panel on install: <code>/admin/*</code> CRUD pages derived from the composed schema; cumulative <code>adminResources</code> + <code>defineResource</code> refinements (FK selects, sort/search, per-row <code>scope</code>).</td></tr>
-<tr><td><code>vike-themes</code><br><code>vike-themes/react</code></td><td>Tokens to CSS variables; the <code>theme</code> (brand) + <code>appearance</code> axes + <code>useTheme()</code>.</td></tr>
-<tr><td><code>vike-theme-emerald</code></td><td>Example theme package (composes via the cumulative <code>themes</code> config).</td></tr>
-<tr><td><code>vike-layouts</code><br><code>vike-layouts/react</code></td><td>Shell selection + slot config; the <code>&lt;CenteredShell&gt;</code> / <code>&lt;TopbarShell&gt;</code> / <code>&lt;SidebarShell&gt;</code>.</td></tr>
-<tr><td><code>vike-toolbar</code><br><code>vike-toolbar/react</code></td><td>A fixed logo button + settings popover; a cumulative <code>toolbarItems</code> seam other extensions (e.g. the locale + theme pickers) teleport their controls into.</td></tr>
-<tr><td><code>vike-i18n</code><br><code>vike-i18n/react</code><br><code>vike-i18n/plugin</code></td><td>Cumulative <code>messages</code> + <code>locale</code>; <code>useTranslation()</code> to <code>t()</code> + a locale picker; the zero-config <code>locales</code> plugin; the <code>vike translate</code> CLI (tier-2 long-tail translations).</td></tr>
-<tr><td colspan="2"><strong>Examples &amp; fixtures</strong></td></tr>
-<tr><td><code>examples/react</code></td><td>UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel.</td></tr>
-<tr><td><code>examples/vue</code></td><td>The Vue twin of <code>examples/react</code>: the same composition over the <code>vike-*/vue</code> subpaths.</td></tr>
-<tr><td><code>examples/two-audience</code></td><td>Two-audience reference app (<a href="https://github.com/suleimansh/vike-data/issues/255">epic #255</a>): a staff guard and a customer guard side by side via vike-auth's named guards, each with its own login, cookie and tables, on the memory adapter.</td></tr>
-<tr><td><code>fixtures/codegen</code></td><td>Data-layer fixture (no UI): the merged schema rendered + compiled to all three ORMs; the CI drift gate.</td></tr>
-</tbody>
-</table>
+Packages are grouped by layer. Each row is a one-line summary; the full design for a
+package is in its own README. A `(+ /react, /vue)` note after a package name means the
+framework-specific UI ships as a subpath of the same package.
+
+### Data layer
+
+The neutral schema + ORM core, the per-ORM adapters, and the Vike bindings that wire them.
+
+| Package | Owns |
+|---|---|
+| `universal-schema` | The neutral schema IR + DSL, the merge/derive logic, and the per-ORM compilers (Prisma / Drizzle / Rudder). **Zero Vike imports.** |
+| `@universal-orm/core` | The neutral, narrow repository (`db.<table>.insert/find/findOne/upsert/update/delete`, paging + `count`) over the composed schema, plus the 6-op adapter contract. Runtime twin of `universal-schema`. **Zero Vike, zero ORM imports.** |
+| `@universal-orm/memory` | In-process adapter over plain Maps. Zero database; for tests, demos, and the proof. |
+| `@universal-orm/drizzle` | Drizzle adapter: runs the neutral calls as Drizzle queries against an app-provided connection. Tested against real Postgres (PGlite). |
+| `@universal-orm/rudder` | Rudder adapter over the `@rudderjs/database` native engine (snake_case keys pass straight through). |
+| `@vike-data/kit` | Authoring primitives the runtime ports build on: `createPort` (a provider registry with a default + validate-on-set) and `createOutbox` (a dev capture list). Zero deps, zero Vike imports. |
+| `@vike-data/vike-schema` | Vike binding: the cumulative `schemas` config point + the codegen Vite plugin. |
+| `vike-drizzle` | Vike binding: `registerDrizzle(db, schema)` makes your Drizzle connection the `universal-orm` adapter, no manual `setAdapter`. |
+| `vike-rudder` | Vike binding: `registerRudder({ driver, url })` makes the Rudder engine the adapter (the twin of `vike-drizzle`). |
+
+### Domain extensions
+
+Extensions that own real business tables and self-install their base.
+
+| Package | Owns |
+|---|---|
+| `vike-auth` <br>(+ `/react`, `/vue`, `/fr`, `/ar`) | Auth core: owns `users` / `sessions` / `login_tokens` + a magic-link server tier (`pageContext.user`); the link is delivered through the `vike-mail` port. UI + the `/login` + `/account` pages ship as framework subpaths; `/fr` + `/ar` are language subpaths. |
+| `vike-teams` | Orgs + memberships; references and extends `users`. Self-installs vike-auth. |
+| `vike-rbac` <br>(+ `/telefunc`) | Roles & permissions: owns the role/permission tables + a cumulative `permissions` registry + one `can(user, permission)` / `hasRole(user, role)` that pages, vike-admin, and a Telefunc RPC seam all share. Self-installs vike-auth. |
+| `vike-stripe` | Stripe billing as subpath models: `subscription` (upsert) + `purchase` (insert); subject FK *computed* from `segment` (`b2b`/`b2c`); writes via universal-orm on a signature-verified webhook. Self-installs vike-teams. |
+
+### Background jobs, mail, notifications & AI
+
+The async base layer, the delivery ports, and the channels layered on them.
+
+| Package | Owns |
+|---|---|
+| `vike-queue` | Background-job seam: a job registry + `dispatch()` over a swappable driver (inline for dev, a universal-orm `jobs` table, or a broker later). The base everything else queues onto. |
+| `vike-mail` | The mail port: `sendMail()` + a swappable transport (console/outbox in dev, Resend/SES/SMTP in prod), sending through `vike-queue`. |
+| `vike-notifications` <br>(+ `/react`, `/vue`) | Multi-channel director: `notify(user, notification)` fans one intent to email + push + an in-app feed per `via()`, over `vike-queue`. Owns the `notifications` table + `/notifications` feed + a per-framework bell. Concrete channels are separate adapter packages. |
+| `vike-notifications-mail` | Mail channel adapter: delivers a notification's `toMail()` through vike-mail's `sendMail`. Separate so the core stays closed for modification. |
+| `vike-notifications-push` | Push channel adapter: delivers a notification's `toPush()` through vike-push's `sendPush`. Separate so the core stays closed for modification. |
+| `vike-notifications-stripe` | Billing-to-notifications bridge: notifies the user when a subscription goes `past_due`. Depends on vike-stripe + vike-notifications; neither depends on it. |
+| `vike-push` <br>(+ `/react`, `/vue`) | Web Push channel: `sendPush(userId, payload)` over stored subscriptions + a swappable transport (console/outbox in dev, Web Push/VAPID in prod). Owns `push_subscriptions` + a `/push/subscribe` endpoint + a client control + service worker. |
+| `vike-storage` <br>(+ `/react`, `/vue`) | File storage / uploads: a swappable storage port (`put` / `get` / `delete` / `url`), an `uploads` table + a multipart `POST /uploads` + owner-scoped `DELETE /uploads/:id`. Registers a `file` widget into the shared field-widget registry, so `.as('file')` renders an uploader in any consumer. |
+| `vike-ai` | The AI port: `generate()` / `chat()` / `stream()` + a swappable, server-only provider (echo in dev; Rudder AI / Vercel AI SDK / Anthropic in prod). Multi-vendor lives inside the provider via a per-call `model` / `provider` selector. |
+| `vike-ai-gemstack` | GemStack provider for `vike-ai`: `registerGemstackAi()` routes the port's calls to the [`@gemstack/ai-sdk`](https://github.com/gemstack-land/gemstack) engine, mapping vike-ai's `model` / `provider` onto GemStack's `"provider/model"` selector. |
+
+### UI tier
+
+The frontend concerns, each a framework-agnostic core plus a thin per-framework binding.
+
+| Package | Owns |
+|---|---|
+| `vike-admin` <br>(+ `/react`) | An admin panel on install: `/admin/*` CRUD pages derived from the composed schema; cumulative `adminResources` + `defineResource` refinements (FK selects, sort/search, per-row `scope`). |
+| `vike-themes` <br>(+ `/react`) | Tokens to CSS variables; the `theme` (brand) + `appearance` axes + `useTheme()`. |
+| `vike-theme-emerald` | Example theme package (composes via the cumulative `themes` config). |
+| `vike-layouts` <br>(+ `/react`) | Shell selection + slot config; the `<CenteredShell>` / `<TopbarShell>` / `<SidebarShell>`. |
+| `vike-toolbar` <br>(+ `/react`) | A fixed logo button + settings popover; a cumulative `toolbarItems` seam other extensions (the locale + theme pickers) teleport their controls into. |
+| `vike-i18n` <br>(+ `/react`, `/plugin`) | Cumulative `messages` + `locale`; `useTranslation()` to `t()` + a locale picker; the zero-config `locales` plugin; the `vike translate` CLI (tier-2 long-tail translations). |
+
+### Examples & fixtures
+
+| Package | Owns |
+|---|---|
+| `examples/react` | UI-tier demo: a themed, localized, passwordless login + topbar home + an admin panel. |
+| `examples/vue` | The Vue twin of `examples/react`: the same composition over the `vike-*/vue` subpaths. |
+| `examples/two-audience` | Two-audience reference app ([epic #255](https://github.com/suleimansh/vike-data/issues/255)): a staff guard and a customer guard side by side via vike-auth's named guards, each with its own login, cookie and tables, on the memory adapter. |
+| `fixtures/codegen` | Data-layer fixture (no UI): the merged schema rendered + compiled to all three ORMs; the CI drift gate. |
 
 The split is consistent: every core is framework- and Vike-agnostic where it can be, and
 the Vike-/framework-specific concern lives in a `vike-*/react` (and `vike-*/vue`) subpath of
