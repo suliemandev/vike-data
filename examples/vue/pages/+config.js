@@ -68,11 +68,14 @@ export default {
 
   layout: 'topbar',
   logo: '◆ Acme',
+  // `end: true` pushes a link to the trailing side of the topbar (#303); Account +
+  // Login sit on the right, the rest on the left. The active link is highlighted
+  // automatically (vike-layouts matches it against the current path).
   nav: [
     { label: 'Home', href: '/' },
     { label: 'Admin', href: '/admin' },
     { label: 'RPC', href: '/rpc-demo' },
-    { label: 'Account', href: '/account' },
-    { label: 'Login', href: '/login' },
+    { label: 'Account', href: '/account', end: true },
+    { label: 'Login', href: '/login', end: true },
   ],
 }

@@ -3,7 +3,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { shells, registerShell, isAppShell, defineLayout } from '../index.js'
+import { shells, registerShell, isAppShell, defineLayout, isActivePath } from '../index.js'
 import config from '../+config.js'
 
 test('ships the three preset shells with kinds', () => {
@@ -65,6 +65,31 @@ test('registerShell adds a 4th shell (open registry)', () => {
 test('registerShell validates its arguments', () => {
   assert.throws(() => registerShell('', { slots: [] }), /non-empty string/)
   assert.throws(() => registerShell('x', {}), /slots must be an array/)
+})
+
+test('isActivePath matches the current page and its descendants', () => {
+  // exact match
+  assert.equal(isActivePath('/admin', '/admin'), true)
+  // descendant: /admin stays active inside /admin/users
+  assert.equal(isActivePath('/admin/users', '/admin'), true)
+  // a sibling is not active
+  assert.equal(isActivePath('/chat', '/admin'), false)
+  // a prefix that is not a path boundary does NOT match (/admin vs /administrators)
+  assert.equal(isActivePath('/administrators', '/admin'), false)
+})
+
+test('isActivePath treats root "/" as exact-only', () => {
+  assert.equal(isActivePath('/', '/'), true)
+  assert.equal(isActivePath('/chat', '/'), false) // root must not light up everywhere
+})
+
+test('isActivePath ignores trailing slashes, query and hash', () => {
+  assert.equal(isActivePath('/admin/', '/admin'), true)
+  assert.equal(isActivePath('/admin?tab=users', '/admin'), true)
+  assert.equal(isActivePath('/admin#top', '/admin'), true)
+  // guards: bad inputs are never active
+  assert.equal(isActivePath(undefined, '/admin'), false)
+  assert.equal(isActivePath('/admin', ''), false)
 })
 
 test('+config declares the layout selection + slot config points', () => {
