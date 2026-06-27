@@ -10,7 +10,7 @@
 // pushed into a `{ read_at: null }` filter) — that keeps the SQL adapters correct too.
 import { randomUUID } from 'node:crypto'
 import { getAdapter } from '@universal-orm/core'
-import { DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
+import { resolveOwnerColumn } from '@vike-data/kit'
 
 const TABLE = 'notifications'
 
@@ -20,8 +20,7 @@ const TABLE = 'notifications'
 // build-time FK. Read per call so the knob is honoured; blank falls back to the default. The feed
 // helpers below take the OWNER id (a user id, or an org id under the binding) and scope by it.
 function ownerColumn() {
-  const c = process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN
-  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+  return resolveOwnerColumn(process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN)
 }
 
 function requireAdapter() {

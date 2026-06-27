@@ -19,7 +19,7 @@
 // /uploads. Keep it that way so the client build stays clean.
 import { randomUUID } from 'node:crypto'
 import { getAdapter } from '@universal-orm/core'
-import { createPort, DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
+import { createPort, resolveOwnerColumn } from '@vike-data/kit'
 
 const TABLE = 'uploads'
 
@@ -28,8 +28,7 @@ const TABLE = 'uploads'
 // (e.g. `organization_id`) so the runtime write/scope matches the build-time FK. Read per call so
 // the knob is honoured; blank falls back to the default.
 function ownerColumn() {
-  const c = process.env.VIKE_STORAGE_OWNER_COLUMN
-  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+  return resolveOwnerColumn(process.env.VIKE_STORAGE_OWNER_COLUMN)
 }
 
 // A storage key is always a UUID we minted (see `randomUUID` in storeUpload); nothing else is

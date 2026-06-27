@@ -9,6 +9,7 @@
 // alongside vike-auth's (and vike-push's) endpoints.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { getAdapter } from '@universal-orm/core'
+import { jsonResponse as json, readJsonSafe as readJson, resolveOwnerId as resolveOwnerIdShared } from '@vike-data/kit'
 import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
 import { resolveSubject } from 'vike-auth/subject'
 import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
@@ -36,26 +37,17 @@ function userSubjectTable() {
   return guard ? guard.subject.users : resolveSubject().users
 }
 
-// Resolve the OWNER id whose feed this request reads (#250). By default the owner IS the user, so
-// the owner id is `user.id` and the feed stays single-user. When the app binds the feed to a
-// different owner (e.g. an organization) it sets VIKE_NOTIFICATIONS_OWNER_FROM to the subject-row
-// field that holds the owner id (e.g. `current_organization_id`); that field lives on the full
-// subject row, not the normalized { id, email, name }, so we load the row by id and read it.
-// Returns null when the user has no such owner (e.g. belongs to no org) — the caller answers 403,
-// never reading/marking a feed by a missing/blank owner. Matches the build-time `notificationsOwner`
-// column the app set.
-async function resolveOwnerId(user) {
-  const from = process.env.VIKE_NOTIFICATIONS_OWNER_FROM
-  if (!from || from.trim() === '' || from.trim() === 'id') return user.id
-  const adapter = getAdapter()
-  if (!adapter) return null
-  const row = (await adapter.find(userSubjectTable(), { id: user.id }))[0]
-  const ownerId = row?.[from.trim()]
-  return ownerId != null && ownerId !== '' ? ownerId : null
-}
-
-const json = (status, obj) =>
-  new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
+// Resolve the OWNER id whose feed this request reads (#250), via the shared kit contract. By
+// default the owner IS the user (owner id = `user.id`) and the feed stays single-user; when the app
+// binds the feed to a different owner (VIKE_NOTIFICATIONS_OWNER_FROM, e.g. `current_organization_id`)
+// kit loads the subject row and reads that field, returning null when the user has no such owner so
+// the caller answers 403. Matches the build-time `notificationsOwner` column the app set.
+const resolveOwnerId = (user) =>
+  resolveOwnerIdShared(user, {
+    from: process.env.VIKE_NOTIFICATIONS_OWNER_FROM,
+    subjectTable: userSubjectTable(),
+    adapter: getAdapter(),
+  })
 
 export function createNotificationsMiddleware() {
   async function notificationsMiddleware(request) {
@@ -89,14 +81,6 @@ export function createNotificationsMiddleware() {
   }
 
   return enhance(notificationsMiddleware, { name: 'vike-notifications', order: MiddlewareOrder.AUTHENTICATION })
-}
-
-async function readJson(request) {
-  try {
-    return await request.json()
-  } catch {
-    return null
-  }
 }
 
 export default createNotificationsMiddleware()

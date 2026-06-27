@@ -12,6 +12,7 @@
 // the cumulative `middleware` config from +config.js.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { getAdapter } from '@universal-orm/core'
+import { jsonResponse as json, resolveOwnerId as resolveOwnerIdShared } from '@vike-data/kit'
 import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
 import { resolveSubject } from 'vike-auth/subject'
 import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
@@ -39,25 +40,17 @@ function userSubjectTable() {
   return guard ? guard.subject.users : resolveSubject().users
 }
 
-// Resolve the OWNER id for a request from the signed-in user (#250). By default the owner IS the
-// user, so the owner id is `user.id` and storage stays single-owner. When the app binds uploads to
-// a different owner (e.g. an organization) it sets VIKE_STORAGE_OWNER_FROM to the subject-row field
-// that holds the owner id (e.g. `current_organization_id`); that field lives on the full subject
-// row, not the normalized { id, email, name }, so we load the row by id and read it. Returns null
-// when the user has no such owner (e.g. belongs to no org) — the caller answers 403, never owning a
-// file by a missing/blank owner. Matches the build-time `storageOwner` column the app set.
-async function resolveOwnerId(user) {
-  const from = process.env.VIKE_STORAGE_OWNER_FROM
-  if (!from || from.trim() === '' || from.trim() === 'id') return user.id
-  const adapter = getAdapter()
-  if (!adapter) return null
-  const row = (await adapter.find(userSubjectTable(), { id: user.id }))[0]
-  const ownerId = row?.[from.trim()]
-  return ownerId != null && ownerId !== '' ? ownerId : null
-}
-
-const json = (status, obj) =>
-  new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
+// Resolve the OWNER id for a request from the signed-in user (#250), via the shared kit contract.
+// By default the owner IS the user (owner id = `user.id`) and storage stays single-owner; when the
+// app binds uploads to a different owner (VIKE_STORAGE_OWNER_FROM, e.g. `current_organization_id`)
+// kit loads the subject row and reads that field, returning null when the user has no such owner so
+// the caller answers 403. Matches the build-time `storageOwner` column the app set.
+const resolveOwnerId = (user) =>
+  resolveOwnerIdShared(user, {
+    from: process.env.VIKE_STORAGE_OWNER_FROM,
+    subjectTable: userSubjectTable(),
+    adapter: getAdapter(),
+  })
 
 // Stored bytes carry a browser-supplied mime (the multipart `file.type`), so the served
 // Content-Type is attacker-controlled. Serving `text/html` (or a sniffable payload) from the
