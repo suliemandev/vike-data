@@ -13,6 +13,8 @@
 import { auth } from './instance.js'
 import { SESSION_COOKIE } from './constants.js'
 import { parseCookies } from './cookie.js'
+import { getGuard, DEFAULT_GUARD_NAME } from './guards.js'
+import { resolveSubject } from './subject.js'
 
 // Resolve a raw Cookie header string to the plain, serializable user view
 // ({ id, email, name }), the SAME shape onCreatePageContext exposes, or null.
@@ -51,4 +53,28 @@ export async function resolveGuardUserFromCookie(cookieHeader, guard) {
 export function resolveGuardUser(request, guard) {
   const cookieHeader = request?.headers?.get ? request.headers.get('cookie') : request?.headers?.cookie
   return resolveGuardUserFromCookie(cookieHeader, guard)
+}
+
+// The by-NAME convenience the downstream owned-row extensions (vike-storage's `storageGuard`,
+// vike-notifications' `notificationsGuard`, #278 / #279 / #207 P3) resolve a request's user
+// through: given the guard NAME an app bound the extension to, resolve the user from THAT guard's
+// session cookie + subject, or from the default subject when the name is empty / 'default' / an
+// unregistered guard. The extension passes its own already-read env value (e.g.
+// `process.env.VIKE_STORAGE_GUARD`), so vike-auth stays env-free; this just folds the
+// name -> guard -> user step the extensions otherwise re-derive identically.
+export function resolveGuardedUser(request, guardName) {
+  if (!guardName || guardName === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
+  const guard = getGuard(guardName)
+  return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
+}
+
+// The subject TABLE a request's user lives in, by guard name — the named guard's subject table, or
+// the default `users` when the name is empty / 'default' / unregistered. The owned-row extensions
+// use it to load the full subject row when the owner id lives on a column other than `.id` (the
+// #250 owner binding), and for bare-id subject hydration. Same env-free, by-name shape as
+// resolveGuardedUser.
+export function resolveGuardSubjectTable(guardName) {
+  if (!guardName || guardName === DEFAULT_GUARD_NAME) return resolveSubject().users
+  const guard = getGuard(guardName)
+  return guard ? guard.subject.users : resolveSubject().users
 }

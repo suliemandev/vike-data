@@ -10,32 +10,20 @@
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
 import { getAdapter } from '@universal-orm/core'
 import { jsonResponse as json, readJsonSafe as readJson, resolveOwnerId as resolveOwnerIdShared } from '@vike-data/kit'
-import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
-import { resolveSubject } from 'vike-auth/subject'
-import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
+import { resolveGuardedUser, resolveGuardSubjectTable } from 'vike-auth/server'
 import { getFeed, unreadCount, markRead } from './database-channel.js'
 
 // Resolve the signed-in USER for a feed request from the guard the app bound notifications to
-// (VIKE_NOTIFICATIONS_GUARD, #279 / #207 P3). Set to a named guard, the user is read from THAT
-// guard's session cookie + subject, so a customer authenticates against `clients` and never the
-// default user — no cross-talk between audiences. Unset / 'default' / an unregistered name falls
-// back to the default-subject resolveSessionUser — byte-for-byte today's behaviour. This is the
-// AUTH step; the OWNER id is derived from it below (they differ only under the #250 owner binding).
-function resolveFeedUser(request) {
-  const name = process.env.VIKE_NOTIFICATIONS_GUARD
-  if (!name || name === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
-  const guard = getGuard(name)
-  return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
-}
+// (VIKE_NOTIFICATIONS_GUARD, #279 / #207 P3), via vike-auth's shared by-name seam. Set to a named
+// guard, the user is read from THAT guard's session cookie + subject (e.g. `clients`), no cross-talk
+// between audiences; unset / 'default' / an unregistered name falls back to the default subject —
+// byte-for-byte today's behaviour. This is the AUTH step; the OWNER id is derived from it below
+// (they differ only under the #250 owner binding).
+const resolveFeedUser = (request) => resolveGuardedUser(request, process.env.VIKE_NOTIFICATIONS_GUARD)
 
 // The subject table the signed-in user lives in (the guard's subject, or the default `users`).
 // Used to load the full subject row when the owner id lives on a column other than `.id`.
-function userSubjectTable() {
-  const name = process.env.VIKE_NOTIFICATIONS_GUARD
-  if (!name || name === DEFAULT_GUARD_NAME) return resolveSubject().users
-  const guard = getGuard(name)
-  return guard ? guard.subject.users : resolveSubject().users
-}
+const userSubjectTable = () => resolveGuardSubjectTable(process.env.VIKE_NOTIFICATIONS_GUARD)
 
 // Resolve the OWNER id whose feed this request reads (#250), via the shared kit contract. By
 // default the owner IS the user (owner id = `user.id`) and the feed stays single-user; when the app

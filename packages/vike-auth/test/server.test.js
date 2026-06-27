@@ -3,9 +3,10 @@
 // the same session onCreatePageContext reads and return the same plain view.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveSessionUser, resolveSessionUserFromCookie, resolveGuardUser } from '../server.js'
+import { resolveSessionUser, resolveSessionUserFromCookie, resolveGuardUser, resolveGuardedUser, resolveGuardSubjectTable } from '../server.js'
 import { auth } from '../instance.js'
 import { defineGuard } from '../guards.js'
+import { resolveSubject } from '../subject.js'
 import { SESSION_COOKIE } from '../constants.js'
 
 // Open a real session on the shared singleton store and return its cookie token.
@@ -72,4 +73,43 @@ test('resolveGuardUser is null with no guard or no cookie', async () => {
   const guard = defineGuard('srv-admin3', { table: 'admins' })
   assert.equal(await resolveGuardUser(new Request('http://localhost/x'), null), null)
   assert.equal(await resolveGuardUser(new Request('http://localhost/x'), guard), null)
+})
+
+// resolveGuardedUser / resolveGuardSubjectTable (the by-NAME seam the owned-row extensions resolve
+// through, #278 / #279 / #207 P3): fold the name -> guard -> user/table step the extensions used to
+// re-derive identically. They take the guard NAME (the app's already-read env value), keeping
+// vike-auth env-free.
+
+test('resolveGuardedUser: empty / "default" name resolves the default session user', async () => {
+  const token = await openSession('guarded-default@example.com')
+  const req = new Request('http://localhost/x', { headers: { cookie: `${SESSION_COOKIE}=${token}` } })
+  assert.equal((await resolveGuardedUser(req, undefined)).email, 'guarded-default@example.com')
+  assert.equal((await resolveGuardedUser(req, '')).email, 'guarded-default@example.com')
+  assert.equal((await resolveGuardedUser(req, 'default')).email, 'guarded-default@example.com')
+})
+
+test('resolveGuardedUser: a named guard reads THAT guard\'s own cookie + subject', async () => {
+  const guard = defineGuard('srv-guarded', { table: 'admins' })
+  const token = await openGuardSession(guard, 'guarded-admin@example.com')
+  const req = new Request('http://localhost/x', { headers: { cookie: `${guard.cookieName}=${token}` } })
+  assert.equal((await resolveGuardedUser(req, 'srv-guarded')).email, 'guarded-admin@example.com')
+})
+
+test('resolveGuardedUser: an unregistered name falls back to the default session user', async () => {
+  const token = await openSession('guarded-fallback@example.com')
+  const req = new Request('http://localhost/x', { headers: { cookie: `${SESSION_COOKIE}=${token}` } })
+  assert.equal((await resolveGuardedUser(req, 'no-such-guard')).email, 'guarded-fallback@example.com')
+})
+
+test('resolveGuardSubjectTable: empty / "default" / unregistered -> the default subject', () => {
+  const def = resolveSubject().users
+  assert.equal(resolveGuardSubjectTable(undefined), def)
+  assert.equal(resolveGuardSubjectTable(''), def)
+  assert.equal(resolveGuardSubjectTable('default'), def)
+  assert.equal(resolveGuardSubjectTable('no-such-guard'), def)
+})
+
+test('resolveGuardSubjectTable: a named guard returns its own subject table', () => {
+  const guard = defineGuard('srv-subj', { table: 'admins' })
+  assert.equal(resolveGuardSubjectTable('srv-subj'), guard.subject.users)
 })
