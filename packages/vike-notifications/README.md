@@ -55,7 +55,7 @@ await notify(route({ mail: 'guest@checkout.io' }), orderReceipt(order))
 
 `routeFor` consults `routes[channel]` first, then falls back to the user-field convention, so an explicit route always wins for that one channel while the rest stay conventional (a User can carry `routes: { mail: billingAddress }` to send invoices somewhere other than `.email`). The route is plain **data**, not a method: the notifiable is serialized into the vike-queue delivery payload, so a method would not survive the queue — a data map does.
 
-The in-app `database` **feed stays user-scoped by design** (a feed only means something for a person's inbox), so an on-demand target simply uses the delivery channels — its notification's `via()` does not select `database`. To notify a group (a team/org), resolve it to a list and call `notify` per member; that is a fan-out over notifiables, not a single polymorphic target.
+The in-app `database` **feed is user-scoped by default** (a feed only means something for a person's inbox), so an on-demand target simply uses the delivery channels — its notification's `via()` does not select `database`. To notify a group ad-hoc, resolve it to a list and `notify` per member (a fan-out over notifiables). To make the feed itself belong to an **organization** — one shared inbox every member reads — bind it with `notificationsOwner` (see [Owned by a team](#owned-by-a-team-not-a-user-notificationsowner-250) below), the single-owner-row alternative to fanning out.
 
 ## The in-app feed
 
@@ -67,6 +67,24 @@ The in-app `database` **feed stays user-scoped by design** (a feed only means so
 | `/notifications/read` | POST | mark `{ ids }` read, or all read when `ids` is omitted |
 
 Both resolve the current user from the session cookie (vike-auth's server seam) and scope every read/write to that user, so a client only ever sees and marks its own. `getFeed` / `unreadCount` / `markRead` are also exported for programmatic use.
+
+## Owned by a team, not a user (`notificationsOwner`, #250)
+
+By default the feed is owned by the auth user. `notificationsOwner` is the orthogonal axis to `notificationsGuard` (which picks *which* user subject): it picks *what kind* of owner — let the feed belong to an **organization**, so every member shares one inbox. The same move [vike-stripe's `segment`](../vike-stripe/README.md) makes, lifted into the shared [`@vike-data/kit`](../kit) `resolveOwner` contract that [vike-storage](../vike-storage/README.md#owned-by-a-team-not-a-user-storageowner-250) uses too.
+
+With [vike-teams](../vike-teams) supplying `organizations` (and stamping each user's active org onto `current_organization_id`):
+
+```js
+// +config.js — build-time: the notifications FK becomes organization_id -> organizations.id
+notificationsOwner: { table: 'organizations', column: 'organization_id' },
+```
+```bash
+# runtime, two halves:
+VIKE_NOTIFICATIONS_OWNER_COLUMN=organization_id          # the column the feed is written/scoped by
+VIKE_NOTIFICATIONS_OWNER_FROM=current_organization_id    # which field of the signed-in user holds it
+```
+
+The request is still authenticated as the signed-in user; the **owner** whose feed they read is then their `current_organization_id`, so the feed is owned by the org and any member reads + marks it. Notify the org by passing it as the notifiable (`notify({ id: orgId }, …)` with a `database` channel). A signed-in user who belongs to no org gets `403 no-owner`. Leave `notificationsOwner` unset and the feed stays the single-user default, byte-for-byte. vike-notifications never imports vike-teams — the app names the table/column/source field.
 
 ### The bell
 

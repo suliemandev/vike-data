@@ -78,3 +78,35 @@ test('notificationsSchemas falls back to the default subject for an unregistered
   // rather than a dangling reference.
   assert.deepEqual(notificationsFkOf({ notificationsGuard: 'never-registered' }).references, { table: 'users', column: 'id' })
 })
+
+// The #250 owner binding: `notificationsOwner` swaps the owner COLUMN + table so the feed can be
+// owned by an organization, not just a user. Orthogonal to `notificationsGuard` (which picks WHICH
+// user subject table). The owner FK is the single column carrying `references`.
+const ownerFkOf = (config) => notificationsSchemas(config)[0].columns.find((c) => c.references)
+
+test('notificationsSchemas defaults to owning by user_id on the default subject (unchanged)', () => {
+  const fk = ownerFkOf(undefined)
+  assert.equal(fk.name, 'user_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
+})
+
+test('notificationsSchemas({ notificationsOwner }) owns by organization_id on organizations', () => {
+  const fk = ownerFkOf({ notificationsOwner: { table: 'organizations', column: 'organization_id' } })
+  assert.equal(fk.name, 'organization_id')
+  assert.deepEqual(fk.references, { table: 'organizations', column: 'id' })
+})
+
+test('the owner binding table wins over the guard subject table', () => {
+  // notificationsGuard picks WHICH user table; an org owner binding overrides the table entirely.
+  // With both set, the owner binding is the FK target — org ownership supersedes the per-guard user.
+  defineGuard('owner-client', { table: 'clients' })
+  const fk = ownerFkOf({ notificationsGuard: 'owner-client', notificationsOwner: { table: 'organizations', column: 'organization_id' } })
+  assert.equal(fk.name, 'organization_id')
+  assert.deepEqual(fk.references, { table: 'organizations', column: 'id' })
+})
+
+test('a column-only owner binding keeps the subject table, owns by the given column', () => {
+  const fk = ownerFkOf({ notificationsOwner: { column: 'account_id' } })
+  assert.equal(fk.name, 'account_id')
+  assert.deepEqual(fk.references, { table: 'users', column: 'id' })
+})

@@ -1,0 +1,5 @@
+---
+'vike-notifications': minor
+---
+
+vike-notifications: own the in-app feed by any subject, not just the auth user (#283 / #250) — the notifications consumer of the shared `@vike-data/kit` `resolveOwner` contract storage adopted in #285. Set `notificationsOwner: { table: 'organizations', column: 'organization_id' }` (build) plus `VIKE_NOTIFICATIONS_OWNER_COLUMN` + `VIKE_NOTIFICATIONS_OWNER_FROM` (runtime) and the feed is owned by the reader's organization (resolved from the signed-in user's `current_organization_id`): the database channel writes the feed row under that column, `getFeed`/`unreadCount`/`markRead` scope by it, every member of the org shares one inbox, and a signed-in user with no org gets `403 no-owner`. This is the owner axis, orthogonal to `notificationsGuard` (#279, which picks which user subject table): the owner binding's table wins when set, so org ownership supersedes the per-guard user. Unset = the single-user `user_id` -> subject default, byte-for-byte. vike-notifications stays decoupled from vike-teams — the app names the table/column/source field, exactly as vike-stripe takes the resolved subject from the app.

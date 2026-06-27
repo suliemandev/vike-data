@@ -10,8 +10,19 @@
 // pushed into a `{ read_at: null }` filter) — that keeps the SQL adapters correct too.
 import { randomUUID } from 'node:crypto'
 import { getAdapter } from '@universal-orm/core'
+import { DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
 
 const TABLE = 'notifications'
+
+// The column a feed row is OWNED by (#250). Default `user_id`; an app that binds notifications to
+// an organization (notificationsOwner in +config.js) sets VIKE_NOTIFICATIONS_OWNER_COLUMN to the
+// matching column (e.g. `organization_id`) so the runtime write + feed scoping match the
+// build-time FK. Read per call so the knob is honoured; blank falls back to the default. The feed
+// helpers below take the OWNER id (a user id, or an org id under the binding) and scope by it.
+function ownerColumn() {
+  const c = process.env.VIKE_NOTIFICATIONS_OWNER_COLUMN
+  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+}
 
 function requireAdapter() {
   const adapter = getAdapter()
@@ -30,7 +41,7 @@ export const databaseChannel = {
     const ts = new Date().toISOString()
     const row = {
       id: randomUUID(),
-      user_id: notifiable.id,
+      [ownerColumn()]: notifiable.id,
       type: rendered?.type ?? 'notification',
       data: JSON.stringify(rendered?.data ?? null),
       read_at: null,
@@ -56,44 +67,47 @@ function toFeedItem(row) {
   return { ...row, data: parseData(row.data), read: row.read_at != null }
 }
 
-/** A user's feed, newest first. `limit`/`offset` page it (defaults: 20 from the top). */
-export async function getFeed(userId, { limit = 20, offset = 0 } = {}) {
+/** An owner's feed, newest first. `limit`/`offset` page it (defaults: 20 from the top). `ownerId`
+ * is a user id by default, or an org id under the #250 owner binding. */
+export async function getFeed(ownerId, { limit = 20, offset = 0 } = {}) {
   const adapter = requireAdapter()
   const rows = await adapter.find(
     TABLE,
-    { user_id: userId },
+    { [ownerColumn()]: ownerId },
     { orderBy: { column: 'created_at', dir: 'desc' }, limit, offset },
   )
   return rows.map(toFeedItem)
 }
 
-/** How many of a user's notifications are unread. */
-export async function unreadCount(userId) {
+/** How many of an owner's notifications are unread. */
+export async function unreadCount(ownerId) {
   const adapter = requireAdapter()
-  const rows = await adapter.find(TABLE, { user_id: userId })
+  const rows = await adapter.find(TABLE, { [ownerColumn()]: ownerId })
   return rows.reduce((n, r) => n + (r.read_at == null ? 1 : 0), 0)
 }
 
 /**
- * Mark a user's notifications read. `ids` = a single id or an array; omit (null) to mark
- * ALL of the user's unread. Scoped to `user_id`, so a client can only ever mark its OWN
- * rows — never another user's, even by guessing an id. Returns the count marked.
+ * Mark an owner's notifications read. `ids` = a single id or an array; omit (null) to mark
+ * ALL of the owner's unread. Scoped to the owner column, so a caller can only ever mark rows its
+ * owner owns — never another owner's, even by guessing an id (under the #250 org binding, the
+ * scope is the org, so any member can mark the org's notifications). Returns the count marked.
  */
-export async function markRead(userId, ids = null) {
+export async function markRead(ownerId, ids = null) {
   const adapter = requireAdapter()
+  const col = ownerColumn()
   let targetIds
   if (ids == null) {
-    const rows = await adapter.find(TABLE, { user_id: userId })
+    const rows = await adapter.find(TABLE, { [col]: ownerId })
     targetIds = rows.filter((r) => r.read_at == null).map((r) => r.id)
   } else {
     targetIds = Array.isArray(ids) ? ids : [ids]
   }
   if (!targetIds.length) return 0
   const ts = new Date().toISOString()
-  // The owner-scope is the `user_id` in the filter; `{ id: { in } }` is the membership form.
+  // The owner-scope is the owner column in the filter; `{ id: { in } }` is the membership form.
   const updated = await adapter.update(
     TABLE,
-    { id: { in: targetIds }, user_id: userId },
+    { id: { in: targetIds }, [col]: ownerId },
     { read_at: ts, updated_at: ts },
   )
   return updated.length

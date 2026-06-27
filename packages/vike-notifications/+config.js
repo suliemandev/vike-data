@@ -12,12 +12,16 @@ export default {
   extends: ['import:@vike-data/vike-schema/config:default', 'import:vike-auth/config:default'],
   // `notificationsGuard` (#279 / #207 P3): the named guard whose subject the in-app feed binds
   // to, defaulting to the default subject (`users`) so the common single-subject app is unchanged.
-  // Exposed to the schema build (resolveSchemas reads it off the config) AND server-only so an app
-  // can set it once; the runtime feed + hydration are bound through VIKE_NOTIFICATIONS_GUARD
-  // (middleware.js / index.js), the same config/env split vike-stripe uses for
-  // `segment`/`BILLING_SEGMENT`.
+  // `notificationsOwner` (#250 / #283): `{ table?, column? }`, the owner BINDING — own the feed by
+  // a different KIND of subject (an organization) rather than the per-guard user. Both are read off
+  // the config at schema build (resolveSchemas) AND server-only so an app sets them once; the
+  // runtime feed/hydration are bound through VIKE_NOTIFICATIONS_GUARD and
+  // VIKE_NOTIFICATIONS_OWNER_COLUMN/_FROM (middleware.js / index.js), the same config/env split
+  // vike-stripe uses for `segment`/`BILLING_SEGMENT`. Declaring them here is what lets an app set
+  // them in +config.js (an undeclared config key is rejected by Vike).
   meta: {
     notificationsGuard: { env: { config: true, server: true } },
+    notificationsOwner: { env: { config: true, server: true } },
   },
   // The `notifications` table is contributed as a COMPUTED schema — a function Vike calls with
   // the resolved config so the FK target follows `notificationsGuard` (default unset = the
