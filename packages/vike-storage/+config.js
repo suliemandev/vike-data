@@ -12,12 +12,17 @@ export default {
   name: 'vike-storage',
   extends: ['import:@vike-data/vike-schema/config:default', 'import:vike-auth/config:default'],
   // `storageGuard` (#278 / #207 P3): the named guard whose subject OWNS uploads, defaulting
-  // to the default subject (`users`) so the common single-subject app is unchanged. Exposed
-  // to the schema build (resolveSchemas reads it off the config) AND server-only so an app
-  // can set it once; the runtime owner is bound through VIKE_STORAGE_GUARD (middleware.js),
-  // the same config/env split vike-stripe uses for `segment`/`BILLING_SEGMENT`.
+  // to the default subject (`users`) so the common single-subject app is unchanged.
+  // `storageOwner` (#250 / #285): `{ table?, column? }`, the owner BINDING — own uploads by a
+  // different KIND of subject (an organization) rather than the per-guard user. Both are read off
+  // the config at schema build (resolveSchemas) AND server-only so an app sets them once; the
+  // runtime owner is bound through VIKE_STORAGE_GUARD and VIKE_STORAGE_OWNER_COLUMN/_FROM
+  // (middleware.js), the same config/env split vike-stripe uses for `segment`/`BILLING_SEGMENT`.
+  // Declaring them here is what lets an app set them in +config.js (an undeclared config key is
+  // rejected by Vike).
   meta: {
     storageGuard: { env: { config: true, server: true } },
+    storageOwner: { env: { config: true, server: true } },
   },
   // The `uploads` table is contributed as a COMPUTED schema — a function Vike calls with the
   // resolved config so the FK target follows `storageGuard` (default unset = the default-subject
