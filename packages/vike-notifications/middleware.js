@@ -8,8 +8,23 @@
 // Contributed through the cumulative `middleware` config from +config.js, so it composes
 // alongside vike-auth's (and vike-push's) endpoints.
 import { enhance, MiddlewareOrder } from '@universal-middleware/core'
-import { resolveSessionUser } from 'vike-auth/server'
+import { resolveSessionUser, resolveGuardUser } from 'vike-auth/server'
+import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
 import { getFeed, unreadCount, markRead } from './database-channel.js'
+
+// Resolve the feed owner from the guard the app bound notifications to (VIKE_NOTIFICATIONS_GUARD,
+// #279 / #207 P3). Set to a named guard, the in-app feed is read from THAT guard's session cookie +
+// subject, so a customer sees the `clients` feed and never the default user's — no cross-talk
+// between audiences. Unset / 'default' / an unregistered name falls back to the default-subject
+// resolveSessionUser — byte-for-byte today's behaviour. The runtime knob mirrors the build-time
+// `notificationsGuard` (schema.js); the app keeps them in sync the way vike-stripe pairs `segment`
+// with `BILLING_SEGMENT`.
+function resolveFeedUser(request) {
+  const name = process.env.VIKE_NOTIFICATIONS_GUARD
+  if (!name || name === DEFAULT_GUARD_NAME) return resolveSessionUser(request)
+  const guard = getGuard(name)
+  return guard ? resolveGuardUser(request, guard) : resolveSessionUser(request)
+}
 
 const json = (status, obj) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
@@ -22,14 +37,14 @@ export function createNotificationsMiddleware() {
     if (url.pathname !== '/notifications' && !url.pathname.startsWith('/notifications/')) return
 
     if (url.pathname === '/notifications' && request.method === 'GET') {
-      const user = await resolveSessionUser(request)
+      const user = await resolveFeedUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
       const [items, unread] = await Promise.all([getFeed(user.id), unreadCount(user.id)])
       return json(200, { items, unread })
     }
 
     if (url.pathname === '/notifications/read' && request.method === 'POST') {
-      const user = await resolveSessionUser(request)
+      const user = await resolveFeedUser(request)
       if (!user) return json(401, { error: 'not-signed-in' })
       const body = await readJson(request)
       // omit ids (or send null) to mark everything read; otherwise mark the given id(s).

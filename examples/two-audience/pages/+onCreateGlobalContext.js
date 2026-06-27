@@ -22,6 +22,13 @@ export default async function onCreateGlobalContext() {
   // explicit env override untouched.
   process.env.VIKE_STORAGE_GUARD ??= 'admin'
 
+  // Bind vike-notifications' RUNTIME resolution to the customer (client) guard (#279 / #207 P3):
+  // the feed endpoint reads this to resolve the reader from the client session cookie, and a bare
+  // notify() id is hydrated from the `clients` subject — matching the build-time
+  // `notificationsGuard: 'client'` in +config.js. Same self-contained, `??=`-guarded pattern as
+  // VIKE_STORAGE_GUARD above; a real app would set it in its environment.
+  process.env.VIKE_NOTIFICATIONS_GUARD ??= 'client'
+
   if (getAdapter()) return // idempotent across dev HMR / double-eval
   const adapter = createMemoryAdapter()
   setAdapter(adapter)
@@ -35,6 +42,25 @@ export default async function onCreateGlobalContext() {
   adapter.insert('admins', { id: 'a-boss', email: 'boss@example.com', name: 'Grace Hopper', active: true, created_at: daysAgo(30), updated_at: daysAgo(1) })
   //   - the client guard's `clients` table
   adapter.insert('clients', { id: 'c-1', email: 'customer@example.com', name: 'Margaret Hamilton', active: true, created_at: daysAgo(10), updated_at: daysAgo(1) })
+
+  // Seed the CLIENT's in-app feed (#279 / #207 P3). This row is exactly what
+  // `notify('c-1', notification)` writes through the built-in database channel once notifications
+  // are bound to the client guard (notificationsGuard: 'client'): a `notifications` row whose
+  // `user_id` is the client subject's id — owned by the `clients` audience, not the default user.
+  // It is inserted directly here (rather than calling notify()) only to keep this server hook out
+  // of the client bundle: vike-notifications' server module pulls in node:crypto, which Vike
+  // externalizes for the browser. The notify() -> client-subject path itself is covered end-to-end
+  // by the package tests; the home page reads this feed client-only. `data` is the JSON the
+  // database channel stores (the rendered { title, body }); `read_at` null = unread.
+  adapter.insert('notifications', {
+    id: 'n-welcome',
+    user_id: 'c-1',
+    type: 'welcome',
+    data: JSON.stringify({ title: 'Welcome aboard', body: 'Your client account is ready.' }),
+    read_at: null,
+    created_at: daysAgo(1),
+    updated_at: daysAgo(1),
+  })
 
   // Touch `guards` so the import is never tree-shaken (its side effect — registering the
   // guards on import — is the point); harmless otherwise.

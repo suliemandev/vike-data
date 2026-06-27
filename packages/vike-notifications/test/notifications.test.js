@@ -4,6 +4,7 @@ import { setAdapter, clearAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { clearQueue, setQueueDriver } from 'vike-queue'
 import { createAuth, createStore, SESSION_COOKIE } from 'vike-auth'
+import { defineGuard } from 'vike-auth/guards'
 import { notify, registerChannel, getChannel, getChannels, clearChannels, routeFor, route } from '../index.js'
 import { getFeed, unreadCount, markRead } from '../database-channel.js'
 import { createNotificationsMiddleware } from '../middleware.js'
@@ -284,4 +285,81 @@ test('an unknown /notifications/ route is 404; a non-/notifications path falls t
   // not our prefix -> fall through to Vike (undefined)
   assert.equal(await mw(new Request('http://localhost/notifications-archive')), undefined)
   assert.equal(await mw(new Request('http://localhost/other')), undefined)
+})
+
+// #279 / #207 P3: the in-app feed + bare-id hydration follow the guard the app bound
+// notifications to via VIKE_NOTIFICATIONS_GUARD. Open a session against a named guard (its own
+// cookie + subject table), not the default subject.
+async function openGuardSessionCookie(guard, email) {
+  const { token } = await guard.instance.requestMagicLink(email)
+  const { session } = await guard.instance.redeemMagicLink(token)
+  return `${guard.cookieName}=${session.token}`
+}
+
+test('GET /notifications reads the feed of the configured guard subject (VIKE_NOTIFICATIONS_GUARD)', async () => {
+  const adapter = setup()
+  const client = defineGuard('notif-client', { table: 'clients' })
+  process.env.VIKE_NOTIFICATIONS_GUARD = client.name
+  try {
+    const cookie = await openGuardSessionCookie(client, 'customer@example.com')
+    // The feed subject is the CLIENT (from `clients`), and the row is scoped to its id — not a
+    // default `users` row.
+    const clientRow = (await adapter.find('clients', { email: 'customer@example.com' }))[0]
+    assert.ok(clientRow, 'the client subject was created in its own `clients` table')
+    await feedRow(adapter, { id: 'c1', user_id: clientRow.id, created_at: '2026-01-01T00:00:00.000Z' })
+
+    const mw = createNotificationsMiddleware()
+    const res = await mw(new Request('http://localhost/notifications', { headers: { cookie } }))
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.unread, 1)
+    assert.deepEqual(body.items.map((i) => i.id), ['c1'])
+  } finally {
+    delete process.env.VIKE_NOTIFICATIONS_GUARD
+  }
+})
+
+test('with VIKE_NOTIFICATIONS_GUARD set, a default-subject session cookie cannot read the feed', async () => {
+  setup()
+  const client = defineGuard('notif-client-x', { table: 'clients' })
+  process.env.VIKE_NOTIFICATIONS_GUARD = client.name
+  try {
+    // A DEFAULT guard session (the bare `vike_auth_session` cookie) must NOT read the feed when
+    // notifications are bound to the client guard — no cross-talk between audiences.
+    const cookie = await openSessionCookie('default-user@example.com')
+    const mw = createNotificationsMiddleware()
+    const res = await mw(new Request('http://localhost/notifications', { headers: { cookie } }))
+    assert.equal(res.status, 401)
+  } finally {
+    delete process.env.VIKE_NOTIFICATIONS_GUARD
+  }
+})
+
+test('notify hydrates a bare id from the configured guard subject (VIKE_NOTIFICATIONS_GUARD)', async () => {
+  const adapter = setup()
+  const client = defineGuard('notif-client-h', { table: 'clients' })
+  process.env.VIKE_NOTIFICATIONS_GUARD = client.name
+  try {
+    // The customer lives in the `clients` table; bound to the client guard, a bare id hydrates
+    // from there, not the default `users`.
+    await adapter.insert('clients', { id: 'c-1', email: 'cust@example.com' })
+    const mail = captureChannel('mail')
+    await notify('c-1', { via: () => ['mail'], toMail: (u) => ({ to: u.email }) })
+    assert.equal(mail.length, 1)
+    assert.equal(mail[0].notifiable.email, 'cust@example.com') // hydrated from `clients`
+  } finally {
+    delete process.env.VIKE_NOTIFICATIONS_GUARD
+  }
+})
+
+test('without VIKE_NOTIFICATIONS_GUARD the feed is the default subject (byte-for-byte)', async () => {
+  const adapter = setup()
+  delete process.env.VIKE_NOTIFICATIONS_GUARD
+  const cookie = await openSessionCookie('plain@example.com')
+  const user = (await adapter.find('users', { email: 'plain@example.com' }))[0]
+  await feedRow(adapter, { id: 'p1', user_id: user.id, created_at: '2026-01-01T00:00:00.000Z' })
+  const mw = createNotificationsMiddleware()
+  const res = await mw(new Request('http://localhost/notifications', { headers: { cookie } }))
+  assert.equal(res.status, 200)
+  assert.deepEqual((await res.json()).items.map((i) => i.id), ['p1'])
 })

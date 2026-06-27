@@ -107,10 +107,51 @@ function AdminUploads({ admin, initialUploads }) {
   )
 }
 
+// The #279 / #207 P3 proof: vike-notifications is bound to the client guard
+// (notificationsGuard: 'client'), so the in-app feed is owned by the `clients` subject — the
+// endpoint resolves the reader from the CLIENT session cookie, and each row's `user_id` FKs into
+// `clients`, not the default `users`. The seed in +onCreateGlobalContext.js notify()s this client;
+// the list is the signed-in client's own feed (loaded server-side in +data.js). Staff (or the
+// default user) signing in sees a prompt, never the client's notifications.
+function ClientNotifications({ client, notifications }) {
+  if (!client) {
+    return (
+      <div style={card}>
+        <strong style={{ color: 'var(--color-text)' }}>Client notifications</strong>
+        <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 14 }}>
+          Sign into <a href="/client/login" style={{ color: 'var(--color-primary)' }}>client</a> to see the
+          in-app feed. Notifications are owned by the <code>clients</code> subject, not the default user.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div style={card}>
+      <strong style={{ color: 'var(--color-text)' }}>Client notifications</strong>
+      <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 14 }}>
+        The feed for <strong style={{ color: 'var(--color-text)' }}>{client.email}</strong> via the{' '}
+        <code>client</code> guard — the <code>notifications.user_id</code> FK targets <code>clients</code>.
+      </p>
+      {notifications.length === 0 ? (
+        <p style={{ margin: '0.5rem 0 0', color: 'var(--color-muted)', fontSize: 13 }}>No notifications yet.</p>
+      ) : (
+        <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.1rem', color: 'var(--color-muted)', fontSize: 13 }}>
+          {notifications.map((n) => (
+            <li key={n.id}>
+              <strong style={{ color: 'var(--color-text)', fontWeight: n.read ? 400 : 700 }}>{n.title || n.type}</strong>
+              {n.body ? <> — {n.body}</> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const pageContext = usePageContext()
   const guards = pageContext.guards || {}
-  const { adminUploads } = useData()
+  const { adminUploads, clientNotifications } = useData()
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ marginTop: 0 }}>Two-audience reference app</h1>
@@ -140,6 +181,7 @@ export default function HomePage() {
       />
 
       <AdminUploads admin={guards.admin?.user} initialUploads={adminUploads} />
+      <ClientNotifications client={guards.client?.user} notifications={clientNotifications} />
 
       <p style={{ color: 'var(--color-muted)', fontSize: 13, lineHeight: 1.7, marginTop: '1.5rem' }}>
         Seeded sign-ins (magic link printed to the dev console): staff{' '}
