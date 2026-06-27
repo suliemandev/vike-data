@@ -4,7 +4,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { defineTheme, themeToVars, themeToCss, themeToAppearanceCss, baseCss, presets, defaultTheme, APPEARANCES } from '../index.js'
+import { defineTheme, themeToVars, themeToCss, themeToAppearanceCss, exportThemeCss, exportThemeConfig, baseCss, presets, defaultTheme, APPEARANCES } from '../index.js'
 import config from '../+config.js'
 
 // ----------------------------------------------------------- defineTheme -----
@@ -75,6 +75,34 @@ test('system emits light by default + a prefers-color-scheme dark media rule (fl
   assert.match(css, /@media \(prefers-color-scheme: dark\) \{/)
   assert.match(css, /--color-bg: #000;/) // dark inside the media rule
   assert.match(css, /color-scheme: light dark;/)
+})
+
+// ---------------------------------------------------------------- export ------
+
+test('exportThemeCss matches what the runtime emits for that appearance', () => {
+  // same source of truth as themeToAppearanceCss — capture must equal apply
+  assert.equal(exportThemeCss(brand, 'dark'), themeToAppearanceCss(brand, 'dark'))
+  assert.equal(exportThemeCss(brand, 'system'), themeToAppearanceCss(brand, 'system'))
+  assert.equal(exportThemeCss(brand), themeToAppearanceCss(brand, 'system')) // defaults to system
+})
+
+test('exportThemeCss honours a custom selector and normalizes raw tokens', () => {
+  assert.match(exportThemeCss(brand, 'light', '[data-x]'), /^\[data-x\] \{/)
+  // a raw (un-defineTheme'd) token object still compiles
+  assert.match(exportThemeCss({ light: { bg: '#fff' } }, 'light'), /--color-bg: #fff;/)
+})
+
+test('exportThemeConfig round-trips back through defineTheme', () => {
+  const t = defineTheme({ name: 'b', radius: '4px', light: { primary: '#f00' }, dark: { primary: '#900' } })
+  const restored = defineTheme(JSON.parse(exportThemeConfig(t)))
+  assert.deepEqual(restored, t)
+})
+
+test('exportThemeConfig emits a normalized, pretty-printed config', () => {
+  const json = exportThemeConfig(defineTheme({ name: 'b', light: { primary: '#abc' } }))
+  assert.match(json, /\n {2}"name": "b"/) // 2-space indented
+  const parsed = JSON.parse(json)
+  assert.deepEqual(parsed.dark, { primary: '#abc' }) // flat colors normalized into both modes upstream
 })
 
 // ------------------------------------------------------------- presets/api ----
