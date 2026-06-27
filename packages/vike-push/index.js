@@ -20,7 +20,7 @@
 import { randomUUID } from 'node:crypto'
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
-import { createPort, createDevTransport, DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
+import { createPort, createDevTransport, resolveOwnerColumn } from '@vike-data/kit'
 
 const JOB = 'vike-push:send'
 const TABLE = 'push_subscriptions'
@@ -31,8 +31,7 @@ const TABLE = 'push_subscriptions'
 // the knob is honoured; blank falls back to the default. saveSubscription/removeSubscription/
 // sendPush take the OWNER id (a user id, or an org id under the binding) and scope by it.
 function ownerColumn() {
-  const c = process.env.VIKE_PUSH_OWNER_COLUMN
-  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+  return resolveOwnerColumn(process.env.VIKE_PUSH_OWNER_COLUMN)
 }
 
 // The zero-config default transport: records each delivery to a dev outbox and logs a one-liner,

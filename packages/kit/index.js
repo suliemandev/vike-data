@@ -223,3 +223,80 @@ export function resolveOwner(defaultTable, binding = {}) {
     ownerColumn: clean(binding?.column) ?? DEFAULT_OWNER_COLUMN,
   }
 }
+
+/**
+ * The RUNTIME half of the owner contract (#250) - the request-time complement to the build-time
+ * `resolveOwner`. The three owned-row extensions (vike-storage / vike-notifications / vike-push)
+ * resolve "which column is the row owned by" and "what owner id does this request carry" the same
+ * way at runtime, differing only in the env-var name and how they find the signed-in user's
+ * subject table. Lifting that shared body here keeps the rule in ONE place.
+ *
+ * Like `resolveOwner`, these stay pure: they read no env and touch no global registry themselves.
+ * The caller passes the already-read env value (e.g. `process.env.VIKE_STORAGE_OWNER_COLUMN`) and,
+ * for the id resolver, the resolved subject table + the orm adapter - so kit composes with whatever
+ * guard/subject resolution the consumer already does and never needs to depend on vike-auth or the
+ * orm core.
+ */
+
+/**
+ * The column an owned row is keyed by. `value` is the raw `VIKE_<X>_OWNER_COLUMN` env value (or
+ * undefined); a blank/whitespace value falls through to `defaultColumn` (`user_id` by default), so
+ * an extension that sets no binding stays byte-for-byte its single-owner self.
+ *
+ * @param {string|undefined} value  The raw env value (the app's opt-in owner column).
+ * @param {string} [defaultColumn]  The fallback column. Defaults to `DEFAULT_OWNER_COLUMN`.
+ * @returns {string}
+ */
+export function resolveOwnerColumn(value, defaultColumn = DEFAULT_OWNER_COLUMN) {
+  return value != null && value.trim() !== '' ? value.trim() : defaultColumn
+}
+
+/**
+ * The owner id a request carries. By default the owner IS the signed-in user, so the owner id is
+ * `user.id`. When the app binds the row to a different owner (e.g. an organization) it sets
+ * `VIKE_<X>_OWNER_FROM` to the subject-row field that holds the owner id (e.g.
+ * `current_organization_id`); that field lives on the full subject row, not the normalized
+ * `{ id, email, name }`, so we load the row by id and read it. Returns null when the user has no
+ * such owner (e.g. belongs to no org) - the caller answers 403, never owning a row by a
+ * missing/blank owner.
+ *
+ * @param {{ id: any }} user  The signed-in user (normalized subject).
+ * @param {{ from: string|undefined, subjectTable: string, adapter: { find: Function }|null }} opts
+ *   `from` is the raw `VIKE_<X>_OWNER_FROM` env value; `subjectTable` is the table the user lives
+ *   in (the bound guard's subject, or the default `users`); `adapter` is the orm adapter.
+ * @returns {Promise<any|null>}
+ */
+export async function resolveOwnerId(user, { from, subjectTable, adapter } = {}) {
+  if (!from || from.trim() === '' || from.trim() === 'id') return user.id
+  if (!adapter) return null
+  const row = (await adapter.find(subjectTable, { id: user.id }))[0]
+  const ownerId = row?.[from.trim()]
+  return ownerId != null && ownerId !== '' ? ownerId : null
+}
+
+/**
+ * A JSON `Response` with the `application/json` content type - the shared shape the extension
+ * middlewares return. `body` is JSON-serialized.
+ *
+ * @param {number} status
+ * @param {unknown} body
+ * @returns {Response}
+ */
+export function jsonResponse(status, body) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+/**
+ * Parse a request's JSON body, returning null instead of throwing on a malformed/empty body - the
+ * shared "read the POST body, treat garbage as absent" helper the middlewares use.
+ *
+ * @param {Request} request
+ * @returns {Promise<any|null>}
+ */
+export async function readJsonSafe(request) {
+  try {
+    return await request.json()
+  } catch {
+    return null
+  }
+}
