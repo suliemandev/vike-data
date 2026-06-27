@@ -84,6 +84,22 @@ export function themeToAppearanceCss(theme, appearance = 'system', selector = ':
   ].join('\n')
 }
 
+// --- export (capture the active theme for save / share / SSG) ----------------
+// Two small, framework-agnostic helpers that REUSE the compilers above as the
+// single source of truth (no second compiler): hand back the exact CSS the
+// runtime applies for an appearance, or a JSON config that round-trips through
+// `defineTheme`. Both normalize first, so a raw token object works too.
+
+/** The CSS a theme emits for an appearance — the canonical `:root { … }` block. */
+export function exportThemeCss(theme, appearance = 'system', selector = ':root') {
+  return themeToAppearanceCss(defineTheme(theme), appearance, selector)
+}
+
+/** A theme as a normalized, pretty-printed JSON config (round-trips via defineTheme). */
+export function exportThemeConfig(theme) {
+  return JSON.stringify(defineTheme(theme), null, 2)
+}
+
 // --- presets ----------------------------------------------------------------
 // One built-in brand, `default`, carrying both modes (the old flat light/dark
 // presets collapse into this single theme — appearance picks the mode now).

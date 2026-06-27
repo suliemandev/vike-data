@@ -33,7 +33,7 @@ export default {
 
 | Subpath | What |
 |---|---|
-| `.` | `defineTheme` + the compilers (`themeToVars` / `themeToCss` / `themeToAppearanceCss`), presets, `baseCss`. |
+| `.` | `defineTheme` + the compilers (`themeToVars` / `themeToCss` / `themeToAppearanceCss`), the `exportThemeCss` / `exportThemeConfig` capture helpers, presets, `baseCss`. |
 | `./config` | The Vike config: `theme` / `appearance` (single) + the cumulative `themes` registry, plus the cookie-reading `onCreatePageContext`. |
 | `./oncreate` | The hook that reads the `vike_theme` / `vike_appearance` cookies. |
 | `./react`, `./react/hooks`, `./react/ThemeWrapper` | The provider + picker + `useTheme()`. |
@@ -49,3 +49,6 @@ export default {
 - **Themes compose like packages.** Install [vike-theme-emerald](../vike-theme-emerald)
   and a new brand appears in the picker — no app wiring. Customizing fonts/tokens beyond
   a brand is an [eject](../../CUSTOMIZATION.md), not a per-token config knob.
+- **Capture for save / share / SSG.** `exportThemeCss(theme, appearance)` returns the exact
+  `:root { … }` block the runtime applies (single source of truth: it reuses the compiler);
+  `exportThemeConfig(theme)` returns a normalized JSON config that round-trips through `defineTheme`.
