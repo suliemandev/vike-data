@@ -22,6 +22,13 @@ function prismaAttrs(c) {
   else if (typeof c.default === 'boolean') a.push(`@default(${c.default})`)
   else if (c.default !== undefined) a.push(`@default(${JSON.stringify(c.default)})`)
   if (c.type === 'text') a.push('@db.Text')
+  // @db.Timestamptz — Prisma maps `DateTime` to PostgreSQL's native `timestamp(3)`
+  // WITHOUT time zone by default. universal-orm writes UTC ISO instants with a `Z`
+  // (its isoNow(), e.g. 2020-01-01T00:00:00.000Z); a no-tz column drops the offset on
+  // the round-trip and reads the value back shifted by the server's local offset, so a
+  // freshly-issued token's expires_at can read as already expired. `timestamptz`
+  // preserves the instant. (Same fix the Drizzle compiler applies via withTimezone.)
+  if (c.type === 'timestamp') a.push('@db.Timestamptz(3)')
   return a.join(' ')
 }
 // Prisma models the FK as a scalar column (kept below) PLUS a relation field, and

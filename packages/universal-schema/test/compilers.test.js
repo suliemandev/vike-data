@@ -44,7 +44,22 @@ test('toPrisma renders nullable, unique, now-default and text', () => {
   )
   assert.match(out, /email String @unique/)
   assert.match(out, /bio String\? @db\.Text/)
-  assert.match(out, /created_at DateTime @default\(now\(\)\)/)
+  // timestamptz, not a bare DateTime — Prisma's default DateTime is `timestamp` WITHOUT
+  // time zone, which drops the offset of the UTC ISO instants universal-orm writes.
+  assert.match(out, /created_at DateTime @default\(now\(\)\) @db\.Timestamptz\(3\)/)
+})
+
+test('toPrisma renders timestamp columns as @db.Timestamptz (universal-orm speaks UTC ISO instants)', () => {
+  const out = toPrisma(
+    ir((t) => {
+      t.timestamp('created_at').default('now')
+      t.timestamp('expires_at')
+    }),
+  )
+  // @db.Timestamptz preserves the UTC instant on the round-trip; a bare DateTime maps to
+  // `timestamp` (no tz) and shifts the value by the server's local offset.
+  assert.match(out, /created_at DateTime @default\(now\(\)\) @db\.Timestamptz\(3\)/)
+  assert.match(out, /expires_at DateTime @db\.Timestamptz\(3\)/)
 })
 
 test('toPrisma emits a forward relation field + scalar FK column with onDelete', () => {
