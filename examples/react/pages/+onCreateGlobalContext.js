@@ -4,6 +4,12 @@
 // persist for the life of the dev server, and seeds a couple of users so /admin/users has
 // rows to show on first load. A real app swaps this one line for vike-drizzle +
 // registerDrizzle(...) pointed at a migrated database; the admin code does not change.
+//
+// One thing NOT to carry over to a real database: the raw fixed-id inserts below. They are
+// safe here only because the MEMORY store starts empty on every boot. On a persistent DB this
+// hook re-runs each start and those fixed ids would duplicate or hit a primary-key conflict.
+// There, tables come from migrations and rows from an idempotent seed run as a separate step.
+// examples/drizzle-pglite is the real-DB twin of this app that does exactly that.
 import { setAdapter, getAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { definePermissions } from 'vike-rbac'

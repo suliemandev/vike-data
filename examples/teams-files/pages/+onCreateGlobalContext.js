@@ -3,6 +3,11 @@
 // uploads persist for the life of the dev server, and seeds one organization with two members.
 // A real app swaps this one line for vike-drizzle + registerDrizzle(...) pointed at a migrated
 // database; nothing else changes.
+//
+// Do NOT carry the raw fixed-id inserts below onto that real database: they are safe here only
+// because the MEMORY store starts empty each boot. On a persistent DB this hook re-runs every
+// start and the fixed ids would duplicate or hit a primary-key conflict; there, rows come from
+// an idempotent seed run as a separate step. See examples/drizzle-pglite for the real-DB twin.
 import { setAdapter, getAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 

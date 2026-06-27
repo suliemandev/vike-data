@@ -2,7 +2,10 @@
 // real database wired, it registers the in-process MEMORY adapter so the auth stores (the
 // default user guard AND the two named guards) persist for the life of the dev server, and
 // seeds one row per audience. A real app swaps this one line for vike-drizzle +
-// registerDrizzle(...) pointed at a migrated database; nothing else changes.
+// registerDrizzle(...) pointed at a migrated database; nothing else changes. Do NOT carry the
+// raw fixed-id inserts below onto a real DB though: they are safe here only because the MEMORY
+// store starts empty each boot; on a persistent DB this hook re-runs and the fixed ids would
+// duplicate or conflict. There, rows come from an idempotent seed step. See examples/drizzle-pglite.
 //
 // Importing ../guards.js here REGISTERS the guards in the server process (defineGuard runs
 // on import), so the guards middleware + render hook see them. The same module is imported

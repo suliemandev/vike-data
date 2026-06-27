@@ -1,3 +1,9 @@
+// Vike's once-per-server hook: this demo registers the in-process MEMORY adapter and seeds a
+// couple of rows so /admin has content. A real app swaps that one line for vike-drizzle +
+// registerDrizzle(...) on a migrated database. Do NOT carry the raw fixed-id inserts below onto
+// a real DB: they are safe here only because the MEMORY store starts empty each boot; on a
+// persistent DB this hook re-runs and the fixed ids would duplicate or conflict. There, rows
+// come from an idempotent seed step. See examples/drizzle-pglite for the real-DB twin.
 import { setAdapter, getAdapter } from '@universal-orm/core'
 import { createMemoryAdapter } from '@universal-orm/memory'
 import { definePermissions } from 'vike-rbac'
