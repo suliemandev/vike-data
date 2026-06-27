@@ -25,16 +25,11 @@
 // vike-notifications/client and the bell UI in /react, /vue; they import none of this.
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
-import { resolveSubject } from 'vike-auth/subject'
-import { getGuard, DEFAULT_GUARD_NAME } from 'vike-auth/guards'
+import { resolveGuardSubjectTable } from 'vike-auth/server'
 import { databaseChannel } from './database-channel.js'
 
 const CHANNELS_KEY = Symbol.for('vike-notifications.channels')
 const JOB = 'vike-notifications:deliver'
-// Hydrate a bare user id from vike-auth's subject table, following its configurable name
-// (subject.js) so a renamed users table is read from the same single source the schema and
-// the auth store use. Defaults to `users`.
-const USERS_TABLE = resolveSubject().users
 
 // The channel registry — a keyed Map (many channels), like vike-queue's job registry,
 // not a single-value port. Cached on globalThis so duplicate module evaluation (pointer
@@ -164,18 +159,12 @@ export function route(routes) {
 }
 
 // The subject table a bare-id notifiable is hydrated from. Follows the guard the app bound
-// notifications to (VIKE_NOTIFICATIONS_GUARD, #279 / #207 P3): set to a named guard, a bare id is
-// looked up in THAT guard's subject table (e.g. `clients`), so notify(clientId, ...) resolves a
-// customer rather than a default user. Unset / 'default' / an unregistered name falls back to the
-// default subject (USERS_TABLE) — byte-for-byte today's behaviour. Resolved per call (not at
-// import) so the runtime knob is honoured; it mirrors the build-time `notificationsGuard`
-// (schema.js) the way vike-stripe pairs `segment` with `BILLING_SEGMENT`.
-function notifiableTable() {
-  const name = process.env.VIKE_NOTIFICATIONS_GUARD
-  if (!name || name === DEFAULT_GUARD_NAME) return USERS_TABLE
-  const guard = getGuard(name)
-  return guard ? guard.subject.users : USERS_TABLE
-}
+// notifications to (VIKE_NOTIFICATIONS_GUARD, #279 / #207 P3) via vike-auth's shared by-name seam:
+// set to a named guard, a bare id is looked up in THAT guard's subject table (e.g. `clients`), so
+// notify(clientId, ...) resolves a customer rather than a default user; unset / 'default' / an
+// unregistered name falls back to the default subject — byte-for-byte today's behaviour. Resolved
+// per call so the runtime knob is honoured.
+const notifiableTable = () => resolveGuardSubjectTable(process.env.VIKE_NOTIFICATIONS_GUARD)
 
 // Turn the notify() target into a notifiable. An object is taken as-is (a user row, or an
 // on-demand `route()` target carrying `routes`); a string/number is a user id, hydrated from
