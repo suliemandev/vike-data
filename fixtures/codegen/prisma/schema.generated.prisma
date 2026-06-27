@@ -34,6 +34,7 @@ model Users {
   sessions_user_id Sessions[] @relation("sessions_user_id")
   organizations_owner_id Organizations[] @relation("organizations_owner_id")
   memberships_user_id Memberships[] @relation("memberships_user_id")
+  invitations_invited_by Invitations[] @relation("invitations_invited_by")
 
   @@map("users")
 }
@@ -74,6 +75,7 @@ model Organizations {
   owner Users @relation("organizations_owner_id", fields: [owner_id], references: [id], onDelete: Restrict)
   users_current_organization_id Users[] @relation("users_current_organization_id")
   memberships_organization_id Memberships[] @relation("memberships_organization_id")
+  invitations_organization_id Invitations[] @relation("invitations_organization_id")
   subscriptions_organization_id Subscriptions? @relation("subscriptions_organization_id")
 
   @@map("organizations")
@@ -91,6 +93,25 @@ model Memberships {
   user Users @relation("memberships_user_id", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("memberships")
+}
+
+model Invitations {
+  id String @id @default(uuid())
+  organization_id String
+  email String
+  role String @default("member")
+  token String @unique
+  status String @default("pending")
+  expires_at DateTime
+  accepted_at DateTime?
+  invited_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  organization Organizations @relation("invitations_organization_id", fields: [organization_id], references: [id], onDelete: Cascade)
+  invited_by_ref Users? @relation("invitations_invited_by", fields: [invited_by], references: [id], onDelete: SetNull)
+
+  @@map("invitations")
 }
 
 model Subscriptions {

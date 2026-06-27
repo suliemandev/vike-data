@@ -20,11 +20,25 @@ test('self-installs vike-auth (one extends entry pulls the chain)', () => {
   assert.deepEqual(teamsConfig.extends, ['import:vike-auth/config:default'])
 })
 
-test('contributes organizations + memberships and extends users (in that order)', () => {
+test('contributes organizations + memberships + invitations and extends users (in that order)', () => {
   assert.deepEqual(
     teamsConfig.schemas.map((s) => `${s.mode}:${s.table}`),
-    ['create:organizations', 'create:memberships', 'extend:users'],
+    ['create:organizations', 'create:memberships', 'create:invitations', 'extend:users'],
   )
+})
+
+test('invitations: org FK cascades, invited_by SET NULL into auth users, token unique, status defaults pending', () => {
+  const inv = fragment('invitations')
+  const org = column(inv, 'organization_id')
+  assert.deepEqual(org.references, { table: 'organizations', column: 'id' })
+  assert.equal(org.onDelete, 'cascade')
+  const invitedBy = column(inv, 'invited_by')
+  assert.deepEqual(invitedBy.references, { table: 'users', column: 'id' })
+  assert.equal(invitedBy.onDelete, 'set null')
+  assert.equal(invitedBy.nullable, true)
+  assert.equal(column(inv, 'token').unique, true)
+  assert.equal(column(inv, 'status').default, 'pending')
+  assert.equal(column(inv, 'role').default, 'member')
 })
 
 test('organizations: unique slug + a RESTRICT owner FK into auth users', () => {
@@ -112,7 +126,7 @@ test('renames its OWN tables (VIKE_TEAMS_*_TABLE) across schema + internal FKs',
     const { default: renamed } = await import('../+config.js?teams=1')
     assert.deepEqual(
       renamed.schemas.map((s) => `${s.mode}:${s.table}`),
-      ['create:teams', 'create:team_members', 'extend:users'],
+      ['create:teams', 'create:team_members', 'create:invitations', 'extend:users'],
     )
     const frag = (table, mode = 'create') => renamed.schemas.find((s) => s.table === table && s.mode === mode)
     const col = (f, name) => f.columns.find((c) => c.name === name)
