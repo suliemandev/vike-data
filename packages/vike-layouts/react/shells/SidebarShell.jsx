@@ -4,6 +4,11 @@ import { NavList } from './NavList.jsx'
 
 export function SidebarShell({ layout = { dir: 'ltr', slots: {} }, children }) {
   const { logo, nav, userMenu } = layout.slots || {}
+  // `end: true` items sink to the bottom of the sidebar, above the user menu (#303);
+  // the rest stay at the top under the logo. No `end` set = unchanged.
+  const items = nav || []
+  const startNav = items.filter((i) => !i.end)
+  const endNav = items.filter((i) => i.end)
   return (
     <div
       dir={layout.dir}
@@ -28,8 +33,11 @@ export function SidebarShell({ layout = { dir: 'ltr', slots: {} }, children }) {
         }}
       >
         {logo && <strong>{logo}</strong>}
-        <NavList items={nav} vertical />
-        <div style={{ marginTop: 'auto' }}>{userMenu}</div>
+        <NavList items={startNav} vertical />
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg, 2rem)' }}>
+          {endNav.length > 0 && <NavList items={endNav} vertical />}
+          {userMenu}
+        </div>
       </aside>
       <main style={{ flex: 1, padding: 'var(--space-lg, 2rem)' }}>{children}</main>
     </div>

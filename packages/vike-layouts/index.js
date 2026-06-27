@@ -44,6 +44,32 @@ export function isAppShell(name) {
 }
 
 /**
+ * True when a nav item's `href` matches the current path — the framework-agnostic
+ * half of "active nav item" so the React and Vue NavLists style it identically
+ * (the rendering is per-framework; the MATCH lives here, like defineLayout).
+ *
+ * The root `/` is exact-match only (else it lights up everywhere). Every other
+ * href matches its own page AND its descendants, so `/admin` stays active on
+ * `/admin/users`. Trailing slashes are ignored on both sides. A query string or
+ * hash on the current path is dropped before comparing.
+ *
+ *   isActivePath('/admin/users', '/admin')  // true
+ *   isActivePath('/', '/admin')             // false
+ *   isActivePath('/', '/')                  // true
+ */
+export function isActivePath(currentPath, href) {
+  if (typeof currentPath !== 'string' || typeof href !== 'string' || href === '') return false
+  const strip = (p) => {
+    const noQuery = p.replace(/[?#].*$/, '')
+    return noQuery.length > 1 ? noQuery.replace(/\/+$/, '') : noQuery
+  }
+  const cur = strip(currentPath)
+  const target = strip(href)
+  if (target === '/') return cur === '/'
+  return cur === target || cur.startsWith(target + '/')
+}
+
+/**
  * Resolve an app's layout config into a normalized descriptor a shell renders
  * from. Unknown/missing shells fall back to `centered` (the safe public default).
  *
