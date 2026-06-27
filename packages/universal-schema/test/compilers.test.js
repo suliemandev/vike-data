@@ -78,7 +78,7 @@ test('toDrizzle builds a pgTable with camelCased columns and modifiers', () => {
   assert.match(out, /displayName: varchar\('display_name', \{ length: 255 \}\)/)
 })
 
-test("toDrizzle renders timestamp columns with mode: 'string' (universal-orm speaks ISO strings)", () => {
+test("toDrizzle renders timestamp columns as timestamptz with mode: 'string' (universal-orm speaks UTC ISO instants)", () => {
   const out = toDrizzle(
     ir((t) => {
       t.uuid('id').primary()
@@ -86,8 +86,10 @@ test("toDrizzle renders timestamp columns with mode: 'string' (universal-orm spe
       t.timestamp('expires_at')
     }),
   )
-  assert.match(out, /createdAt: timestamp\('created_at', \{ mode: 'string' \}\)\.notNull\(\)\.defaultNow\(\)/)
-  assert.match(out, /expiresAt: timestamp\('expires_at', \{ mode: 'string' \}\)\.notNull\(\)/)
+  // withTimezone (timestamptz) preserves the UTC instant on the round-trip; a bare
+  // `timestamp` would drop the offset and shift the value by the server's local offset.
+  assert.match(out, /createdAt: timestamp\('created_at', \{ withTimezone: true, mode: 'string' \}\)\.notNull\(\)\.defaultNow\(\)/)
+  assert.match(out, /expiresAt: timestamp\('expires_at', \{ withTimezone: true, mode: 'string' \}\)\.notNull\(\)/)
 })
 
 test('toDrizzle renders a column FK as a lazy .references thunk with onDelete', () => {

@@ -53,11 +53,15 @@ function drizzleCol(c) {
   let s
   switch (c.type) {
     case 'string': s = `varchar('${c.name}', { length: 255 })`; break
-    // mode: 'string' — universal-orm speaks ISO strings (its isoNow()), the same the
-    // memory adapter stores, so the Drizzle column must accept/return strings too.
-    // Without it Drizzle defaults to mode: 'date' and calls value.toISOString() on
-    // write, throwing for the string values universal-orm passes.
-    case 'timestamp': s = `timestamp('${c.name}', { mode: 'string' })`; break
+    // withTimezone — universal-orm speaks UTC ISO instants (its isoNow(), e.g.
+    // 2020-01-01T00:00:00.000Z). Storing those in a bare `timestamp` (WITHOUT time zone)
+    // drops the offset on the round-trip, so the value reads back shifted by the server's
+    // local offset and a freshly-issued token can read as already expired. `timestamptz`
+    // preserves the instant, the correct type for created_at/expires_at. mode: 'string'
+    // keeps the column accepting/returning the ISO strings universal-orm passes (the same
+    // the memory adapter stores); without it Drizzle defaults to mode: 'date' and calls
+    // value.toISOString() on write, throwing for those string values.
+    case 'timestamp': s = `timestamp('${c.name}', { withTimezone: true, mode: 'string' })`; break
     default: s = `${DRIZZLE_FN[c.type] || 'text'}('${c.name}')`
   }
   if (c.primary) s += '.primaryKey()'

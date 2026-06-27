@@ -17,8 +17,8 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }),
   emailVerified: boolean('email_verified').notNull().default(false),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   currentOrganizationId: uuid('current_organization_id').references(() => organizations.id, { onDelete: 'set null' }),
 })
 
@@ -26,19 +26,19 @@ export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   token: varchar('token', { length: 255 }).notNull().unique(),
-  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
 export const loginTokens = pgTable('login_tokens', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   email: varchar('email', { length: 255 }).notNull(),
   token: varchar('token', { length: 255 }).notNull().unique(),
-  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
-  consumedAt: timestamp('consumed_at', { mode: 'string' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
 export const organizations = pgTable('organizations', {
@@ -46,8 +46,8 @@ export const organizations = pgTable('organizations', {
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
 export const memberships = pgTable('memberships', {
@@ -55,8 +55,8 @@ export const memberships = pgTable('memberships', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 255 }).notNull().default("member"),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
 export const invitations = pgTable('invitations', {
@@ -66,11 +66,11 @@ export const invitations = pgTable('invitations', {
   role: varchar('role', { length: 255 }).notNull().default("member"),
   token: varchar('token', { length: 255 }).notNull().unique(),
   status: varchar('status', { length: 255 }).notNull().default("pending"),
-  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
-  acceptedAt: timestamp('accepted_at', { mode: 'string' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
   invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
 export const subscriptions = pgTable('subscriptions', {
@@ -81,7 +81,7 @@ export const subscriptions = pgTable('subscriptions', {
   seats: integer('seats').notNull().default(1),
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).unique(),
-  currentPeriodEnd: timestamp('current_period_end', { mode: 'string' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  currentPeriodEnd: timestamp('current_period_end', { withTimezone: true, mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
