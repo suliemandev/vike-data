@@ -42,6 +42,26 @@ Both resolve the current user from the session cookie (vike-auth's server seam),
 
 **Endpoints are device-scoped (trust model).** A push `endpoint` identifies a service-worker registration on one browser profile, not a user. So when the same browser re-subscribes under a different account (logout/login on a shared device), `/push/subscribe` re-binds that endpoint to the current signed-in user and rotates the keys — the prior user *should* stop receiving pushes on a device they left. This is intended, and is not the IDOR the owner-scoped `/push/unsubscribe` guards against: the endpoint URL is a bearer capability, and an attacker who already knows another user's secret endpoint can at most cause a self-healing denial (that user re-subscribes routinely) and never reads their pushes (they decrypt only with their own browser's keys). Clients should call `PushSubscription.unsubscribe()` on logout to release the endpoint promptly.
 
+## Owned by a team, not a user (`pushOwner`, #250)
+
+By default a subscription is owned by the auth user. `pushOwner` lets it belong to an **organization** instead, so `sendPush(orgId, …)` reaches every member's device — one announcement to the whole team. The same move [vike-stripe's `segment`](../vike-stripe/README.md) makes, lifted into the shared [`@vike-data/kit`](../kit) `resolveOwner` contract [vike-storage](../vike-storage/README.md) and [vike-notifications](../vike-notifications/README.md) use too.
+
+With [vike-teams](../vike-teams) supplying `organizations` (and stamping each user's active org onto `current_organization_id`):
+
+```js
+// +config.js — build-time: the push_subscriptions FK becomes organization_id -> organizations.id
+pushOwner: { table: 'organizations', column: 'organization_id' },
+```
+```bash
+# runtime, two halves:
+VIKE_PUSH_OWNER_COLUMN=organization_id          # the column subscriptions are written/scoped by
+VIKE_PUSH_OWNER_FROM=current_organization_id    # which field of the signed-in user holds the owner id
+```
+
+`/push/subscribe` is still authenticated as the signed-in user; the subscription's **owner** is then their `current_organization_id`, so every member's device is registered under the org and `sendPush(orgId, …)` fans out to all of them. A signed-in user who belongs to no org gets `403 no-owner`. Leave `pushOwner` unset and subscriptions stay the single-user default, byte-for-byte. vike-push never imports vike-teams — the app names the table/column/source field.
+
+> Unlike vike-storage/vike-notifications, vike-push has no `*Guard` (named-guard) axis yet; it resolves against the default subject. Adding that axis is tracked separately.
+
 ## Client: the subscribe control
 
 A user must opt in (browser permission + a stored subscription) before `sendPush` can reach them. vike-push ships that flow:

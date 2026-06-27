@@ -20,10 +20,20 @@
 import { randomUUID } from 'node:crypto'
 import { registerJob, getJob, dispatch } from 'vike-queue'
 import { getAdapter } from '@universal-orm/core'
-import { createPort, createDevTransport } from '@vike-data/kit'
+import { createPort, createDevTransport, DEFAULT_OWNER_COLUMN } from '@vike-data/kit'
 
 const JOB = 'vike-push:send'
 const TABLE = 'push_subscriptions'
+
+// The column a subscription row is OWNED by (#250). Default `user_id`; an app that binds push to
+// an organization (pushOwner in +config.js) sets VIKE_PUSH_OWNER_COLUMN to the matching column
+// (e.g. `organization_id`) so the runtime write/scope matches the build-time FK. Read per call so
+// the knob is honoured; blank falls back to the default. saveSubscription/removeSubscription/
+// sendPush take the OWNER id (a user id, or an org id under the binding) and scope by it.
+function ownerColumn() {
+  const c = process.env.VIKE_PUSH_OWNER_COLUMN
+  return c != null && c.trim() !== '' ? c.trim() : DEFAULT_OWNER_COLUMN
+}
 
 // The zero-config default transport: records each delivery to a dev outbox and logs a one-liner,
 // so the seam is provable without real Web Push/VAPID crypto.
@@ -92,8 +102,9 @@ function requireAdapter() {
  * browser, which can't decrypt the attacker's keys. Clients should call
  * `PushSubscription.unsubscribe()` on logout to release the endpoint promptly.
  */
-export async function saveSubscription(userId, subscription) {
+export async function saveSubscription(ownerId, subscription) {
   const adapter = requireAdapter()
+  const col = ownerColumn()
   const ts = new Date().toISOString()
   // Normalize the subscription's encryption material once (the column is auth_secret,
   // not auth; missing keys become null) so the update and insert paths stay in sync.
@@ -105,13 +116,13 @@ export async function saveSubscription(userId, subscription) {
     // Re-bind the device endpoint to the current holder and ALWAYS rotate the keys, so a
     // stale key from a prior owner can never linger on the row (see the trust model above).
     await adapter.update(TABLE, { endpoint: subscription.endpoint }, {
-      user_id: userId, p256dh, auth_secret: authSecret, updated_at: ts,
+      [col]: ownerId, p256dh, auth_secret: authSecret, updated_at: ts,
     })
     return { id: existing.id, updated: true }
   }
   const row = {
     id: randomUUID(),
-    user_id: userId,
+    [col]: ownerId,
     endpoint: subscription.endpoint,
     p256dh,
     auth_secret: authSecret,
@@ -123,14 +134,15 @@ export async function saveSubscription(userId, subscription) {
 }
 
 /**
- * Remove one of a user's subscriptions by endpoint. Scoped to `userId` so a caller can
- * only ever delete its OWN subscription, never another user's row that happens to share
- * (or guess) the endpoint - the delete-side counterpart to saveSubscription's user
- * binding. Returns the number of rows deleted (0 when the user has no such endpoint).
+ * Remove one of an owner's subscriptions by endpoint. Scoped to the owner column so a caller can
+ * only ever delete a subscription its owner owns, never another owner's row that happens to share
+ * (or guess) the endpoint - the delete-side counterpart to saveSubscription's owner binding. Under
+ * the #250 org binding the scope is the org, so any member can remove the org's subscription.
+ * Returns the number of rows deleted (0 when the owner has no such endpoint).
  */
-export async function removeSubscription(userId, endpoint) {
+export async function removeSubscription(ownerId, endpoint) {
   const adapter = requireAdapter()
-  return adapter.delete(TABLE, { endpoint, user_id: userId })
+  return adapter.delete(TABLE, { endpoint, [ownerColumn()]: ownerId })
 }
 
 /**
@@ -180,15 +192,16 @@ function ensureSendJob() {
 ensureSendJob()
 
 /**
- * Send a push payload to every subscription a user has. Looks up the user's stored
+ * Send a push payload to every subscription an owner has. Looks up the owner's stored
  * subscriptions and dispatches one vike-queue job per subscription (so one bad endpoint
- * does not block the others). Returns the per-subscription dispatch results. A no-op
- * (empty array) when the user has no subscriptions.
+ * does not block the others). `ownerId` is a user id by default, or an org id under the #250
+ * owner binding (so an org push reaches every member's device). Returns the per-subscription
+ * dispatch results. A no-op (empty array) when the owner has no subscriptions.
  */
-export async function sendPush(userId, payload) {
+export async function sendPush(ownerId, payload) {
   ensureSendJob()
   const adapter = requireAdapter()
-  const rows = await adapter.find(TABLE, { user_id: userId })
+  const rows = await adapter.find(TABLE, { [ownerColumn()]: ownerId })
   return Promise.all(
     rows.map((row) => dispatch(JOB, { subscriptionId: row.id, payload }, { maxAttempts: 3 })),
   )
