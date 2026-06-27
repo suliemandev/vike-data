@@ -19,7 +19,6 @@ export const users = pgTable('users', {
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  currentOrganizationId: uuid('current_organization_id').references(() => organizations.id, { onDelete: 'set null' }),
 })
 
 export const sessions = pgTable('sessions', {
@@ -41,47 +40,34 @@ export const loginTokens = pgTable('login_tokens', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
-export const organizations = pgTable('organizations', {
+export const roles = pgTable('roles', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).notNull().unique(),
-  ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  label: varchar('label', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
-export const memberships = pgTable('memberships', {
+export const permissions = pgTable('permissions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  label: varchar('label', { length: 255 }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+})
+
+export const roleUser = pgTable('role_user', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  role: varchar('role', { length: 255 }).notNull().default("member"),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
 
-export const invitations = pgTable('invitations', {
+export const permissionRole = pgTable('permission_role', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  email: varchar('email', { length: 255 }).notNull(),
-  role: varchar('role', { length: 255 }).notNull().default("member"),
-  token: varchar('token', { length: 255 }).notNull().unique(),
-  status: varchar('status', { length: 255 }).notNull().default("pending"),
-  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
-  acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
-  invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-})
-
-export const subscriptions = pgTable('subscriptions', {
-  id: uuid('id').primaryKey().defaultRandom().notNull(),
-  organizationId: uuid('organization_id').notNull().unique().references(() => organizations.id, { onDelete: 'cascade' }),
-  plan: varchar('plan', { length: 255 }).notNull(),
-  status: varchar('status', { length: 255 }).notNull().default("active"),
-  seats: integer('seats').notNull().default(1),
-  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
-  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).unique(),
-  currentPeriodEnd: timestamp('current_period_end', { withTimezone: true, mode: 'string' }),
+  permissionId: uuid('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 })
