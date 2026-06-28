@@ -304,8 +304,8 @@ importers:
         specifier: ^0.5.3
         version: 0.5.3
       '@rudderjs/database':
-        specifier: ^1.5.5
-        version: 1.5.5(better-sqlite3@12.11.1)(postgres@3.4.9)
+        specifier: ^1.6.0
+        version: 1.6.0(better-sqlite3@12.11.1)(postgres@3.4.9)
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../../packages/vike-schema
@@ -375,8 +375,8 @@ importers:
         version: link:../universal-orm
     devDependencies:
       '@rudderjs/database':
-        specifier: ^1.5.5
-        version: 1.5.5(better-sqlite3@12.11.1)(postgres@3.4.9)
+        specifier: ^1.6.0
+        version: 1.6.0(better-sqlite3@12.11.1)(postgres@3.4.9)
       better-sqlite3:
         specifier: ^12.0.0
         version: 12.11.1
@@ -714,8 +714,8 @@ importers:
         version: link:../universal-orm-rudder
     devDependencies:
       '@rudderjs/database':
-        specifier: ^1.5.5
-        version: 1.5.5(better-sqlite3@12.11.1)(postgres@3.4.9)
+        specifier: ^1.6.0
+        version: 1.6.0(better-sqlite3@12.11.1)(postgres@3.4.9)
       better-sqlite3:
         specifier: ^12.0.0
         version: 12.11.1
@@ -794,8 +794,8 @@ importers:
         specifier: ^0.5.3
         version: 0.5.3
       '@rudderjs/database':
-        specifier: ^1.5.5
-        version: 1.5.5(better-sqlite3@12.11.1)(postgres@3.4.9)
+        specifier: ^1.6.0
+        version: 1.6.0(better-sqlite3@12.11.1)(postgres@3.4.9)
       '@universal-orm/drizzle':
         specifier: workspace:*
         version: link:../universal-orm-drizzle
@@ -2018,12 +2018,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rudderjs/contracts@1.19.0':
-    resolution: {integrity: sha512-I9djlPm7os3n4Bxv8BUY7tbrWmj1bN+GDVWzDznZUc/FFIZN4LcfspNKrwddlkh+gdvVJToChRYEKMWZ5IvDgQ==}
+  '@rudderjs/contracts@1.20.0':
+    resolution: {integrity: sha512-meRbwYRkrqsz9cyKicHF3aklZPRBpsqN7C010zG1NouWNUETmX0Hx/lNfPmIsyKiwlxW/2qYk93h6pULyVFINA==}
     engines: {node: '>=22.12.0'}
 
-  '@rudderjs/database@1.5.5':
-    resolution: {integrity: sha512-MDz7tyhMwbKTGfVeGH2GSNxbVyTluwMnx1Ww7uHgTiBiDEgqIei02Ou3nT7CAlRmBcqz7FSp2LMkmGILeRgJ/A==}
+  '@rudderjs/database@1.6.0':
+    resolution: {integrity: sha512-eZwXweXORCkvVWxl41dfflOkyC12pjQPTuCPHWiv+VyGPdaQrKNW3mBwRQbYbJC8nHeEGtV095WnIEpnOfdVZQ==}
     engines: {node: '>=22.12.0'}
     peerDependencies:
       better-sqlite3: ^12.0.0
@@ -4107,11 +4107,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
-  '@rudderjs/contracts@1.19.0': {}
+  '@rudderjs/contracts@1.20.0': {}
 
-  '@rudderjs/database@1.5.5(better-sqlite3@12.11.1)(postgres@3.4.9)':
+  '@rudderjs/database@1.6.0(better-sqlite3@12.11.1)(postgres@3.4.9)':
     dependencies:
-      '@rudderjs/contracts': 1.19.0
+      '@rudderjs/contracts': 1.20.0
     optionalDependencies:
       better-sqlite3: 12.11.1
       postgres: 3.4.9

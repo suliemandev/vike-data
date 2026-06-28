@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.3",
-    "@rudderjs/database": "^1.5.5",
+    "@rudderjs/database": "^1.6.0",
     "@universal-orm/drizzle": "workspace:*",
     "@universal-orm/rudder": "workspace:*",
     "better-sqlite3": "^12.0.0",

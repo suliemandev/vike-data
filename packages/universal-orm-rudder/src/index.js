@@ -14,10 +14,11 @@
 // connection, not the generated schema tables (column validation already happened upstream in
 // `createRepository`).
 //
-// The one wrinkle: Rudder's BULK writes (`updateAll` / `upsert`) return an affected-row COUNT,
-// not the rows (only single-row `.create()` / `.update(id, ...)` return via RETURNING). The
-// contract wants the row(s) back, so update reads the matched rows first and returns them with
-// the patch applied, and upsert re-reads by the conflict key.
+// Returning the row(s): the universal-orm contract wants the written row(s) back. Rudder's bulk
+// writes expose `updateAllReturning` / `upsertReturning` (>=1.6.0), which run the write with
+// `RETURNING *` and hand back the ACTUAL stored rows — DB-applied defaults, coercion, and
+// trigger/generated-column effects all reflected, for any primary-key shape. This is why the
+// peer is `>=1.6.0`.
 import { normalizeOrderBy, isInCondition } from '@universal-orm/core'
 
 // universal-orm's orderBy direction is lower-case; Rudder's query builder wants 'ASC'/'DESC'.
@@ -91,36 +92,37 @@ export function createRudderAdapter(native) {
     },
 
     // UPSERT -> the upserted row. With no conflict target it is a plain insert. With one,
-    // Rudder's `upsert([row], uniqueBy, updateCols)` returns a COUNT, so re-read the row by the
-    // conflict key to honour the "return the row" contract. updateCols = every non-conflict
-    // column, so a replayed event converges the row.
+    // `upsertReturning([row], uniqueBy, updateCols)` (Rudder >=1.6.0) runs ON CONFLICT DO
+    // UPDATE ... RETURNING * and returns the ACTUAL stored row — including a column the DB
+    // default filled (e.g. an omitted conflict key), which the old re-read-by-input-key path
+    // missed: it re-selected by `{ key: undefined }` and returned null (#320). updateCols =
+    // every non-conflict column, so a replayed event converges the row.
     async upsert(table, row, { onConflict } = {}) {
       if (!onConflict || !onConflict.length) return fromRow(await q(table).create(row))
       const updateCols = Object.keys(row).filter((c) => !onConflict.includes(c))
-      await q(table).upsert([row], onConflict, updateCols)
+      const [r] = await q(table).upsertReturning([row], onConflict, updateCols)
+      if (r) return fromRow(r)
+      // Empty updateCols => ON CONFLICT DO NOTHING, which RETURNs no row on a conflict (the
+      // insert was a no-op). Read the existing row by the conflict key to honour the contract.
       const key = Object.fromEntries(onConflict.map((c) => [c, row[c]]))
       return fromRow(await applyWhere(q(table), key).first())
     },
 
-    // UPDATE -> the updated rows. Rudder's bulk `updateAll` returns only an affected-row COUNT
-    // (no RETURNING on a bulk write), so to honour the "return the rows" contract we read the
-    // matched rows FIRST, then return them with the patch applied. This is the same post-state
-    // the in-memory reference adapter returns (it assigns the patch onto each matched row), and
-    // unlike a re-read it needs NO primary key — so it is correct for any PK shape, including a
-    // non-`id` or composite primary key. (The previous version re-read by a hard-coded `id` and
-    // returned [] whenever the PK was not literally `id`, even though the write succeeded — #142.)
-    // A patch that mutates a filtered column is handled too: the captured row holds the
-    // pre-update values and the patch overrides exactly the columns it changes.
+    // UPDATE -> the updated rows. `updateAllReturning(patch)` (Rudder >=1.6.0) runs
+    // UPDATE ... RETURNING *, so the returned rows are the REAL post-write state — DB-side
+    // coercion, defaults, and trigger/generated-column effects all reflected — for ANY primary
+    // key shape (incl. non-`id` / composite), with no re-read. This replaces the previous
+    // read-then-JS-merge, which echoed the patch over a pre-write snapshot and so hid any value
+    // the DB computed differently from the input (#319). Empty filter matches every row;
+    // RETURNING gives [] when nothing matches.
     async update(table, filter, patch) {
-      const matched = await applyWhere(q(table), filter).get()
-      if (!matched.length) return []
       // Empty patch => memory-parity no-op: the in-memory reference adapter does
-      // `Object.assign(r, {})` and returns the matched rows unchanged, but Rudder's
-      // `updateAll({})` throws ("compileUpdate called with no columns to set"). Return
-      // the matched rows unchanged instead of issuing a (failing) UPDATE.
-      if (Object.keys(patch ?? {}).length === 0) return fromRows(matched)
-      await applyWhere(q(table), filter).updateAll(patch)
-      return matched.map((row) => fromRow({ ...row, ...patch }))
+      // `Object.assign(r, {})` and returns the matched rows unchanged, but a bulk UPDATE with
+      // no SET columns throws. Return the matched rows (a read) instead of issuing one.
+      if (Object.keys(patch ?? {}).length === 0) {
+        return fromRows(await applyWhere(q(table), filter).get())
+      }
+      return fromRows(await applyWhere(q(table), filter).updateAllReturning(patch))
     },
 
     // DELETE -> number of rows deleted (`deleteAll` returns the affected-row count).
