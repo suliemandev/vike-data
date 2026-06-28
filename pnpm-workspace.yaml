@@ -34,3 +34,4 @@ minimumReleaseAgeExclude:
   # adapter track a just-published @rudderjs/database without re-pinning each release.
   - '@gemstack/*'
   - '@rudderjs/*'
+  - '@brillout/docpress@0.16.46'

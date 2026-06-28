@@ -13,18 +13,20 @@ const headings: HeadingDefinition[] = [
   {
     level: 1,
     title: 'Overview',
-    color: '#4f46e5',
+    // Follow the active theme: DocPress applies this as `--color-category`, so a
+    // var reference resolves to the picked brand's primary instead of a fixed hue.
+    color: 'var(--color-primary)',
   },
   {
     level: 2,
     title: 'Introduction',
-    titleDocument: 'vike-themes × DocPress',
+    titleDocument: 'Themed DocPress',
     url: '/',
   },
   {
     level: 1,
     title: 'Theming',
-    color: '#db2777',
+    color: 'var(--color-primary)',
   },
   {
     level: 2,

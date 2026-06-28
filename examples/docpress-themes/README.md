@@ -18,9 +18,9 @@ Then open the printed URL and use the **Theme** / **Mode** switchers in the top-
 
 | Piece | File | Role |
 | --- | --- | --- |
-| Agnostic core | `vike-themes` (`themeToAppearanceCss`) | Compiles a brand + appearance to a `:root { --color-*: … }` string. Zero framework deps. |
-| The switcher | `ThemeMenu.tsx` | Mounted in DocPress' `topNavigation` slot. Calls the core compiler, appends a `<style>` to `<head>`, persists the choice in a cookie. |
-| The bridge | `theme-bridge.css` + the injected `<style>` | Aliases DocPress' own CSS variables onto vike-themes' names (`--color-bg-white: var(--color-bg)`), **scoped to `body`** (see lesson below), plus a no-JS baseline palette. This alias is the adapter glue that belongs in vike-data. |
+| Agnostic core | `vike-themes` (`themeToAppearanceCss`) | Compiles a brand + appearance to a `body { --color-*: … }` string. Zero framework deps. |
+| The switcher | `ThemeMenu.tsx` | Mounted in DocPress' `topNavigation` slot. Reads the chosen brand/appearance from a cookie during render and emits the compiled palette in an **SSR `<style>`**, so the page paints the picked theme on first paint (no flash). Switching a `<select>` re-renders that `<style>` live and persists the choice in the cookie. |
+| The bridge | the SSR `<style>` (in `ThemeMenu.tsx`) | Aliases DocPress' own CSS variable name onto vike-themes' (`--color-bg-white: var(--color-bg)`), **scoped to `body`** (see lesson below). This alias is the adapter glue that belongs in vike-data. |
 | Brands | `themes.ts` | Two brands via `defineTheme` + the shipped `emerald` brand, proving a theme package needs no DocPress awareness. |
 
 Note: `vike-themes` is **not** added via `extends` in `+config.ts`. DocPress ships its own renderer (it is not `vike-react`), so vike-themes' `vike-react` `Wrapper` hook would not run. The integration therefore uses the framework-agnostic core directly — which is the honest test of whether that core slots into a foreign render pipeline.
