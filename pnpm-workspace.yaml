@@ -29,6 +29,8 @@ overrides:
 
 minimumReleaseAgeExclude:
   - vike@0.4.259-commit-f6ecfb2
-  # GemStack packages are first-party (we publish them); never hold their fresh
-  # releases behind a release-age cooldown. Inert until one is configured.
+  # GemStack and Rudder packages are first-party (we publish them); never hold their
+  # fresh releases behind a release-age cooldown. The Rudder wildcard lets the rudder
+  # adapter track a just-published @rudderjs/database without re-pinning each release.
   - '@gemstack/*'
+  - '@rudderjs/*'

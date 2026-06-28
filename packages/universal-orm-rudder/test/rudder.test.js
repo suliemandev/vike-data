@@ -32,14 +32,22 @@ const CREATE_GRANTS = `
     PRIMARY KEY (user_id, role)
   )`
 
+// A column the DB DEFAULTS (the omitted conflict-key case, #320) and a GENERATED column the DB
+// COMPUTES (the return-DB-truth case, #319). Both exercise the RETURNING terminals.
+const CREATE_DEFK = `CREATE TABLE defk (code TEXT PRIMARY KEY DEFAULT 'GEN', payload TEXT)`
+const CREATE_CALC = `
+  CREATE TABLE calc (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    n INTEGER,
+    total INTEGER GENERATED ALWAYS AS (n * 2) STORED
+  )`
+
 let native
 let db // the universal-orm adapter
 
 before(async () => {
   native = await NativeAdapter.make({ driver: 'sqlite', url: ':memory:' })
-  await native.affectingStatement(CREATE, [])
-  await native.affectingStatement(CREATE_TOKENS, [])
-  await native.affectingStatement(CREATE_GRANTS, [])
+  for (const ddl of [CREATE, CREATE_TOKENS, CREATE_GRANTS, CREATE_DEFK, CREATE_CALC]) await native.affectingStatement(ddl, [])
   db = createRudderAdapter(native)
 })
 
@@ -48,9 +56,7 @@ after(async () => {
 })
 
 beforeEach(async () => {
-  await native.affectingStatement('DELETE FROM items', [])
-  await native.affectingStatement('DELETE FROM tokens', [])
-  await native.affectingStatement('DELETE FROM grants', [])
+  for (const t of ['items', 'tokens', 'grants', 'defk', 'calc']) await native.affectingStatement(`DELETE FROM ${t}`, [])
 })
 
 const seed = (rows) => Promise.all(rows.map((r) => db.insert('items', r)))
@@ -159,6 +165,27 @@ test('update returns the changed rows on a table with a COMPOSITE primary key (#
   assert.deepEqual(updated[0], { user_id: 'u1', role: 'admin', level: 5 })
   assert.equal((await db.find('grants', { user_id: 'u1', role: 'admin' }))[0].level, 5)
   assert.equal((await db.find('grants', { user_id: 'u1', role: 'member' }))[0].level, 1)
+})
+
+// #319: update() returns the REAL post-write row via RETURNING, so a value the DB COMPUTES (a
+// generated column) is reflected — the old read-then-JS-merge echoed the patch over a pre-write
+// snapshot and returned the stale `total`.
+test('update returns DB-computed columns (generated column), not a pre-write echo (#319)', async () => {
+  const inserted = await db.insert('calc', { n: 5 })
+  assert.equal(inserted.total, 10) // 5 * 2, DB-computed on insert
+  const [updated] = await db.update('calc', { id: inserted.id }, { n: 8 })
+  assert.equal(updated.n, 8)
+  assert.equal(updated.total, 16) // recomputed by the DB; RETURNING carries it (not the stale 10)
+  assert.equal((await db.find('calc', { id: inserted.id }))[0].total, 16)
+})
+
+// #320: upsert() returns the actual stored row, including a conflict-key column the DB default
+// filled (omitted from the input). The old path re-read by `{ code: undefined }` and got null.
+test('upsert returns the stored row incl. a default-filled conflict key (#320)', async () => {
+  const row = await db.upsert('defk', { payload: 'p2' }, { onConflict: ['code'] })
+  assert.ok(row, 'returns the row, not null')
+  assert.equal(row.code, 'GEN') // the DB default filled the omitted conflict key
+  assert.equal(row.payload, 'p2')
 })
 
 test('upsert: inserts, then converges the same row keyed by the conflict column', async () => {

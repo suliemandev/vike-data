@@ -29,7 +29,12 @@ const DDL = [
   `CREATE TABLE grants (user_id TEXT, role TEXT, level INTEGER, PRIMARY KEY (user_id, role))`,
   // a column the DB defaults, to exercise insert/upsert against server-generated values.
   `CREATE TABLE defk (code TEXT PRIMARY KEY DEFAULT 'GEN', payload TEXT)`,
+  // a GENERATED column the DB computes — proves update() returns DB truth, not a JS echo of
+  // the patch over a pre-write snapshot.
+  `CREATE TABLE calc (id SERIAL PRIMARY KEY, n INTEGER, total INTEGER GENERATED ALWAYS AS (n * 2) STORED)`,
 ]
+
+const TABLES = ['items', 'tokens', 'grants', 'defk', 'calc']
 
 describe('@universal-orm/rudder on real Postgres', { skip: PG_URL ? false : 'set RUDDER_PG_URL to run' }, () => {
   let native
@@ -37,18 +42,18 @@ describe('@universal-orm/rudder on real Postgres', { skip: PG_URL ? false : 'set
 
   before(async () => {
     native = await NativeAdapter.make({ driver: 'pg', url: PG_URL })
-    for (const t of ['items', 'tokens', 'grants', 'defk']) await native.affectingStatement(`DROP TABLE IF EXISTS ${t}`, [])
+    for (const t of TABLES) await native.affectingStatement(`DROP TABLE IF EXISTS ${t}`, [])
     for (const ddl of DDL) await native.affectingStatement(ddl, [])
     db = createRudderAdapter(native)
   })
 
   after(async () => {
-    for (const t of ['items', 'tokens', 'grants', 'defk']) await native.affectingStatement(`DROP TABLE IF EXISTS ${t}`, [])
+    for (const t of TABLES) await native.affectingStatement(`DROP TABLE IF EXISTS ${t}`, [])
     await native.disconnect()
   })
 
   beforeEach(async () => {
-    for (const t of ['items', 'tokens', 'grants', 'defk']) await native.affectingStatement(`DELETE FROM ${t}`, [])
+    for (const t of TABLES) await native.affectingStatement(`DELETE FROM ${t}`, [])
   })
 
   const seed = (rows) => Promise.all(rows.map((r) => db.insert('items', r)))
@@ -173,6 +178,33 @@ describe('@universal-orm/rudder on real Postgres', { skip: PG_URL ? false : 'set
     ])
     assert.equal(await db.delete('items', { qty: 1 }), 2)
     assert.equal(await db.count('items', {}), 1)
+  })
+
+  // ---- return-DB-truth from a bulk write (RETURNING terminals, #319 / #320) ----
+
+  // #319: update() returns the REAL post-write row via RETURNING, so a value the DB COMPUTES
+  // (a generated column) is reflected — the old read-then-JS-merge echoed the patch over a
+  // pre-write snapshot and so returned the stale `total`.
+  test('update returns DB-computed columns (generated column), not a pre-write echo (#319)', async () => {
+    const inserted = await db.insert('calc', { n: 5 })
+    assert.equal(inserted.total, 10) // 5 * 2, DB-computed on insert
+    const [updated] = await db.update('calc', { id: inserted.id }, { n: 8 })
+    // the patch only set `n`; `total` is recomputed by the DB to 16. RETURNING carries it.
+    assert.equal(updated.n, 8)
+    assert.equal(updated.total, 16)
+    // matches a fresh read (DB truth).
+    assert.equal((await db.find('calc', { id: inserted.id }))[0].total, 16)
+  })
+
+  // #320: upsert() returns the actual stored row, including a conflict-key column the DB
+  // default filled (it was omitted from the input). The old path re-read by `{ code: undefined }`
+  // and returned null.
+  test('upsert returns the stored row incl. a default-filled conflict key (#320)', async () => {
+    const row = await db.upsert('defk', { payload: 'p2' }, { onConflict: ['code'] })
+    assert.ok(row, 'returns the row, not null')
+    assert.equal(row.code, 'GEN') // the DB default filled the omitted conflict key
+    assert.equal(row.payload, 'p2')
+    assert.deepEqual((await db.find('defk', {})).map((r) => r.code), ['GEN'])
   })
 
   // ---- the pg-specific property: timestamp round-trip (the reason this suite exists) ----
