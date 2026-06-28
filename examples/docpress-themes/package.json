@@ -1,0 +1,28 @@
+{
+  "name": "docpress-themes-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike (#327): theme a DocPress site with vike-themes via a CSS-variable bridge. A theme switcher in the top navigation live-swaps the docs palette using vike-themes' framework-agnostic core.",
+  "scripts": {
+    "dev": "vike dev",
+    "build": "vike build",
+    "preview": "vike build && vike preview"
+  },
+  "dependencies": {
+    "@brillout/docpress": "^0.16.44",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "vike": "0.4.259-commit-f6ecfb2",
+    "vike-theme-emerald": "workspace:*",
+    "vike-themes": "workspace:*"
+  },
+  "devDependencies": {
+    "@docsearch/react": "^3.8.0",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
