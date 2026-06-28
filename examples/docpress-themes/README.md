@@ -19,8 +19,9 @@ Then open the printed URL and use the **Theme** / **Mode** switchers in the top-
 | Piece | File | Role |
 | --- | --- | --- |
 | Agnostic core | `vike-themes` (`themeToAppearanceCss`) | Compiles a brand + appearance to a `body { --color-*: … }` string. Zero framework deps. |
-| The switcher | `ThemeMenu.tsx` | Mounted in DocPress' `topNavigation` slot. Reads the chosen brand/appearance from a cookie during render and emits the compiled palette in an **SSR `<style>`**, so the page paints the picked theme on first paint (no flash). Switching a `<select>` re-renders that `<style>` live and persists the choice in the cookie. |
-| The bridge | the SSR `<style>` (in `ThemeMenu.tsx`) | Aliases DocPress' own CSS variable name onto vike-themes' (`--color-bg-white: var(--color-bg)`), **scoped to `body`** (see lesson below). This alias is the adapter glue that belongs in vike-data. |
+| The switcher | `ThemeMenu.tsx` | Mounted in DocPress' `topNavigation` slot. Seeds the `<select>` values from the cookie and, on switch, persists the choice and mirrors the new palette onto the head `<style>`. |
+| No-flash head script | `headHtml` (in `ThemeMenu.tsx`, wired via `config.headHtml`) | An inline `<head>` script that reads the cookie and applies the palette **before first paint**. It carries the whole brand × appearance palette inlined, so it needs no request and no bundle — it works on both per-request SSR and **prerendered/static** pages (the latter has no request to read a cookie from at render time). This is the single source of truth for the initial palette. |
+| The bridge | the head `<style>` (written by `headHtml`) | Aliases DocPress' own CSS variable name onto vike-themes' (`--color-bg-white: var(--color-bg)`), **scoped to `body`** (see lesson below). This alias is the adapter glue that belongs in vike-data. |
 | Brands | `themes.ts` | Two brands via `defineTheme` + the shipped `emerald` brand, proving a theme package needs no DocPress awareness. |
 
 Note: `vike-themes` is **not** added via `extends` in `+config.ts`. DocPress ships its own renderer (it is not `vike-react`), so vike-themes' `vike-react` `Wrapper` hook would not run. The integration therefore uses the framework-agnostic core directly — which is the honest test of whether that core slots into a foreign render pipeline.
