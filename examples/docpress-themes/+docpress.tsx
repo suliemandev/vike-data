@@ -7,7 +7,7 @@ import { headings, headingsDetached } from './headings'
 import { ThemeMenu } from './ThemeMenu'
 
 const config: Config = {
-  name: 'vike-themes × DocPress',
+  name: 'Themed DocPress',
   version: '0.0.0',
   url: 'docpress-themes.example',
   tagline: 'Theming a DocPress site with vike-themes',
