@@ -1,6 +1,6 @@
-export { ThemeMenu }
+export { ThemeMenu, headHtml }
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { getPageContext } from 'vike/getPageContext'
 import { themeToAppearanceCss } from 'vike-themes'
 import { THEMES, THEME_NAMES, APPEARANCES, type ThemeName, type Appearance } from './themes'
@@ -10,12 +10,16 @@ import { THEMES, THEME_NAMES, APPEARANCES, type ThemeName, type Appearance } fro
 //   appearance to a `body { --color-*: … }` block. DocPress' styles read those
 //   vars. No vike-react, no DocPress fork — just CSS variables.
 //
-// SSR-correct, no flash: the chosen brand/appearance is read from the cookie
-// during render (request headers on the server, document.cookie on the client)
-// and emitted in an SSR <style>, so a server-rendered page paints the picked
-// theme on first paint. Switching a <select> re-renders that same <style>, so
-// the palette updates live with no reload.
+// No flash, prerender included: the palette is applied by an inline `<head>`
+// script (see `headHtml` below) that runs before first paint — it reads the
+// chosen brand/appearance from the cookie and writes the `<style id="…">` into
+// <head>. This is the single source of truth for the initial palette and works
+// even on prerendered/static pages, where there is no request to read a cookie
+// from at render time. The React control below does NOT render that <style>
+// (a body-rendered copy would collide by id and lose by source order on
+// prerendered HTML); on switch it updates the same head <style> imperatively.
 
+const STYLE_ID = 'vike-themes-override'
 const COOKIE_THEME = 'vt_theme'
 const COOKIE_APPEARANCE = 'vt_appearance'
 
@@ -25,8 +29,7 @@ function readCookie(cookie: string, name: string): string | undefined {
 }
 
 // The cookie string from whichever side is rendering: request headers on the
-// server, document.cookie on the client. Both carry the same cookies, so the
-// server render and the first client render agree (no hydration mismatch).
+// server, document.cookie on the client. Used only to seed the <select> values.
 function currentCookie(): string {
   let headerCookie: string | undefined
   try {
@@ -76,6 +79,27 @@ function themeCss(themeName: ThemeName, appearance: Appearance): string {
   return themeToAppearanceCss(theme, appearance, 'body') + '\nbody { --color-bg-white: var(--color-bg); }'
 }
 
+// The whole palette, compiled once at build time: brand → appearance → CSS. The
+// no-flash <head> script (below) carries this map so it can apply the cookie's
+// palette synchronously, with no request and no module import, before paint.
+const PALETTE: Record<string, Record<string, string>> = Object.fromEntries(
+  THEME_NAMES.map((t) => [t, Object.fromEntries(APPEARANCES.map((a) => [a, themeCss(t, a)]))]),
+)
+
+// Inline <head> script: read the cookie, pick the palette, write the <style>
+// before first paint. Self-contained (the palette map is inlined) so it runs
+// with no bundle and on prerendered/static pages. Escape `<` so the embedded
+// JSON can never break out of the <script> element.
+const headHtml: string =
+  `<script>(function(){` +
+  `var P=${JSON.stringify(PALETTE).replace(/</g, '\\u003c')},` +
+  `id=${JSON.stringify(STYLE_ID)};` +
+  `function c(n){var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}` +
+  `var t=c(${JSON.stringify(COOKIE_THEME)});if(!P[t])t='indigo';` +
+  `var a=c(${JSON.stringify(COOKIE_APPEARANCE)});if(a!=='light'&&a!=='dark')a='system';` +
+  `var e=document.getElementById(id);if(!e){e=document.createElement('style');e.id=id;document.head.appendChild(e)}` +
+  `e.textContent=P[t][a]})();</script>`
+
 function ThemeMenu() {
   const [theme, setTheme] = useState<ThemeName>(() => initialChoice().theme)
   const [appearance, setAppearance] = useState<Appearance>(() => initialChoice().appearance)
@@ -89,6 +113,14 @@ function ThemeMenu() {
     writeCookie(COOKIE_APPEARANCE, next)
   }
 
+  // The head script applies the palette on first paint; from then on, mirror
+  // every switch onto that same <head> <style> (it is not React-owned, so we
+  // update it imperatively rather than re-rendering it here).
+  useEffect(() => {
+    const el = document.getElementById(STYLE_ID)
+    if (el) el.textContent = themeCss(theme, appearance)
+  }, [theme, appearance])
+
   const controlStyle: React.CSSProperties = {
     background: 'var(--color-surface, #f6f7f9)',
     color: 'var(--color-text, #16181d)',
@@ -101,9 +133,11 @@ function ThemeMenu() {
 
   return (
     <>
-      {/* Palette + layout + link color, all SSR'd so they land on first paint
-          (no theme flash, no width snap, no link-color flicker). */}
-      <style dangerouslySetInnerHTML={{ __html: themeCss(theme, appearance) + '\n' + STATIC_CSS }} />
+      {/* The palette itself is applied by the no-flash <head> script (see
+          `headHtml`); this control only seeds the <select> values and mirrors
+          switches onto that head <style>. Layout + link color are SSR'd inline
+          here so they land on first paint (no width snap, no link-color flash). */}
+      <style dangerouslySetInnerHTML={{ __html: STATIC_CSS }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 var(--padding-side, 12px)' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ opacity: 0.7, fontSize: 13 }}>Theme</span>

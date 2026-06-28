@@ -4,7 +4,7 @@ import type { Config } from '@brillout/docpress'
 import React from 'react'
 import logo from './assets/logo.svg'
 import { headings, headingsDetached } from './headings'
-import { ThemeMenu } from './ThemeMenu'
+import { ThemeMenu, headHtml } from './ThemeMenu'
 
 const config: Config = {
   name: 'Themed DocPress',
@@ -24,4 +24,8 @@ const config: Config = {
   // top-navigation React-node slot.
   topNavigation: <ThemeMenu />,
   navMaxWidth: 1140,
+
+  // Inline <head> script that applies the cookie's palette before first paint,
+  // so prerendered/static pages don't flash the default theme on load.
+  headHtml,
 }
