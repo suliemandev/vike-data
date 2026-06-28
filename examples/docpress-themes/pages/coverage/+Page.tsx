@@ -12,35 +12,69 @@ function Page() {
       </p>
 
       <h2>What themes cleanly (measured)</h2>
+      <p>
+        As of DocPress 0.16.46 (<code>brillout/docpress#171</code>) most of the chrome now reads a{' '}
+        <code>--color-*</code> variable, so the brand reaches well beyond the page body. Verified
+        against the shipped 0.16.46 stylesheets and the variables this example emits:
+      </p>
       <ul>
         <li>
-          Page background — DocPress paints it with <code>body &#123; background: var(--color-bg-white) &#125;</code>;
-          the bridge aliases <code>--color-bg-white</code> to <code>--color-bg</code> on{' '}
-          <code>body</code>. Verified flipping <code>#ffffff</code> → <code>#06110c</code> across
-          brand + dark mode.
+          Page background. DocPress paints it with{' '}
+          <code>body &#123; background: var(--color-bg-white) &#125;</code>; the bridge aliases{' '}
+          <code>--color-bg-white</code> to <code>--color-bg</code> on <code>body</code>.
         </li>
         <li>
-          Body text — DocPress reads <code>--color-text</code> on <code>body</code>; the same
-          variable name vike-themes emits. Verified <code>#16181d</code> → <code>#e7f5ee</code>.
+          Body and navigation text. DocPress reads <code>--color-text</code> (on <code>body</code>{' '}
+          and on the nav items), the same variable name vike-themes emits.
         </li>
-        <li>Content links and anything else reading the bridged variables.</li>
+        <li>
+          Surfaces and gray panels. DocPress reads <code>--color-surface</code> (and the legacy
+          alias <code>--color-bg-gray</code>), which the brand sets.
+        </li>
+        <li>
+          Borders. The table, tooltip, and heading rules now read{' '}
+          <code>var(--color-border, …)</code>, so they follow the brand instead of a fixed gray.
+        </li>
+        <li>
+          Muted / secondary text via <code>--color-muted</code>.
+        </li>
+        <li>
+          Hover and active row tints. DocPress now derives these with{' '}
+          <code>color-mix(in srgb, var(--color-text) …, transparent)</code>, so they track the
+          themed text color automatically with no extra variable to set.
+        </li>
+        <li>
+          Content links, which read <code>--color-primary</code>.
+        </li>
       </ul>
 
-      <h2>What does not theme</h2>
+      <h2>What still does not theme</h2>
       <p>
-        The top navigation bar, nav shadows and hover tints, borders, and code-block chrome stay
-        fixed. DocPress paints those with <code>rgba(0, 0, 0, …)</code> literals (or higher-specificity
-        rules) that read no themeable variable, and it ships no dark-mode stylesheet of its own. So a
-        dark appearance flips the page body but leaves the top bar light — visible in this very page.
+        A small, specific set of styles still paints with raw <code>rgba(0, 0, 0, …)</code> /{' '}
+        hex literals that read no variable, so the brand cannot reach them:
       </p>
+      <ul>
+        <li>Code-block and inline-code backgrounds, and the diff add / remove tints.</li>
+        <li>The code-block tab and copy chrome.</li>
+        <li>Note / callout backgrounds, and buttons.</li>
+        <li>
+          The nav divider shadow reads <code>--color-shadow</code>, which DocPress tokenized but this
+          example&apos;s brands do not set, so it keeps its default. A brand that emits a{' '}
+          <code>shadow</code> token would color it too.
+        </li>
+      </ul>
 
       <h2>The real conclusion</h2>
       <p>
-        A <em>complete</em> theming integration is not a bigger bridge — it needs DocPress to
-        tokenize its own palette (read a consistent set of <code>--color-*</code> variables and ship
-        a dark set). That is a change inside DocPress, and DocPress is currently marked “only meant
-        to be used by Vike and Telefunc.” So the open question for #327 is upstream intent, not more
-        adapter code on our side.
+        The earlier version of this page concluded that a complete integration needed DocPress to
+        tokenize its palette and ship a dark set, an upstream change that had not happened. As of{' '}
+        <code>#171</code> it largely has: DocPress reads a consistent set of <code>--color-*</code>{' '}
+        variables (text, bg, surface, border, muted, primary, shadow, active) and ships an opt-in
+        dark set behind <code>.dark</code> / <code>[data-theme=&quot;dark&quot;]</code>. So the brand
+        now reaches the background, text, surfaces, borders, hover tints, and links through the CSS
+        variable seam alone, no fork. What is left is narrow: tokenizing the handful of code-block,
+        callout, diff, and button literals listed above. That is a small upstream follow-up, not the
+        whole-palette gap this page used to describe.
       </p>
 
       <h2>vike-layouts is intentionally out of scope</h2>
