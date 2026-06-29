@@ -19,20 +19,18 @@ and a 30-minute / 5-intervention cap.
 
 ## Status
 
-- **001 tags** — shipped (Phase 0 relocation). The no-edge guard.
-- **002 magic-link** — shipped (this PR). Contract: `POST /api/auth/magic-link` returns a dev
-  token, `POST /api/auth/magic-link/redeem` opens the same session; single-use; password login
+- **001 tags** — shipped. The no-edge guard.
+- **002 magic-link** — shipped. `POST /api/auth/magic-link` returns a dev token,
+  `POST /api/auth/magic-link/redeem` opens the same session; single-use; password login
   untouched. See `task-002-magic-link.md`.
-- **003 notifications** — planned. Contract sketch: creating a note enqueues a notification;
+- **003 notifications** — shipped. Creating a note produces one notification;
   `GET /api/dev/outbox` returns the captured messages (both apps expose a dev sink so delivery
-  is graded offline, no real email). Accept: create a note → the outbox contains one message to
-  the seed user.
+  is graded offline, no real email). See `task-003-notifications.md`.
 - **004 stripe** — planned, **open question below**.
-- **005 ai** — planned. Contract sketch: `POST /api/notes/:id/ask { question }` →
-  `200 { answer }`, answered through the app's AI layer. Graded against the **deterministic
-  stub provider** (no real model, reproducible): the answer is non-empty and derived from the
-  note body. The point measured is how the agent routes a new call through the AI seam, not
-  model quality.
+- **005 ai** — shipped. `POST /api/notes/:id/ask { question }` → `200 { answer }`, answered
+  through the app's AI layer against the deterministic stub provider. The gate is behaviour-level
+  (non-empty, deterministic, gated, 404 on absent) — it measures the effort to wire a new AI
+  call, not model quality. See `task-005-ai.md`.
 
 ## Open question — grading the Stripe task (004) offline
 
