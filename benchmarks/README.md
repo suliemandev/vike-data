@@ -17,14 +17,18 @@ The thesis is **composition**: on the Vike side the assistant snaps in extension
 benchmarks/
   README.md            <- you are here
   spec/
-    product.md         <- the product surface both apps implement (shared HTTP contract)
-    task-001-tags.md   <- the Phase 0 task + acceptance criteria
+    product.md            <- the product surface both apps implement (shared HTTP contract)
+    task-set.md           <- the task set plan (one task per extension) + grading notes
+    task-001-tags.md      <- data task (the no-edge guard)
+    task-002-magic-link.md<- auth task (passwordless login)
   tasks/
     task-001-tags/
-      accept.mjs        <- contract-level acceptance script (BASE_URL env, exit 0 = pass)
+      accept.mjs          <- contract-level acceptance script (BASE_URL env, exit 0 = pass)
+    task-002-magic-link/
+      accept.mjs
 examples/
   bench-app-next/       <- idiomatic Next.js baseline (vanilla)
-  bench-app-vike/       <- Vike + React baseline; Phase 1 upgrades it onto the vike-* extensions
+  bench-app-vike/       <- Vike + React baseline, composed from the vike-* extensions
 ```
 
 Both apps implement the **same HTTP contract** (`spec/product.md`), so a single acceptance script runs against either by pointing `BASE_URL` at the running server.
@@ -32,8 +36,8 @@ Both apps implement the **same HTTP contract** (`spec/product.md`), so a single 
 ## Phases (tracked as children of [#330](https://github.com/suleimansh/vike-data/issues/330))
 
 - **Phase 0** - method proof. One task, both apps, manual stopwatch + manual intervention tally. **Done on gemstack** ([#75](https://github.com/gemstack-land/gemstack/issues/75)); a plain CRUD task (add tags) did **not** differentiate, which is why the task set must lean on the extensions.
-- **Phase 1** - app pair: rebuild the Vike side on the `vike-*` extension family + an idiomatic Next.js app, sharing one contract.
-- **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai).
+- **Phase 1** - app pair: rebuild the Vike side on the `vike-*` extension family + an idiomatic Next.js app, sharing one contract. **Done** ([#341](https://github.com/suleimansh/vike-data/issues/341)).
+- **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai). See `spec/task-set.md`. **In progress** ([#342](https://github.com/suleimansh/vike-data/issues/342)): task-001 (data, the guard) + task-002 (auth, magic-link) shipped; notifications / stripe / ai planned.
 - **Phase 3** - semi-automated runner: checkout -> launch agent -> poll accept -> emit `report.json`.
 - **Phase 4** - aggregator + first committed baseline.
 
