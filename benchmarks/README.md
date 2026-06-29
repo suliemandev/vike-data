@@ -32,6 +32,10 @@ benchmarks/
       accept.mjs
     task-005-ai/
       accept.mjs
+  runner/
+    run.mjs             <- semi-automated runner: (reset+boot)+poll accept+emit report.json
+    report.mjs          <- report.json read/append helpers
+    README.md           <- runner usage + flags
 examples/
   bench-app-next/       <- idiomatic Next.js baseline (vanilla)
   bench-app-vike/       <- Vike + React baseline, composed from the vike-* extensions
@@ -44,7 +48,7 @@ Both apps implement the **same HTTP contract** (`spec/product.md`), so a single 
 - **Phase 0** - method proof. One task, both apps, manual stopwatch + manual intervention tally. **Done on gemstack** ([#75](https://github.com/gemstack-land/gemstack/issues/75)); a plain CRUD task (add tags) did **not** differentiate, which is why the task set must lean on the extensions.
 - **Phase 1** - app pair: rebuild the Vike side on the `vike-*` extension family + an idiomatic Next.js app, sharing one contract. **Done** ([#341](https://github.com/suleimansh/vike-data/issues/341)).
 - **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai). See `spec/task-set.md`. **In progress** ([#342](https://github.com/suleimansh/vike-data/issues/342)): task-001 data (guard), 002 auth, 003 notifications, 005 ai shipped; 004 stripe pending a grading decision.
-- **Phase 3** - semi-automated runner: checkout -> launch agent -> poll accept -> emit `report.json`.
+- **Phase 3** - semi-automated runner: (reset + boot) -> human drives the agent -> poll accept -> emit `report.json`. **Done** ([#343](https://github.com/suleimansh/vike-data/issues/343)); see `runner/`.
 - **Phase 4** - aggregator + first committed baseline.
 
 ## Running a task by hand
