@@ -44,12 +44,18 @@ importers:
 
   examples/bench-app-vike:
     dependencies:
-      '@gemstack/ai-sdk':
-        specifier: ^0.5.0
-        version: 0.5.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(react@19.2.7)(ws@8.21.0)
-      better-sqlite3:
-        specifier: ^12.11.1
-        version: 12.11.1
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../../packages/universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../../packages/universal-orm-memory
+      '@vike-data/universal-schema':
+        specifier: workspace:*
+        version: link:../../packages/universal-schema
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../../packages/vike-schema
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -62,13 +68,16 @@ importers:
       vike:
         specifier: 0.4.259-commit-f6ecfb2
         version: 0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@7.3.6(@types/node@20.19.43)(lightningcss@1.32.0)(tsx@4.22.4))
+      vike-ai:
+        specifier: workspace:*
+        version: link:../../packages/vike-ai
+      vike-auth:
+        specifier: workspace:*
+        version: link:../../packages/vike-auth
       vike-react:
         specifier: ^0.6.25
         version: 0.6.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@7.3.6(@types/node@20.19.43)(lightningcss@1.32.0)(tsx@4.22.4)))
     devDependencies:
-      '@types/better-sqlite3':
-        specifier: ^7.6.13
-        version: 7.6.13
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
@@ -2013,15 +2022,6 @@ packages:
         optional: true
       '@rudderjs/orm':
         optional: true
-      react:
-        optional: true
-
-  '@gemstack/ai-sdk@0.5.0':
-    resolution: {integrity: sha512-6us5isKUg4NqBMA5OWp06HB34fmOOBlYQEOVCgm5fhrB2dfQ48qOxH8HlWCwkeyVKl9AaTrqAg0fUBSzIno9Lw==}
-    engines: {node: '>=22.12.0'}
-    peerDependencies:
-      react: '>=19.2.0'
-    peerDependenciesMeta:
       react:
         optional: true
 
@@ -5840,27 +5840,6 @@ snapshots:
     transitivePeerDependencies:
       - '@aws-crypto/sha256-js'
       - '@aws-sdk/credential-providers'
-      - '@smithy/protocol-http'
-      - '@smithy/signature-v4'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-
-  '@gemstack/ai-sdk@0.5.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)(react@19.2.7)(ws@8.21.0)':
-    dependencies:
-      zod: 4.4.3
-    optionalDependencies:
-      '@anthropic-ai/sdk': 0.105.0(zod@4.4.3)
-      '@aws-sdk/client-bedrock-runtime': 3.1075.0
-      '@google/genai': 2.10.0
-      cohere-ai: 8.0.0(@aws-crypto/sha256-js@5.2.0)(@smithy/signature-v4@5.5.2)
-      openai: 6.44.0(ws@8.21.0)(zod@4.4.3)
-      react: 19.2.7
-    transitivePeerDependencies:
-      - '@aws-crypto/sha256-js'
-      - '@aws-sdk/credential-providers'
-      - '@modelcontextprotocol/sdk'
       - '@smithy/protocol-http'
       - '@smithy/signature-v4'
       - bufferutil

@@ -2,22 +2,25 @@
   "name": "bench-app-vike",
   "version": "0.0.0",
   "private": true,
-  "description": "Benchmark baseline: a Vike + React (SSR) Notes app whose AI summarize feature is wired through @gemstack/ai-sdk. Twin of bench-app-next. Phase 1 (#330) upgrades it onto the vike-* extension family.",
+  "description": "Benchmark baseline: a Vike + React (SSR) Notes app composed from the vike-* extension family (vike-auth owns identity + sessions, the universal ORM owns notes, vike-ai owns summarize). Twin of bench-app-next. Phase 1 of #330.",
   "type": "module",
   "scripts": {
     "dev": "tsx server/index.ts"
   },
   "dependencies": {
-    "@gemstack/ai-sdk": "^0.5.0",
-    "better-sqlite3": "^12.11.1",
+    "@universal-orm/core": "workspace:*",
+    "@universal-orm/memory": "workspace:*",
+    "@vike-data/universal-schema": "workspace:*",
+    "@vike-data/vike-schema": "workspace:*",
     "express": "^5.2.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "vike": "^0.4.260",
+    "vike-ai": "workspace:*",
+    "vike-auth": "workspace:*",
     "vike-react": "^0.6.25"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.0",

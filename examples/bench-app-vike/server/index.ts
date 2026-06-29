@@ -2,10 +2,15 @@ import express from 'express'
 import { createServer as createViteServer } from 'vite'
 import { renderPage } from 'vike/server'
 import { registerApi } from './api.js'
+import { bootstrap } from './bootstrap.js'
 
 const PORT = Number(process.env.PORT ?? 3100)
 
 async function start(): Promise<void> {
+  // Register the ORM adapter + AI provider and seed the demo user before serving, so the
+  // /api/* handlers (which run outside Vike's render lifecycle) have them ready.
+  await bootstrap()
+
   const app = express()
   app.use(express.json())
 
