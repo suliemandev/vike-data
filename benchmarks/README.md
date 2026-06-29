@@ -21,10 +21,16 @@ benchmarks/
     task-set.md           <- the task set plan (one task per extension) + grading notes
     task-001-tags.md      <- data task (the no-edge guard)
     task-002-magic-link.md<- auth task (passwordless login)
+    task-003-notifications.md <- notifications task (email on note create)
+    task-005-ai.md        <- ai task (ask a question about a note)
   tasks/
     task-001-tags/
       accept.mjs          <- contract-level acceptance script (BASE_URL env, exit 0 = pass)
     task-002-magic-link/
+      accept.mjs
+    task-003-notifications/
+      accept.mjs
+    task-005-ai/
       accept.mjs
 examples/
   bench-app-next/       <- idiomatic Next.js baseline (vanilla)
@@ -37,7 +43,7 @@ Both apps implement the **same HTTP contract** (`spec/product.md`), so a single 
 
 - **Phase 0** - method proof. One task, both apps, manual stopwatch + manual intervention tally. **Done on gemstack** ([#75](https://github.com/gemstack-land/gemstack/issues/75)); a plain CRUD task (add tags) did **not** differentiate, which is why the task set must lean on the extensions.
 - **Phase 1** - app pair: rebuild the Vike side on the `vike-*` extension family + an idiomatic Next.js app, sharing one contract. **Done** ([#341](https://github.com/suleimansh/vike-data/issues/341)).
-- **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai). See `spec/task-set.md`. **In progress** ([#342](https://github.com/suleimansh/vike-data/issues/342)): task-001 (data, the guard) + task-002 (auth, magic-link) shipped; notifications / stripe / ai planned.
+- **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai). See `spec/task-set.md`. **In progress** ([#342](https://github.com/suleimansh/vike-data/issues/342)): task-001 data (guard), 002 auth, 003 notifications, 005 ai shipped; 004 stripe pending a grading decision.
 - **Phase 3** - semi-automated runner: checkout -> launch agent -> poll accept -> emit `report.json`.
 - **Phase 4** - aggregator + first committed baseline.
 
