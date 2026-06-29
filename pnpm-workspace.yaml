@@ -9,6 +9,9 @@ packages:
 allowBuilds:
   esbuild: true
   better-sqlite3: true
+  # Next.js (bench-app-next) pulls the optional, prebuilt `sharp`; its build script
+  # is not needed, so decline it to keep a fresh/frozen install from failing.
+  sharp: false
   # Optional GemStack provider SDKs (gemini); @gemstack/ai-sdk lazy-loads them via
   # dynamic import inside provider methods, so their build scripts are not needed.
   '@google/genai': false
