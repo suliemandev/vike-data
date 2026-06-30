@@ -33,6 +33,16 @@ node benchmarks/runner/run.mjs --framework vike --task task-002-magic-link --sta
 | `--interventions` | `0` | human-tallied intervention count |
 | `--minutes` | wall clock | real AI minutes (agent execution time), if measured separately |
 | `--status` | auto | force `pass`/`dnf` instead of the polled result |
+| `--skip-gates` | off | don't run the task's v2 correctness gates after accept passes |
+
+## Correctness gates (v2)
+
+After `accept.mjs` passes, the runner runs every `*-gate.mjs` in the task dir (e.g.
+`tasks/task-004-stripe/webhook-gate.mjs`) against the still-running app and records each as
+pass/fail under `gates` on the report entry. These are the adversarial checks the happy-path
+contract can't see — e.g. an unsigned Stripe webhook must be rejected (see `spec/methodology-v2.md`).
+A framework that fails a gate **loses on correctness regardless of minutes**; the aggregator
+shows `gates passed/total` first in each cell. Pass `--skip-gates` to record only the contract result.
 
 ## Metric note
 
@@ -45,8 +55,10 @@ clock from start to accept-pass, which is an upper bound (it includes human/idle
 `report.json` (git-ignored; the aggregator promotes a curated `baseline.json`) is an array of:
 
 ```json
-{ "framework": "vike", "task": "task-002-magic-link", "minutes": 4.2, "interventions": 0, "status": "pass", "at": "2026-06-30T..." }
+{ "framework": "vike", "task": "task-004-stripe", "minutes": 4.2, "interventions": 0, "status": "pass", "gates": [{ "name": "webhook", "passed": true }], "at": "2026-06-30T..." }
 ```
+
+`gates` is present only for tasks that ship a `*-gate.mjs` (omitted otherwise).
 
 Run the same task on both `--framework vike` and `--framework next` to get the comparable pair.
 

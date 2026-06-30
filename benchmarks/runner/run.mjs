@@ -23,7 +23,7 @@
 //      record the human-tallied figures, or edit the emitted entry afterwards.
 
 import { spawn } from 'node:child_process'
-import { rmSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import { appendReport } from './report.mjs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -47,7 +47,7 @@ function parseArgs(argv) {
     const a = argv[i]
     if (!a.startsWith('--')) continue
     const key = a.slice(2)
-    const flags = new Set(['start-app', 'reset'])
+    const flags = new Set(['start-app', 'reset', 'skip-gates'])
     if (flags.has(key)) {
       args[key] = true
     } else {
@@ -63,15 +63,40 @@ function sleep(ms) {
 
 /** Run a task's accept.mjs once. Resolves the exit code (0 = pass). */
 function runAccept(taskName, baseUrl) {
-  const acceptPath = resolve(benchRoot, 'tasks', taskName, 'accept.mjs')
+  return runScript(resolve(benchRoot, 'tasks', taskName, 'accept.mjs'), baseUrl)
+}
+
+/** Run one script (accept- or gate-shaped) against the app once; resolve its exit code. */
+function runScript(scriptPath, baseUrl) {
   return new Promise((resolveCode) => {
-    const child = spawn('node', [acceptPath], {
+    const child = spawn('node', [scriptPath], {
       env: { ...process.env, BASE_URL: baseUrl },
       stdio: ['ignore', 'ignore', 'ignore'],
     })
     child.on('exit', (code) => resolveCode(code ?? 1))
     child.on('error', () => resolveCode(1))
   })
+}
+
+/**
+ * The correctness gates for a task: every `*-gate.mjs` in the task dir (methodology v2). Each is
+ * a pass/fail adversarial check (e.g. an unsigned webhook must be rejected) that the happy-path
+ * accept.mjs cannot see. Returns `[{ name, passed }]` (empty if a task ships no gates yet).
+ */
+async function runGates(taskName, baseUrl) {
+  const taskDir = resolve(benchRoot, 'tasks', taskName)
+  let files = []
+  try {
+    files = readdirSync(taskDir).filter((f) => f.endsWith('-gate.mjs')).sort()
+  } catch {
+    return []
+  }
+  const gates = []
+  for (const file of files) {
+    const code = await runScript(resolve(taskDir, file), baseUrl)
+    gates.push({ name: file.replace(/-gate\.mjs$/, ''), passed: code === 0 })
+  }
+  return gates
 }
 
 /** Wait until the base URL responds (any HTTP status), or give up after `tries`. */
@@ -142,6 +167,14 @@ async function main() {
     await sleep(pollMs)
   }
 
+  // Correctness gates (v2): run after accept passes, while the app is still up. Each is a
+  // pass/fail adversarial check; correctness ranks above minutes in the aggregate.
+  let gates = []
+  if (status === 'pass' && !args['skip-gates']) {
+    gates = await runGates(args.task, baseUrl)
+    for (const g of gates) console.log(`[runner] gate ${g.name}: ${g.passed ? 'PASS' : 'FAIL'}`)
+  }
+
   const wallMinutes = Math.round(((Date.now() - startedAt) / 60000) * 10) / 10
   const minutes = args.minutes != null ? Number(args.minutes) : wallMinutes
   const entry = {
@@ -150,6 +183,7 @@ async function main() {
     minutes,
     interventions: Number(args.interventions),
     status: args.status || status,
+    ...(gates.length ? { gates } : {}),
   }
 
   if (server) server.kill()
