@@ -40,3 +40,7 @@ export const subscriptions = new Proxy(
     get: (_t, prop) => instance()[prop],
   },
 )
+
+// Re-exported so an app that builds its own repository can construct a subscriptions core
+// directly, the same surface the default `subscriptions` proxy exposes.
+export { createSubscriptions } from './subscription.js'

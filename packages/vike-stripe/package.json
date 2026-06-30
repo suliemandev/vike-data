@@ -10,9 +10,11 @@
     "./subscription/schemas": "./subscription/schemas.js",
     "./subscription/middleware": "./subscription/vike-middleware.js",
     "./subscription/events": "./subscription/events.js",
+    "./subscription/instance": "./subscription/instance.js",
     "./purchase": "./purchase/+config.js",
     "./purchase/schemas": "./purchase/schemas.js",
-    "./purchase/middleware": "./purchase/vike-middleware.js"
+    "./purchase/middleware": "./purchase/vike-middleware.js",
+    "./purchase/instance": "./purchase/instance.js"
   },
   "scripts": {
     "test": "node --test"

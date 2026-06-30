@@ -73,5 +73,11 @@ export function createPayments({ db, segment = 'b2b' } = {}) {
       // defense in depth against a legacy/failed row reaching an entitlement check.
       return db.payments.find({ [subjectColumn]: subjectId, status: 'succeeded' })
     },
+
+    // Entitlement check for an app's own routes: has the subject any succeeded charge?
+    async hasPaid(subjectId) {
+      const row = await db.payments.findOne({ [subjectColumn]: subjectId, status: 'succeeded' })
+      return row != null
+    },
   }
 }
