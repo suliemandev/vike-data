@@ -36,6 +36,7 @@ const EXTENSION_BY_NUM = {
   '003': 'notifications',
   '004': 'stripe',
   '005': 'ai',
+  '006': 'push',
 }
 
 function parseArgs(argv) {

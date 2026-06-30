@@ -24,6 +24,7 @@ benchmarks/
     task-003-notifications.md <- notifications task (email on note create)
     task-004-stripe.md    <- stripe task (gate note creation behind a paid plan)
     task-005-ai.md        <- ai task (ask a question about a note)
+    task-006-push.md      <- push task (web-push subscriptions + an ownership/IDOR gate)
   tasks/
     task-001-tags/
       accept.mjs          <- contract-level acceptance script (BASE_URL env, exit 0 = pass)
@@ -35,6 +36,9 @@ benchmarks/
       accept.mjs
     task-005-ai/
       accept.mjs
+    task-006-push/
+      accept.mjs
+      push-gate.mjs       <- v2 ownership/IDOR gate (A must not unsubscribe B)
   runner/
     run.mjs             <- semi-automated runner: (reset+boot)+poll accept+emit report.json
     aggregate.mjs       <- Phase 4 aggregator: report/baseline -> per-task per-framework table

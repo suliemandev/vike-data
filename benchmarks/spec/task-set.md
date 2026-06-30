@@ -16,6 +16,7 @@ and a 30-minute / 5-intervention cap.
 | 003 | notifications | email the user when a note is created | vike-notifications/vike-mail self-wire (dev outbox); Next hand-wires Resend | yes, via a dev outbox endpoint |
 | 004 | stripe | gate note creation behind a paid plan | vike-stripe composes checkout + webhook; Next hand-wires the Stripe SDK | yes, via a simulated activation event |
 | 005 | ai | ask a question about a note | vike-ai `generate()` is already the seam; Next wires a provider call | yes, via the deterministic stub provider |
+| 006 | push | subscribe / list / unsubscribe web push | vike-push owns the subscription store + an ownership-scoped unsubscribe; Next hand-wires a table, and the natural `DELETE WHERE endpoint = ?` is an IDOR | yes, via a stored subscription record + an ownership gate |
 
 ## Status
 
@@ -34,6 +35,11 @@ and a 30-minute / 5-intervention cap.
   through the app's AI layer against the deterministic stub provider. The gate is behaviour-level
   (non-empty, deterministic, gated, 404 on absent) — it measures the effort to wire a new AI
   call, not model quality. See `task-005-ai.md`.
+- **006 push** — shipped. A signed-in user manages web-push subscriptions:
+  `POST /api/push/subscribe`, `GET /api/push/subscriptions`, `POST /api/push/unsubscribe`. A second
+  user (`other@example.com`) is seeded so ownership can be tested. The v2 gate is an IDOR check: A
+  must not be able to unsubscribe B by endpoint. vike-push's owner-scoped delete passes free; the
+  natural hand-rolled delete-by-endpoint fails. See `task-006-push.md`.
 
 ## Resolved — grading the Stripe task (004) offline
 
