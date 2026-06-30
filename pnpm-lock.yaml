@@ -106,8 +106,8 @@ importers:
   examples/docpress-themes:
     dependencies:
       '@brillout/docpress':
-        specifier: ^0.16.46
-        version: 0.16.46(@algolia/client-search@5.55.1)(@types/react@19.2.17)(@vitejs/plugin-react@6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(rollup@4.62.2)(search-insights@2.17.3)(typescript@5.9.3)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))
+        specifier: ^0.16.49
+        version: 0.16.49(@algolia/client-search@5.55.1)(@types/react@19.2.17)(@vitejs/plugin-react@6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(rollup@4.62.2)(search-insights@2.17.3)(typescript@5.9.3)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))
       react:
         specifier: ^19.2.0
         version: 19.2.7
@@ -1338,8 +1338,8 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@brillout/docpress@0.16.46':
-    resolution: {integrity: sha512-jUzp1dueb4Kou8aPX9piFXAzcaWxoxg9Mp7hnWD01Nv8CZO5suMQ8qogqy/mxWjzfUHkjPWGRMOl3244QvKgZA==}
+  '@brillout/docpress@0.16.49':
+    resolution: {integrity: sha512-xyc6KSb9v/B9qczUfntnTWC/CIe3yW4J31xq9nPGKoL7Etw0uYdj2DJDyw0uLV2P05kMSHqqNNpOP2g2pmCbBg==}
     peerDependencies:
       '@vitejs/plugin-react': '>=4.0.0'
       react: '>=18.0.0'
@@ -5420,7 +5420,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@brillout/docpress@0.16.46(@algolia/client-search@5.55.1)(@types/react@19.2.17)(@vitejs/plugin-react@6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(rollup@4.62.2)(search-insights@2.17.3)(typescript@5.9.3)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))':
+  '@brillout/docpress@0.16.49(@algolia/client-search@5.55.1)(@types/react@19.2.17)(@vitejs/plugin-react@6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(rollup@4.62.2)(search-insights@2.17.3)(typescript@5.9.3)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4)))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))':
     dependencies:
       '@brillout/picocolors': 1.0.31
       '@brillout/shiki-transformers': 4.0.2

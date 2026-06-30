@@ -38,3 +38,4 @@ minimumReleaseAgeExclude:
   - '@gemstack/*'
   - '@rudderjs/*'
   - '@brillout/docpress@0.16.46'
+  - '@brillout/docpress@0.16.49'
