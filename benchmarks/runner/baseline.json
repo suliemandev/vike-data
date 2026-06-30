@@ -5,7 +5,12 @@
     "minutes": 3.2,
     "interventions": 0,
     "status": "pass",
-    "gates": [{ "name": "auth", "passed": true }],
+    "gates": [
+      {
+        "name": "auth",
+        "passed": true
+      }
+    ],
     "burden": 0,
     "at": "2026-06-30T15:54:34.391Z"
   },
@@ -15,14 +20,19 @@
     "minutes": 3.5,
     "interventions": 0,
     "status": "pass",
-    "gates": [{ "name": "auth", "passed": true }],
+    "gates": [
+      {
+        "name": "auth",
+        "passed": true
+      }
+    ],
     "burden": 4,
     "at": "2026-06-30T15:54:42.861Z"
   },
   {
     "framework": "vike",
     "task": "task-003-notifications",
-    "minutes": 3,
+    "minutes": 2.2,
     "interventions": 0,
     "status": "pass",
     "burden": 0,
@@ -43,7 +53,12 @@
     "minutes": 2,
     "interventions": 0,
     "status": "pass",
-    "gates": [{ "name": "webhook", "passed": true }],
+    "gates": [
+      {
+        "name": "webhook",
+        "passed": true
+      }
+    ],
     "burden": 0,
     "at": "2026-06-30T17:45:00.000Z"
   },
@@ -53,7 +68,12 @@
     "minutes": 2.6,
     "interventions": 0,
     "status": "pass",
-    "gates": [{ "name": "webhook", "passed": true }],
+    "gates": [
+      {
+        "name": "webhook",
+        "passed": true
+      }
+    ],
     "burden": 4,
     "at": "2026-06-30T17:05:00.001Z"
   }
