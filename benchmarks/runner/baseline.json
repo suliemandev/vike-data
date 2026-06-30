@@ -34,17 +34,21 @@
   {
     "framework": "vike",
     "task": "task-004-stripe",
-    "minutes": 3.9,
+    "minutes": 4.1,
     "interventions": 0,
     "status": "pass",
-    "at": "2026-06-30T16:42:59.508Z"
+    "gates": [{ "name": "webhook", "passed": true }],
+    "burden": 0,
+    "at": "2026-06-30T17:05:00.000Z"
   },
   {
     "framework": "next",
     "task": "task-004-stripe",
-    "minutes": 2,
+    "minutes": 2.6,
     "interventions": 0,
     "status": "pass",
-    "at": "2026-06-30T16:42:59.509Z"
+    "gates": [{ "name": "webhook", "passed": true }],
+    "burden": 4,
+    "at": "2026-06-30T17:05:00.001Z"
   }
 ]

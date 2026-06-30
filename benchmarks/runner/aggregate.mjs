@@ -79,6 +79,8 @@ function aggregate(entries) {
       const passes = runs.filter((r) => r.status === 'pass').length
       // v2 correctness gates, summed across this (framework, task)'s runs.
       const allGates = runs.flatMap((r) => (Array.isArray(r.gates) ? r.gates : []))
+      // v2 burden: bespoke security/correctness decisions made unaided (a latent-bug proxy).
+      const burdens = runs.map((r) => r.burden).filter((b) => b != null).map(Number)
       frameworks[fw] = {
         runs: runs.length,
         passes,
@@ -87,6 +89,7 @@ function aggregate(entries) {
         status: passes === runs.length ? 'pass' : passes === 0 ? 'dnf' : `${passes}/${runs.length}`,
         gatesPassed: allGates.filter((g) => g && g.passed).length,
         gatesTotal: allGates.length,
+        burden: burdens.length ? round1(mean(burdens)) : null,
       }
     }
     result.push({ task, extension: extensionFor(task), frameworks })
@@ -106,9 +109,11 @@ function frameworkColumns(rows) {
 function cell(agg) {
   if (!agg) return '–'
   const status = agg.status === 'pass' ? '' : ` (${agg.status})`
-  // Correctness gates lead (the v2 primary axis), then minutes / interventions.
+  // Correctness gates lead (the v2 primary axis), then minutes / interventions, then burden
+  // (bespoke security decisions made unaided — the latent-bug proxy).
   const gates = agg.gatesTotal ? `${agg.gatesPassed}/${agg.gatesTotal} gates · ` : ''
-  return `${gates}${num(agg.minutes)}m / ${num(agg.interventions)}${status}`
+  const burden = agg.burden != null ? ` · ${num(agg.burden)} burden` : ''
+  return `${gates}${num(agg.minutes)}m / ${num(agg.interventions)}${burden}${status}`
 }
 
 /** Render the markdown comparison table. Delta columns are vike − next when both are present. */
@@ -216,6 +221,7 @@ function main() {
   console.log(
     '\n_gates = v2 correctness gates passed/total (the primary axis: fewer gates passed loses on' +
       ' correctness regardless of minutes); min = real AI minutes; intv = human interventions;' +
+      ' burden = bespoke security/correctness decisions made unaided (a latent-bug proxy);' +
       ' Δ is vike − next minutes/intv (negative favours vike)._',
   )
 }
