@@ -112,6 +112,60 @@ async function waitForServer(baseUrl, tries = 60) {
   return false
 }
 
+/** Wait until the base URL STOPS responding (the port is freed after a kill), or give up. */
+async function waitForServerDown(baseUrl, tries = 30) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      await fetch(baseUrl)
+      await sleep(500)
+    } catch {
+      return true
+    }
+  }
+  return false
+}
+
+/** Delete a framework's git-ignored runtime state (e.g. the Next SQLite DB). Code is untouched. */
+function wipeRuntimeState(appDir, fw) {
+  for (const rel of fw.clean ?? []) {
+    rmSync(resolve(appDir, rel), { recursive: true, force: true })
+  }
+}
+
+/** Boot the app on its port (own process group). Resolve the child once it answers, else null. */
+async function startApp(appDir, fw, baseUrl) {
+  // detached: the app gets its own process group, so stopApp can kill the whole tree — `pnpm dev`
+  // forks a dev worker (tsx / next-server) that survives a plain server.kill() and would keep
+  // serving stale code on the port.
+  const server = spawn('pnpm', ['dev'], {
+    cwd: appDir,
+    env: { ...process.env, PORT: String(fw.port) },
+    stdio: ['ignore', 'inherit', 'inherit'],
+    detached: true,
+  })
+  const up = await waitForServer(baseUrl)
+  if (!up) {
+    await stopApp(server, baseUrl)
+    return null
+  }
+  return server
+}
+
+/** Stop an app started by startApp: kill its process group, then wait until the port is freed. */
+async function stopApp(server, baseUrl) {
+  if (!server) return
+  try {
+    process.kill(-server.pid, 'SIGKILL') // negative pid -> the whole process group
+  } catch {
+    try {
+      server.kill('SIGKILL')
+    } catch {
+      /* already gone */
+    }
+  }
+  if (baseUrl) await waitForServerDown(baseUrl)
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const fw = FRAMEWORKS[args.framework]
@@ -128,24 +182,16 @@ async function main() {
     await run('git', ['checkout', '--', appDir], repoRoot)
     await run('git', ['clean', '-fdq', appDir], repoRoot)
     // Drop git-ignored runtime state git clean -fdq leaves behind (e.g. the SQLite DB).
-    for (const rel of fw.clean ?? []) {
-      rmSync(resolve(appDir, rel), { recursive: true, force: true })
-    }
+    wipeRuntimeState(appDir, fw)
   }
 
   // Optional: boot the app and tear it down at the end.
   let server = null
   if (args['start-app']) {
     console.log(`[runner] starting ${args.framework} app (${fw.dir}) on ${baseUrl}`)
-    server = spawn('pnpm', ['dev'], {
-      cwd: appDir,
-      env: { ...process.env, PORT: String(fw.port) },
-      stdio: ['ignore', 'inherit', 'inherit'],
-    })
-    const up = await waitForServer(baseUrl)
-    if (!up) {
+    server = await startApp(appDir, fw, baseUrl)
+    if (!server) {
       console.error('[runner] app did not become reachable; aborting')
-      server.kill()
       process.exit(1)
     }
   }
@@ -167,10 +213,26 @@ async function main() {
     await sleep(pollMs)
   }
 
-  // Correctness gates (v2): run after accept passes, while the app is still up. Each is a
-  // pass/fail adversarial check; correctness ranks above minutes in the aggregate.
+  // Correctness gates (v2): pass/fail adversarial checks the happy-path accept can't see;
+  // correctness ranks above minutes in the aggregate. accept mutates app state (e.g. task-004's
+  // accept pays the demo user), so a stateful gate run on the same boot gets a false FAIL (#363).
+  // When the runner owns the app, restart it on clean runtime state first — no git checkout, the
+  // code is unchanged since accept — so each gate runs against the baseline. When we don't own the
+  // app we can't restart it; warn that gates run on accept's possibly-mutated boot.
   let gates = []
   if (status === 'pass' && !args['skip-gates']) {
+    if (args['start-app']) {
+      console.log('[runner] restarting app on clean state before gates (#363)')
+      await stopApp(server, baseUrl)
+      wipeRuntimeState(appDir, fw)
+      server = await startApp(appDir, fw, baseUrl)
+      if (!server) {
+        console.error('[runner] app did not come back up for gates; aborting')
+        process.exit(1)
+      }
+    } else {
+      console.warn('[runner] gates run on the same boot as accept (no --start-app); accept state may leak. Run gates on a fresh boot manually (see #363).')
+    }
     gates = await runGates(args.task, baseUrl)
     for (const g of gates) console.log(`[runner] gate ${g.name}: ${g.passed ? 'PASS' : 'FAIL'}`)
   }
@@ -187,7 +249,7 @@ async function main() {
     ...(args.burden != null ? { burden: Number(args.burden) } : {}),
   }
 
-  if (server) server.kill()
+  await stopApp(server, baseUrl)
 
   const file = appendReport(entry)
   console.log(`[runner] ${status.toUpperCase()} in ~${wallMinutes}m`)

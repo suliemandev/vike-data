@@ -39,11 +39,17 @@ node benchmarks/runner/run.mjs --framework vike --task task-002-magic-link --sta
 ## Correctness gates (v2)
 
 After `accept.mjs` passes, the runner runs every `*-gate.mjs` in the task dir (e.g.
-`tasks/task-004-stripe/webhook-gate.mjs`) against the still-running app and records each as
-pass/fail under `gates` on the report entry. These are the adversarial checks the happy-path
-contract can't see — e.g. an unsigned Stripe webhook must be rejected (see `spec/methodology-v2.md`).
-A framework that fails a gate **loses on correctness regardless of minutes**; the aggregator
-shows `gates passed/total` first in each cell. Pass `--skip-gates` to record only the contract result.
+`tasks/task-004-stripe/webhook-gate.mjs`) and records each as pass/fail under `gates` on the
+report entry. These are the adversarial checks the happy-path contract can't see — e.g. an
+unsigned Stripe webhook must be rejected (see `spec/methodology-v2.md`). A framework that fails a
+gate **loses on correctness regardless of minutes**; the aggregator shows `gates passed/total`
+first in each cell. Pass `--skip-gates` to record only the contract result.
+
+`accept.mjs` mutates app state (task-004's accept pays the demo user), so a stateful gate run on
+that same boot gets a false FAIL (#363). With `--start-app` the runner **restarts the app on clean
+runtime state before the gates** — no git checkout, the code is unchanged since accept — so each
+gate runs against the baseline. Without `--start-app` the runner can't restart the app it doesn't
+own; it warns, and you should run the gates on a fresh boot yourself.
 
 ## Metric note
 
