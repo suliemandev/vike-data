@@ -26,7 +26,7 @@ node benchmarks/runner/run.mjs --framework vike --task task-002-magic-link --sta
 | `--framework` | (required) | `vike` or `next` |
 | `--task` | (required) | a task folder under `../tasks/` (e.g. `task-002-magic-link`) |
 | `--start-app` | off | boot the app (and tear it down at the end); else assume it is already running |
-| `--reset` | off | `git checkout` + `git clean` the app dir to its committed baseline first |
+| `--reset` | off | restore the app to its committed baseline: `git checkout` + `git clean`, then delete the app's git-ignored runtime state (the Next app's SQLite `data/`) so both sides start each run equally clean |
 | `--baseurl` | per framework | override the app URL (vike `:3100`, next `:4311`) |
 | `--timeout` | `1800` | seconds before recording a DNF |
 | `--poll` | `10` | seconds between accept attempts |
