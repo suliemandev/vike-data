@@ -13,6 +13,7 @@
 // vars without knowing which theme/mode is active. That is what lets a theme
 // package restyle every UI extension without either side importing the other.
 // Zero framework imports; a React/Vue/Solid wrapper just applies the CSS this emits.
+import chroma from 'chroma-js'
 
 // token group -> CSS variable prefix. An object group expands to `--<prefix>-<key>`;
 // a scalar group (e.g. radius: '8px') emits a bare `--<prefix>`.
@@ -32,6 +33,38 @@ function flatten(groups) {
   return vars
 }
 
+function normalizeColor(value) {
+  if (typeof value !== 'string') return null
+  const color = value.trim()
+  if (!chroma.valid(color)) return null
+  return chroma(color).hex().toLowerCase()
+}
+
+function createPrimaryRamp(color) {
+  const primary = normalizeColor(color)
+  if (!primary) return null
+  return {
+    primary,
+    'primary-light': chroma.mix(primary, '#ffffff', 0.22, 'rgb').hex().toLowerCase(),
+    'primary-dark': chroma.mix(primary, '#000000', 0.14, 'rgb').hex().toLowerCase(),
+  }
+}
+
+function resolvePrimaryRamp(color) {
+  return createPrimaryRamp(color)
+}
+
+function expandColorSet(colors = {}) {
+  const expanded = { ...colors }
+  const primary = resolvePrimaryRamp(colors.primary)
+  if (!primary) return expanded
+
+  expanded.primary = primary.primary
+  expanded['primary-light'] ??= primary['primary-light']
+  expanded['primary-dark'] ??= primary['primary-dark']
+  return expanded
+}
+
 /**
  * Normalize a brand into a theme: shared structural tokens + a `light` and `dark`
  * color set. Back-compat: a flat `colors` (no light/dark) is used for both modes.
@@ -40,13 +73,16 @@ function flatten(groups) {
  */
 export function defineTheme(tokens = {}) {
   const { name = 'theme', fonts = {}, radius, spacing = {}, light, dark, colors } = tokens
+  const lightColors = expandColorSet(light || colors || {})
+  const darkColors = expandColorSet(dark || colors || light || {})
+
   return {
     name,
     fonts,
     radius,
     spacing,
-    light: light || colors || {},
-    dark: dark || colors || light || {},
+    light: lightColors,
+    dark: darkColors,
   }
 }
 

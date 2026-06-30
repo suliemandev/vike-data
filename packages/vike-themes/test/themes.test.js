@@ -13,14 +13,14 @@ test('defineTheme keeps shared tokens + light/dark color sets', () => {
   const t = defineTheme({ name: 'brand', radius: '4px', light: { primary: '#f00' }, dark: { primary: '#900' } })
   assert.equal(t.name, 'brand')
   assert.equal(t.radius, '4px')
-  assert.deepEqual(t.light, { primary: '#f00' })
-  assert.deepEqual(t.dark, { primary: '#900' })
+  assert.deepEqual(t.light, { primary: '#ff0000', 'primary-light': '#ff3838', 'primary-dark': '#db0000' })
+  assert.deepEqual(t.dark, { primary: '#990000', 'primary-light': '#af3838', 'primary-dark': '#840000' })
 })
 
 test('defineTheme back-compat: a flat `colors` fills both modes', () => {
   const t = defineTheme({ name: 'b', colors: { primary: '#abc' } })
-  assert.deepEqual(t.light, { primary: '#abc' })
-  assert.deepEqual(t.dark, { primary: '#abc' })
+  assert.deepEqual(t.light, { primary: '#aabbcc', 'primary-light': '#bdcad7', 'primary-dark': '#92a1af' })
+  assert.deepEqual(t.dark, { primary: '#aabbcc', 'primary-light': '#bdcad7', 'primary-dark': '#92a1af' })
 })
 
 test('defineTheme applies empty defaults for missing groups', () => {
@@ -28,12 +28,49 @@ test('defineTheme applies empty defaults for missing groups', () => {
   assert.deepEqual(t, { name: 'theme', fonts: {}, radius: undefined, spacing: {}, light: {}, dark: {} })
 })
 
+test('defineTheme derives a primary ramp from a single raw hex', () => {
+  const t = defineTheme({
+    light: { primary: '#3b82f6' },
+    dark: { primary: '#0ea5e9' },
+  })
+  assert.equal(t.light.primary, '#3b82f6')
+  assert.equal(t.light['primary-light'], '#669ef8')
+  assert.equal(t.light['primary-dark'], '#3370d4')
+  assert.equal(t.dark.primary, '#0ea5e9')
+  assert.equal(t.dark['primary-light'], '#43b9ee')
+  assert.equal(t.dark['primary-dark'], '#0c8ec8')
+})
+
+test('defineTheme normalizes any chroma-valid primary color before deriving the ramp', () => {
+  const t = defineTheme({
+    light: { primary: 'rgb(59 130 246)' },
+    dark: { primary: 'hsl(199 89% 48%)' },
+  })
+  assert.equal(t.light.primary, '#3b82f6')
+  assert.equal(t.light['primary-light'], '#669ef8')
+  assert.equal(t.light['primary-dark'], '#3370d4')
+  assert.equal(t.dark.primary, '#0da2e7')
+})
+
+test('defineTheme preserves explicit primary shades over the derived ramp', () => {
+  const t = defineTheme({
+    light: {
+      primary: '#3b82f6',
+      'primary-light': '#abcdef',
+      'primary-dark': '#123456',
+    },
+  })
+  assert.equal(t.light.primary, '#3b82f6')
+  assert.equal(t.light['primary-light'], '#abcdef')
+  assert.equal(t.light['primary-dark'], '#123456')
+})
+
 // ------------------------------------------------------------ themeToVars -----
 
 test('themeToVars uses the requested mode + shared tokens', () => {
   const t = defineTheme({ fonts: { sans: 'X' }, radius: '8px', light: { primary: '#abc' }, dark: { primary: '#123' } })
-  assert.equal(themeToVars(t, 'light')['--color-primary'], '#abc')
-  assert.equal(themeToVars(t, 'dark')['--color-primary'], '#123')
+  assert.equal(themeToVars(t, 'light')['--color-primary'], '#aabbcc')
+  assert.equal(themeToVars(t, 'dark')['--color-primary'], '#112233')
   assert.equal(themeToVars(t, 'light')['--font-sans'], 'X') // shared across modes
   assert.equal(themeToVars(t, 'light')['--radius'], '8px') // bare var for a scalar group
 })
@@ -49,7 +86,7 @@ test('themeToVars maps spacing to the --space- prefix and defaults to light', ()
 test('themeToCss wraps a mode in the selector (default :root)', () => {
   const css = themeToCss(defineTheme({ light: { primary: '#f00' } }), 'light')
   assert.match(css, /^:root \{/)
-  assert.match(css, /\n {2}--color-primary: #f00;/)
+  assert.match(css, /\n {2}--color-primary: #ff0000;/)
   assert.match(css, /\n\}$/)
 })
 
@@ -102,7 +139,7 @@ test('exportThemeConfig emits a normalized, pretty-printed config', () => {
   const json = exportThemeConfig(defineTheme({ name: 'b', light: { primary: '#abc' } }))
   assert.match(json, /\n {2}"name": "b"/) // 2-space indented
   const parsed = JSON.parse(json)
-  assert.deepEqual(parsed.dark, { primary: '#abc' }) // flat colors normalized into both modes upstream
+  assert.deepEqual(parsed.dark, { primary: '#aabbcc', 'primary-light': '#bdcad7', 'primary-dark': '#92a1af' })
 })
 
 // ------------------------------------------------------------- presets/api ----
