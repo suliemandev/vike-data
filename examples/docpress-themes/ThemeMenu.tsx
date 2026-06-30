@@ -7,8 +7,9 @@ import { THEMES, THEME_NAMES, APPEARANCES, type ThemeName, type Appearance } fro
 
 // The seam, end to end:
 //   vike-themes' agnostic core (`themeToAppearanceCss`) compiles a brand + an
-//   appearance to a `body { --color-*: … }` block. DocPress' styles read those
-//   vars. No vike-react, no DocPress fork — just CSS variables.
+//   appearance to a `body { --color-*: … }` block; a small bridge maps DocPress'
+//   `--dp-color-*` seam onto those (see `themeCss`). No vike-react, no DocPress
+//   fork — just CSS variables.
 //
 // No flash, prerender included: the palette is applied by an inline `<head>`
 // script (see `headHtml` below) that runs before first paint — it reads the
@@ -72,11 +73,24 @@ const STATIC_CSS =
 
 function themeCss(themeName: ThemeName, appearance: Appearance): string {
   const theme = THEMES[themeName] ?? THEMES.indigo
-  // Target `body`, NOT the default `:root`. DocPress declares its color variables
-  // on `body`, so a :root override is shadowed by the closer body declaration.
-  // Append the name bridge in the same block so it wins by source order over
-  // DocPress' own `body { --color-bg-white: … }`.
-  return themeToAppearanceCss(theme, appearance, 'body') + '\nbody { --color-bg-white: var(--color-bg); }'
+  // vike-themes emits its agnostic `--color-*` contract on `body`. DocPress
+  // (>=0.16.49) reads a `--dp-`-prefixed seam, so bridge its names onto ours in
+  // the same block — this adapter glue is what belongs in vike-data. The bridge
+  // references the variables (not fixed values), so it tracks light/dark/system
+  // for free. Target `body`: more specific than DocPress' `:root` seam, so it
+  // wins. `--color-bg-white` is a :root-declared alias (from `--dp-color-bg`),
+  // so it is re-set on body too.
+  const bridge =
+    'body {' +
+    ' --dp-color-bg: var(--color-bg);' +
+    ' --dp-color-surface: var(--color-surface);' +
+    ' --dp-color-text: var(--color-text);' +
+    ' --dp-color-muted: var(--color-muted);' +
+    ' --dp-color-border: var(--color-border);' +
+    ' --dp-color-primary: var(--color-primary);' +
+    ' --color-bg-white: var(--color-bg);' +
+    ' }'
+  return themeToAppearanceCss(theme, appearance, 'body') + '\n' + bridge
 }
 
 // The whole palette, compiled once at build time: brand → appearance → CSS. The

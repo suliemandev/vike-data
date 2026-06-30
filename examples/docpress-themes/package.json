@@ -10,7 +10,7 @@
     "preview": "vike build && vike preview"
   },
   "dependencies": {
-    "@brillout/docpress": "^0.16.46",
+    "@brillout/docpress": "^0.16.49",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "vike": "0.4.259-commit-f6ecfb2",
