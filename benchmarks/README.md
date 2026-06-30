@@ -34,8 +34,9 @@ benchmarks/
       accept.mjs
   runner/
     run.mjs             <- semi-automated runner: (reset+boot)+poll accept+emit report.json
-    report.mjs          <- report.json read/append helpers
-    README.md           <- runner usage + flags
+    aggregate.mjs       <- Phase 4 aggregator: report/baseline -> per-task per-framework table
+    report.mjs          <- report.json / baseline.json read/append helpers
+    README.md           <- runner + aggregator usage
 examples/
   bench-app-next/       <- idiomatic Next.js baseline (vanilla)
   bench-app-vike/       <- Vike + React baseline, composed from the vike-* extensions
@@ -49,7 +50,7 @@ Both apps implement the **same HTTP contract** (`spec/product.md`), so a single 
 - **Phase 1** - app pair: rebuild the Vike side on the `vike-*` extension family + an idiomatic Next.js app, sharing one contract. **Done** ([#341](https://github.com/suleimansh/vike-data/issues/341)).
 - **Phase 2** - task set + accept scripts, one per extension (auth / data / notifications / stripe / ai). See `spec/task-set.md`. **In progress** ([#342](https://github.com/suleimansh/vike-data/issues/342)): task-001 data (guard), 002 auth, 003 notifications, 005 ai shipped; 004 stripe pending a grading decision.
 - **Phase 3** - semi-automated runner: (reset + boot) -> human drives the agent -> poll accept -> emit `report.json`. **Done** ([#343](https://github.com/suleimansh/vike-data/issues/343)); see `runner/`.
-- **Phase 4** - aggregator + first committed baseline.
+- **Phase 4** - aggregator + first committed baseline ([#344](https://github.com/suleimansh/vike-data/issues/344)). Aggregator **done** (`runner/aggregate.mjs`); the committed `baseline.json` lands after a real measurement session.
 
 ## Running a task by hand
 

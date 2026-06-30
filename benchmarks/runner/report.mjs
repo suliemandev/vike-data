@@ -6,15 +6,25 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const REPORT_PATH = resolve(here, 'report.json')
+// The curated, committed baseline the Phase 4 aggregator promotes report.json into.
+export const BASELINE_PATH = resolve(here, 'baseline.json')
 
-export function readReport() {
-  if (!existsSync(REPORT_PATH)) return []
+function readEntries(path) {
+  if (!existsSync(path)) return []
   try {
-    const data = JSON.parse(readFileSync(REPORT_PATH, 'utf8'))
+    const data = JSON.parse(readFileSync(path, 'utf8'))
     return Array.isArray(data) ? data : []
   } catch {
     return []
   }
+}
+
+export function readReport() {
+  return readEntries(REPORT_PATH)
+}
+
+export function readBaseline() {
+  return readEntries(BASELINE_PATH)
 }
 
 export function appendReport(entry) {
