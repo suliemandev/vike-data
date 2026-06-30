@@ -42,10 +42,35 @@ clock from start to accept-pass, which is an upper bound (it includes human/idle
 
 ## report.json
 
-`report.json` (git-ignored; the Phase 4 aggregator commits a curated baseline) is an array of:
+`report.json` (git-ignored; the aggregator promotes a curated `baseline.json`) is an array of:
 
 ```json
 { "framework": "vike", "task": "task-002-magic-link", "minutes": 4.2, "interventions": 0, "status": "pass", "at": "2026-06-30T..." }
 ```
 
 Run the same task on both `--framework vike` and `--framework next` to get the comparable pair.
+
+## Aggregator (Phase 4)
+
+`aggregate.mjs` reads the run entries and renders one comparison table: time + interventions,
+per task, per framework, side by side, with the vike-vs-next delta (negative favours vike).
+Multiple runs of the same `(framework, task)` are averaged.
+
+```bash
+# table from baseline.json (or report.json if no baseline yet)
+node benchmarks/runner/aggregate.mjs
+
+# machine-readable aggregate
+node benchmarks/runner/aggregate.mjs --json
+
+# force report.json, or aggregate an explicit file
+node benchmarks/runner/aggregate.mjs --report
+node benchmarks/runner/aggregate.mjs --input some-run.json
+
+# end a measurement session: promote report.json -> committed baseline.json
+node benchmarks/runner/aggregate.mjs --save-baseline
+git add benchmarks/runner/baseline.json && git commit -m "bench: baseline run"
+```
+
+Source precedence: `--input` > `--report` > `baseline.json` (if present) > `report.json`.
+`baseline.json` is committed (the tracked numbers); `report.json` stays git-ignored (ad-hoc).
