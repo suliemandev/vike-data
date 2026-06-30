@@ -2,35 +2,40 @@
 
 The same Notes app, built by the same AI agent (same model) on two stacks: the Vike
 `vike-*` extension family, and an idiomatic Next.js stack using its real ecosystem
-(Auth.js, Prisma, Resend, Stripe SDK). Five tasks, one per extension. Full method in
+(Auth.js, Prisma, Resend, Stripe SDK). Six tasks, one per extension. Full method in
 [`README.md`](./README.md); raw numbers in [`runner/baseline.json`](./runner/baseline.json).
 
 ## The takeaway
 
-**Speed is about even. Safety is not.**
+**Speed is about even. Safety is not.** And on one task, the fast Next path is an actual
+shipped vulnerability.
 
 Building the same app, the agent makes **~0 bespoke security decisions** on the Vike
 stack vs **~11** on Next. On Vike it reuses extension seams (signed webhooks, single-use
-+ expiry login tokens, no account-existence oracle); on Next it hand-writes each one.
-Every hand-written one is a place to get security wrong.
++ expiry login tokens, no account-existence oracle, owner-scoped unsubscribe); on Next it
+hand-writes each one. Every hand-written one is a place to get security wrong, and on the
+**push** task it does: the natural hand-rolled unsubscribe is a cross-user IDOR that
+**fails the gate**, while `vike-push` passes it for free.
 
-## The numbers (5 tasks)
+## The numbers (6 tasks)
 
 | Task | Extension | vike | next |
 |---|---|---|---|
 | auth (magic link) | vike-auth | 1/1 gate · 3.2m · **0** burden | 1/1 gate · 3.5m · **4** burden |
-| notifications | vike-mail | 3.0m · **0** burden | 2.1m · **2** burden |
+| notifications | vike-mail | 2.2m · **0** burden | 2.1m · **2** burden |
 | stripe (paid gate) | vike-stripe | 1/1 gate · 2.0m · **0** burden | 1/1 gate · 2.6m · **4** burden |
 | ai (ask a note) | vike-ai | 1.6m · **0** burden | 1.8m · **1** burden |
 | data (tags) | universal-orm | 2.6m · **0** burden | 2.7m · **0** burden |
-| **Total** | | **12.4m · 0 burden** | **12.7m · 11 burden** |
+| push (subscribe) | vike-push | **1/1** gate · 2.2m · **0** burden | **0/1** gate · 1.9m · **0** burden |
+| **Total** | | **13.8m · 0 burden** | **14.6m · 11 burden** |
 
 0 human interventions on either side, every task. `gate` = a v2 adversarial correctness
-check (e.g. an unsigned Stripe webhook must be rejected); `burden` = bespoke
-security/correctness decisions the agent made unaided, a latent-bug proxy.
+check (e.g. an unsigned Stripe webhook must be rejected; one user must not unsubscribe
+another); `burden` = bespoke security/correctness decisions the agent made unaided, a
+latent-bug proxy.
 
 Read it as: **minutes tie, the agent ships ~11 security-sensitive bits by hand on Next
-and ~0 on Vike.**
+and ~0 on Vike — and on push, one of those bits is a live IDOR that fails the gate.**
 
 ## How we got here (the honest part)
 
@@ -53,17 +58,23 @@ cherry-picked.
 
 - **Does:** on every integration task, composition removes the security decisions an agent
   would otherwise make by hand. That is the gap.
-- **Does not (yet):** this was an *expert* agent, the worst case for the thesis. It
-  hand-rolls the Next security correctly, so today both sides pass the gates. The
-  composition edge should be *larger* for a weaker agent, where the hand-rolled side
-  actually fails the gate. That run is the next one.
+- **Does, now on push:** even for an *expert* agent, the natural Next implementation fails
+  the gate. The unsubscribe payload carries only `{ endpoint }` and `endpoint` is unique,
+  so `DELETE WHERE endpoint = ?` is the idiomatic write (not a strawman) — and an IDOR:
+  any signed-in user can unsubscribe another by endpoint. Scoping it to the owner is a
+  decision the single-user happy path never forces. `vike-push` is owner-scoped by
+  construction, so it passes for free. On the other gated tasks (auth, stripe) the expert
+  agent still hand-rolls the secure version, so both sides pass and the edge shows up as
+  *burden*; push is the one where the shortcut is both natural and wrong.
+- **Does not (yet):** a weaker-agent run, where the auth/stripe shortcuts should fail their
+  gates too (not just cost burden). Expected to widen the gap further.
 
 ## Next
 
-- **vike-push** and **vike-teams** tasks, where the gate genuinely bites: a hand-rolled
-  unsubscribe leaks across users (IDOR), a hand-rolled query leaks across tenants (BOLA).
-- **Weaker-agent axis:** re-run a gated task with a weaker model and show the hand-rolled
-  side failing the gate outright.
+- **vike-teams** task: a hand-rolled query leaks across tenants (BOLA), same shape as the
+  push IDOR but on the read path.
+- **Weaker-agent axis:** re-run the gated tasks with a weaker model and show the
+  hand-rolled auth/stripe sides failing their gates outright, not just carrying burden.
 
 This is also the measurable core of the "safe mode" idea: a fixed, composed extension set
 is *why* an agent can't easily ship something insecure.

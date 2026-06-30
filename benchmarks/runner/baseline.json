@@ -112,5 +112,35 @@
     "status": "pass",
     "burden": 0,
     "at": "2026-06-30T18:45:00.001Z"
+  },
+  {
+    "framework": "vike",
+    "task": "task-006-push",
+    "minutes": 2.2,
+    "interventions": 0,
+    "status": "pass",
+    "gates": [
+      {
+        "name": "push",
+        "passed": true
+      }
+    ],
+    "burden": 0,
+    "at": "2026-06-30T22:10:00.000Z"
+  },
+  {
+    "framework": "next",
+    "task": "task-006-push",
+    "minutes": 1.9,
+    "interventions": 0,
+    "status": "pass",
+    "gates": [
+      {
+        "name": "push",
+        "passed": false
+      }
+    ],
+    "burden": 0,
+    "at": "2026-06-30T22:10:00.001Z"
   }
 ]
