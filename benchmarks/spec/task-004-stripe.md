@@ -50,3 +50,30 @@ The script exits `0` only when all checks pass.
 - Max interventions before DNF: 5.
 - Billing is graded through the simulated activation endpoint; no real Stripe call, key, or
   network is required. A real test-mode run is an opt-in variant, outside the committed baseline.
+
+## v2 correctness gate: a signed webhook (`tasks/task-004-stripe/webhook-gate.mjs`)
+
+The criteria above grade the happy path, which the first measurement session showed a hand-rolled
+`paid` flag passes — faster — because the `dev/billing/activate` shortcut never exercises a
+signature. This **additive** gate (methodology v2, issue #359) grades the security property the
+extension actually owns. It is scored **pass/fail, above minutes**.
+
+Add a real webhook and have the dev activation route through it:
+
+- `POST /api/billing/webhook` receives a raw JSON event with a `stripe-signature` header
+  (`t=<unix>,v1=<hmac>`, where `hmac = HMAC-SHA256(\`${t}.${rawBody}\`, secret)` — Stripe's own
+  scheme). The endpoint **verifies the signature over the raw body** against the shared secret
+  (`BENCH_STRIPE_WEBHOOK_SECRET`, default `whsec_bench_shared_secret`) **before any write**.
+  A `checkout.session.completed` event whose `data.email` matches a user flips that user to paid.
+
+The gate asserts:
+
+1. An **unsigned** event is rejected (`4xx`) and grants no access (create still `402`).
+2. A **forged-signature** event is rejected (`4xx`) and grants no access.
+3. A **correctly-signed** event is accepted (`2xx`) and flips the user to paid (create now `201`).
+
+`vike-stripe` passes for free — its `constructEvent` (from `vike-stripe/stripe`) verifies the
+signature, so wiring the webhook is a few lines. A hand-rolled activate that skips verification
+**fails checks 1-2**: passing them requires hand-writing the HMAC verify (timestamp tolerance +
+constant-time compare). That hand-written crypto is the bespoke-decision burden v2 counts, and the
+correctness the happy-path contract could not see.
