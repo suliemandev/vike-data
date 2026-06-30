@@ -79,6 +79,20 @@ test('many charges accumulate as distinct rows for one subject', async () => {
   assert.equal((await db.payments.find()).length, 2)
 })
 
+// --- the app-facing read seam (#365): gate on whether the subject has paid --------------------
+test('hasPaid: false with no charge, true after a succeeded charge', async () => {
+  const { payments } = makePayments()
+  assert.equal(await payments.hasPaid('org1'), false)
+  await payments.recordCharge({ subject: 'org1', amount: 1000, stripePaymentIntentId: 'pi_1' })
+  assert.equal(await payments.hasPaid('org1'), true)
+})
+
+test('the app-facing seam is exported from ./purchase/instance', async () => {
+  const mod = await import('../purchase/instance.js')
+  assert.equal(typeof mod.createPayments, 'function')
+  assert.equal(typeof mod.payments.hasPaid, 'function')
+})
+
 test('replaying a charge is idempotent on the payment-intent id (no duplicate)', async () => {
   const { payments, db } = makePayments()
   await payments.recordCharge({ subject: 'org1', amount: 1000, stripePaymentIntentId: 'pi_1' })

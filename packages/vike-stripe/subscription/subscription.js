@@ -67,5 +67,12 @@ export function createSubscriptions({ db, segment = 'b2b' } = {}) {
     async subscriptionFor(subjectId) {
       return db.subscriptions.findOne({ [subjectColumn]: subjectId })
     },
+
+    // Entitlement check for an app's own routes (gate a paid feature). `active` is the only
+    // status that grants access; `past_due` / `canceled` / no row do not.
+    async isActive(subjectId) {
+      const sub = await db.subscriptions.findOne({ [subjectColumn]: subjectId })
+      return sub?.status === 'active'
+    },
   }
 }

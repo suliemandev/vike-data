@@ -107,6 +107,22 @@ test('a newer event applies over older state (ordering respected)', async () => 
   assert.equal((await db.subscriptions.findOne({ organization_id: 'org1' })).status, 'active')
 })
 
+// --- the app-facing read seam (#365): gate a paid feature without the Vike config -----------
+test('isActive: true only for an active subscription; false for missing/past_due/canceled', async () => {
+  const { subscriptions } = makeSubscriptions()
+  assert.equal(await subscriptions.isActive('org1'), false) // no row
+  await subscriptions.applySubscriptionEvent({ subject: 'org1', plan: 'pro', status: 'active' })
+  assert.equal(await subscriptions.isActive('org1'), true)
+  await subscriptions.applySubscriptionEvent({ subject: 'org1', plan: 'pro', status: 'canceled' })
+  assert.equal(await subscriptions.isActive('org1'), false)
+})
+
+test('the app-facing seam is exported from ./subscription/instance', async () => {
+  const mod = await import('../subscription/instance.js')
+  assert.equal(typeof mod.createSubscriptions, 'function')
+  assert.equal(typeof mod.subscriptions.isActive, 'function') // the lazy proxy exposes the core
+})
+
 // -------------------------------------------------------------------- webhook
 const SECRET = 'whsec_test_subscription'
 const provider = createStripe({ webhookSecret: SECRET })

@@ -77,6 +77,24 @@ No transactions yet (each write is a single atomic statement; idempotency leans 
 > the core runs, so an extension INSERTs/upserts for real, ORM-agnostically, only on a
 > genuinely-signed event.
 
+## Reading billing state from your own routes
+
+The webhook is the WRITE side. To READ entitlement from your app's routes (gate a paid
+feature) — including in a plain server app that does not use the Vike config — import the
+instance seam. It routes through the adapter the app registered, the same as the webhook:
+
+```js
+import { subscriptions } from 'vike-stripe/subscription/instance' // recurring
+import { payments } from 'vike-stripe/purchase/instance'           // one-time
+
+if (!(await subscriptions.isActive(userId))) return res.status(402).end() // gate
+const paid = await payments.hasPaid(userId)                              // one-time entitlement
+```
+
+`isActive(subject)` / `hasPaid(subject)` are the entitlement checks; `subscriptionFor` /
+`paymentsFor` return the underlying row(s). Building your own repository instead? The cores are
+exported too: `import { createSubscriptions } from 'vike-stripe/subscription/instance'`.
+
 ## Parameterized, the idiomatic way
 
 Each model declares `segment` and **computes** its schema from it (a function wired as

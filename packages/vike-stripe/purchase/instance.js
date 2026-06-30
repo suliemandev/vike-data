@@ -34,3 +34,7 @@ export const payments = new Proxy(
     get: (_t, prop) => instance()[prop],
   },
 )
+
+// Re-exported so an app that builds its own repository can construct a payments core directly,
+// the same surface the default `payments` proxy exposes.
+export { createPayments } from './payment.js'
