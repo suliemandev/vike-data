@@ -2,6 +2,32 @@ export default Page
 
 import React from 'react'
 
+const swatchRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: 12,
+  margin: '1rem 0 1.25rem',
+}
+
+const swatchStyle: React.CSSProperties = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius, 10px)',
+  overflow: 'hidden',
+  background: 'var(--color-surface)',
+}
+
+const swatchToneStyle = (background: string): React.CSSProperties => ({
+  height: 64,
+  background,
+  borderBottom: '1px solid var(--color-border)',
+})
+
+const swatchMetaStyle: React.CSSProperties = {
+  padding: '0.7rem 0.8rem',
+  display: 'grid',
+  gap: 4,
+}
+
 function Page() {
   return (
     <>
@@ -15,6 +41,91 @@ function Page() {
         <code>:root &#123; --color-*: … &#125;</code> block — a pure string, zero framework
         dependencies.
       </p>
+      <p>
+        The brands in <code>themes.ts</code> only author <code>primary</code>; they do not spell out{' '}
+        <code>primary-light</code> or <code>primary-dark</code>. The core now derives those
+        automatically, so a theme package can provide one primary color and still emit the
+        fuller CSS variable contract.
+      </p>
+      <pre>
+        <code>{`const sunset = defineTheme({\n  name: 'sunset',\n  light: { primary: '#e0560d', /* ... */ },\n  dark: { primary: '#ff7a33', /* ... */ },\n})`}</code>
+      </pre>
+      <p>
+        The cards below consume the derived variables directly. Switching theme or appearance
+        updates them live, proving the lighter and darker primary steps are present even though
+        the authored theme only set <code>primary</code>.
+      </p>
+      <div style={swatchRowStyle}>
+        <div style={swatchStyle}>
+          <div style={swatchToneStyle('var(--color-primary-light)')} />
+          <div style={swatchMetaStyle}>
+            <strong style={{ color: 'var(--color-text)' }}>Primary Light</strong>
+            <code style={{ color: 'var(--color-muted)' }}>var(--color-primary-light)</code>
+            <span style={{ color: 'var(--color-muted)' }}>Useful for softer fills and hover surfaces.</span>
+          </div>
+        </div>
+        <div style={swatchStyle}>
+          <div style={swatchToneStyle('var(--color-primary)')} />
+          <div style={swatchMetaStyle}>
+            <strong style={{ color: 'var(--color-text)' }}>Primary</strong>
+            <code style={{ color: 'var(--color-muted)' }}>var(--color-primary)</code>
+            <span style={{ color: 'var(--color-muted)' }}>The single authored color in each theme mode.</span>
+          </div>
+        </div>
+        <div style={swatchStyle}>
+          <div style={swatchToneStyle('var(--color-primary-dark)')} />
+          <div style={swatchMetaStyle}>
+            <strong style={{ color: 'var(--color-text)' }}>Primary Dark</strong>
+            <code style={{ color: 'var(--color-muted)' }}>var(--color-primary-dark)</code>
+            <span style={{ color: 'var(--color-muted)' }}>Useful for pressed states and higher-contrast accents.</span>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          alignItems: 'center',
+          margin: '0 0 1.5rem',
+        }}
+      >
+        <button
+          style={{
+            border: '1px solid var(--color-primary-dark)',
+            background: 'var(--color-primary)',
+            color: 'var(--color-primary-text, #fff)',
+            borderRadius: 'var(--radius, 10px)',
+            padding: '0.55rem 0.9rem',
+            font: 'inherit',
+          }}
+        >
+          Solid action
+        </button>
+        <button
+          style={{
+            border: '1px solid var(--color-primary)',
+            background: 'var(--color-primary-light)',
+            color: 'var(--color-text)',
+            borderRadius: 'var(--radius, 10px)',
+            padding: '0.55rem 0.9rem',
+            font: 'inherit',
+          }}
+        >
+          Soft action
+        </button>
+        <a
+          href="#"
+          style={{
+            color: 'var(--color-primary-dark)',
+            fontWeight: 600,
+            textDecorationColor: 'var(--color-primary-light)',
+            textUnderlineOffset: '0.18em',
+          }}
+        >
+          Link using the darker step
+        </a>
+      </div>
 
       <h2>2. The switcher lives in DocPress' top-nav slot</h2>
       <p>

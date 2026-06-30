@@ -29,6 +29,30 @@ export default {
 }
 ```
 
+## Primary ramps
+
+`defineTheme()` now supports a single `primary` authoring value and expands it into
+the full ramp used by the CSS variable contract:
+
+```js
+const acme = defineTheme({
+  name: 'acme',
+  light: { primary: '#3b82f6' },
+  dark: { primary: 'rgb(139 92 246)' },
+})
+```
+
+This normalizes to:
+
+- `primary`
+- `primary-light`
+- `primary-dark`
+
+Rules:
+
+- any `chroma-js`-valid color input is normalized to hex before deriving the ramp
+- explicit `primary-light` / `primary-dark` still win and override the derived values
+
 ## Exports
 
 | Subpath | What |
@@ -44,6 +68,9 @@ export default {
   sidebar layout and a dark Acme brand compose freely.
 - **CSS variables.** A theme compiles to `--color-primary`, `--font-sans`, `--radius`,
   etc.; UI authors against the vars, decoupled from any specific brand.
+- **Primary ramp ergonomics.** Authors can provide one `primary` and let
+  `defineTheme()` derive `primary-light` / `primary-dark`, while retaining the option
+  to override either shade explicitly.
 - **System mode is flash-free.** `system` emits a `@media (prefers-color-scheme)` rule
   so the OS preference applies before hydration.
 - **Themes compose like packages.** Install [vike-theme-emerald](../vike-theme-emerald)
