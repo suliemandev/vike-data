@@ -1,0 +1,18 @@
+[
+  {
+    "framework": "vike",
+    "task": "task-002-magic-link",
+    "minutes": 3.2,
+    "interventions": 0,
+    "status": "pass",
+    "at": "2026-06-30T15:54:34.391Z"
+  },
+  {
+    "framework": "next",
+    "task": "task-002-magic-link",
+    "minutes": 3.5,
+    "interventions": 0,
+    "status": "pass",
+    "at": "2026-06-30T15:54:42.861Z"
+  }
+]
