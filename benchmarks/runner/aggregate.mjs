@@ -77,12 +77,16 @@ function aggregate(entries) {
     const frameworks = {}
     for (const [fw, runs] of byFw) {
       const passes = runs.filter((r) => r.status === 'pass').length
+      // v2 correctness gates, summed across this (framework, task)'s runs.
+      const allGates = runs.flatMap((r) => (Array.isArray(r.gates) ? r.gates : []))
       frameworks[fw] = {
         runs: runs.length,
         passes,
         minutes: round1(mean(runs.map((r) => Number(r.minutes) || 0))),
         interventions: round1(mean(runs.map((r) => Number(r.interventions) || 0))),
         status: passes === runs.length ? 'pass' : passes === 0 ? 'dnf' : `${passes}/${runs.length}`,
+        gatesPassed: allGates.filter((g) => g && g.passed).length,
+        gatesTotal: allGates.length,
       }
     }
     result.push({ task, extension: extensionFor(task), frameworks })
@@ -102,7 +106,9 @@ function frameworkColumns(rows) {
 function cell(agg) {
   if (!agg) return '–'
   const status = agg.status === 'pass' ? '' : ` (${agg.status})`
-  return `${num(agg.minutes)}m / ${num(agg.interventions)}${status}`
+  // Correctness gates lead (the v2 primary axis), then minutes / interventions.
+  const gates = agg.gatesTotal ? `${agg.gatesPassed}/${agg.gatesTotal} gates · ` : ''
+  return `${gates}${num(agg.minutes)}m / ${num(agg.interventions)}${status}`
 }
 
 /** Render the markdown comparison table. Delta columns are vike − next when both are present. */
@@ -207,7 +213,11 @@ function main() {
 
   console.log(`# Benchmark results (source: ${source})\n`)
   console.log(renderMarkdown(rows))
-  console.log('\n_min = real AI minutes, intv = human interventions; Δ is vike − next (negative favours vike)._')
+  console.log(
+    '\n_gates = v2 correctness gates passed/total (the primary axis: fewer gates passed loses on' +
+      ' correctness regardless of minutes); min = real AI minutes; intv = human interventions;' +
+      ' Δ is vike − next minutes/intv (negative favours vike)._',
+  )
 }
 
 // Read an arbitrary entries file (used by --input); same tolerant parse as report.mjs.
