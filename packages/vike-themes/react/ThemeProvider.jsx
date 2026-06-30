@@ -8,7 +8,7 @@
 // no flash. `system` is applied via the core's `@media (prefers-color-scheme)` CSS,
 // so it follows the OS even before hydration.
 import { useState, useMemo, useCallback } from 'react'
-import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from '../index.js'
+import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from '../runtime.js'
 import { ThemeCtx } from './context.js'
 
 const writeCookie = (name, value) => {

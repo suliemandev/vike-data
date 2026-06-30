@@ -65,6 +65,20 @@ test('defineTheme preserves explicit primary shades over the derived ramp', () =
   assert.equal(t.light['primary-dark'], '#123456')
 })
 
+// The shipped `defaultTheme` is authored as a plain literal (so the runtime stays
+// chroma-free), but its primary shades must be the exact ramp `defineTheme` would
+// derive — pin them to the live derivation so the baked literal can never drift.
+test('defaultTheme primary shades match the live defineTheme ramp', () => {
+  const derived = defineTheme({
+    light: { primary: defaultTheme.light.primary },
+    dark: { primary: defaultTheme.dark.primary },
+  })
+  for (const mode of ['light', 'dark']) {
+    assert.equal(defaultTheme[mode]['primary-light'], derived[mode]['primary-light'])
+    assert.equal(defaultTheme[mode]['primary-dark'], derived[mode]['primary-dark'])
+  }
+})
+
 // ------------------------------------------------------------ themeToVars -----
 
 test('themeToVars uses the requested mode + shared tokens', () => {
