@@ -56,5 +56,41 @@
     "gates": [{ "name": "webhook", "passed": true }],
     "burden": 4,
     "at": "2026-06-30T17:05:00.001Z"
+  },
+  {
+    "framework": "vike",
+    "task": "task-005-ai",
+    "minutes": 1.6,
+    "interventions": 0,
+    "status": "pass",
+    "burden": 0,
+    "at": "2026-06-30T18:30:00.000Z"
+  },
+  {
+    "framework": "next",
+    "task": "task-005-ai",
+    "minutes": 1.8,
+    "interventions": 0,
+    "status": "pass",
+    "burden": 1,
+    "at": "2026-06-30T18:30:00.001Z"
+  },
+  {
+    "framework": "vike",
+    "task": "task-001-tags",
+    "minutes": 2.6,
+    "interventions": 0,
+    "status": "pass",
+    "burden": 0,
+    "at": "2026-06-30T18:45:00.000Z"
+  },
+  {
+    "framework": "next",
+    "task": "task-001-tags",
+    "minutes": 2.7,
+    "interventions": 0,
+    "status": "pass",
+    "burden": 0,
+    "at": "2026-06-30T18:45:00.001Z"
   }
 ]
