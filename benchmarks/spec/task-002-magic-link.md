@@ -50,3 +50,16 @@ The script exits `0` only when all checks pass.
 - Max interventions before DNF: 5.
 - A login UI must offer the magic-link option (spot-checked by the human); the automated gate
   is the contract above.
+
+## v2 correctness gate: no account-existence oracle (`tasks/task-002-magic-link/auth-gate.mjs`)
+
+`accept.mjs` checks single-use. This additive gate (methodology v2, issue #359) checks the
+property a hand-roll most often skips: requesting a magic link for an **unknown** email must
+return the same token-shaped `200` as a known one. Otherwise the endpoint is a user-enumeration
+oracle (request a link, observe whether it "worked"). Scored pass/fail, above minutes.
+
+vike-auth passes for free — `requestMagicLink` issues for any syntactically-valid email and
+find-or-creates the user at redeem, so it has no existence signal. A hand-roll that issues a
+token only for known users — a natural shortcut — fails. The token expiry + single-use + token
+store + find-or-create that vike-auth also gives free are the **burden** v2 counts on the Next
+side (it hand-wrote all of them).
