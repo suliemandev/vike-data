@@ -23,6 +23,7 @@
 //      record the human-tallied figures, or edit the emitted entry afterwards.
 
 import { spawn } from 'node:child_process'
+import { rmSync } from 'node:fs'
 import { appendReport } from './report.mjs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,9 +32,13 @@ const here = dirname(fileURLToPath(import.meta.url))
 const benchRoot = resolve(here, '..') // benchmarks/
 const repoRoot = resolve(benchRoot, '..') // repo root
 
+// `clean` lists git-ignored runtime state (app-relative) to delete on --reset. `git clean -fdq`
+// leaves ignored files, so without this the Next app's SQLite DB would carry notes/paid-state
+// across runs while the Vike app (in-memory) starts fresh — an unfair asymmetry. The vike app
+// keeps no on-disk state, so it has nothing to clean.
 const FRAMEWORKS = {
-  vike: { dir: 'examples/bench-app-vike', port: 3100, baseUrl: 'http://localhost:3100' },
-  next: { dir: 'examples/bench-app-next', port: 4311, baseUrl: 'http://localhost:4311' },
+  vike: { dir: 'examples/bench-app-vike', port: 3100, baseUrl: 'http://localhost:3100', clean: [] },
+  next: { dir: 'examples/bench-app-next', port: 4311, baseUrl: 'http://localhost:4311', clean: ['data'] },
 }
 
 function parseArgs(argv) {
@@ -97,6 +102,10 @@ async function main() {
     console.log(`[runner] resetting ${fw.dir} to HEAD`)
     await run('git', ['checkout', '--', appDir], repoRoot)
     await run('git', ['clean', '-fdq', appDir], repoRoot)
+    // Drop git-ignored runtime state git clean -fdq leaves behind (e.g. the SQLite DB).
+    for (const rel of fw.clean ?? []) {
+      rmSync(resolve(appDir, rel), { recursive: true, force: true })
+    }
   }
 
   // Optional: boot the app and tear it down at the end.
