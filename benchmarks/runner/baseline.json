@@ -5,6 +5,8 @@
     "minutes": 3.2,
     "interventions": 0,
     "status": "pass",
+    "gates": [{ "name": "auth", "passed": true }],
+    "burden": 0,
     "at": "2026-06-30T15:54:34.391Z"
   },
   {
@@ -13,6 +15,8 @@
     "minutes": 3.5,
     "interventions": 0,
     "status": "pass",
+    "gates": [{ "name": "auth", "passed": true }],
+    "burden": 4,
     "at": "2026-06-30T15:54:42.861Z"
   },
   {
@@ -21,6 +25,7 @@
     "minutes": 3,
     "interventions": 0,
     "status": "pass",
+    "burden": 0,
     "at": "2026-06-30T16:22:38.549Z"
   },
   {
@@ -29,6 +34,7 @@
     "minutes": 2.1,
     "interventions": 0,
     "status": "pass",
+    "burden": 2,
     "at": "2026-06-30T16:22:38.550Z"
   },
   {
