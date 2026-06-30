@@ -31,6 +31,7 @@ node benchmarks/runner/run.mjs --framework vike --task task-002-magic-link --sta
 | `--timeout` | `1800` | seconds before recording a DNF |
 | `--poll` | `10` | seconds between accept attempts |
 | `--interventions` | `0` | human-tallied intervention count |
+| `--burden` | (unset) | bespoke security/correctness decisions made unaided (v2 latent-bug proxy) |
 | `--minutes` | wall clock | real AI minutes (agent execution time), if measured separately |
 | `--status` | auto | force `pass`/`dnf` instead of the polled result |
 | `--skip-gates` | off | don't run the task's v2 correctness gates after accept passes |

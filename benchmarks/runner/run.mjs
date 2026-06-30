@@ -184,6 +184,7 @@ async function main() {
     interventions: Number(args.interventions),
     status: args.status || status,
     ...(gates.length ? { gates } : {}),
+    ...(args.burden != null ? { burden: Number(args.burden) } : {}),
   }
 
   if (server) server.kill()
