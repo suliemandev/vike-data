@@ -34,12 +34,12 @@
   {
     "framework": "vike",
     "task": "task-004-stripe",
-    "minutes": 4.1,
+    "minutes": 2,
     "interventions": 0,
     "status": "pass",
     "gates": [{ "name": "webhook", "passed": true }],
     "burden": 0,
-    "at": "2026-06-30T17:05:00.000Z"
+    "at": "2026-06-30T17:45:00.000Z"
   },
   {
     "framework": "next",
