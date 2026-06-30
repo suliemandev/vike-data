@@ -15,7 +15,7 @@
 // The React rendering (applying the CSS, the runtime picker) is the binding's job
 // (vike-themes/react) — same core/UI split as vike-auth -> vike-auth/react. Here we
 // only declare the seam, ship the built-in brand, and read the cookies.
-import { defaultTheme } from './index.js'
+import { defaultTheme } from './runtime.js'
 
 export default {
   name: 'vike-themes',

@@ -1,6 +1,6 @@
 <script setup>
 import { h, ref, computed, provide } from 'vue'
-import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from '../index.js'
+import { themeToAppearanceCss, baseCss, presets, APPEARANCES } from '../runtime.js'
 import { THEME_KEY } from './context.js'
 
 const props = defineProps({
