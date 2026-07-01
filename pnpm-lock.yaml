@@ -544,6 +544,9 @@ importers:
       vike-react:
         specifier: '>=0.6'
         version: 0.6.24(react-dom@19.2.7(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4)))
+      vike-view:
+        specifier: workspace:*
+        version: link:../vike-view
       vike-vue:
         specifier: '>=0.9'
         version: 0.9.11(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4)))(vue@3.5.38(typescript@5.9.3))
@@ -1004,6 +1007,21 @@ importers:
       vue:
         specifier: '>=3'
         version: 3.5.38(typescript@5.9.3)
+
+  packages/vike-view:
+    dependencies:
+      '@universal-orm/core':
+        specifier: workspace:*
+        version: link:../universal-orm
+      '@universal-orm/memory':
+        specifier: workspace:*
+        version: link:../universal-orm-memory
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@vike-data/vike-schema':
+        specifier: workspace:*
+        version: link:../vike-schema
 
 packages:
 
