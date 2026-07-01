@@ -10,6 +10,7 @@
     "./accordion": "./accordion.js",
     "./dialog": "./dialog.js",
     "./button": "./button.js",
+    "./alert": "./alert.js",
     "./react": "./react/index.js",
     "./react/registry": "./react/registry.js",
     "./react/Blocks": "./react/Blocks.jsx",
@@ -17,13 +18,15 @@
     "./react/AccordionView": "./react/AccordionView.jsx",
     "./react/DialogView": "./react/DialogView.jsx",
     "./react/ButtonView": "./react/ButtonView.jsx",
+    "./react/AlertView": "./react/AlertView.jsx",
     "./vue": "./vue/index.js",
     "./vue/registry": "./vue/registry.js",
     "./vue/Blocks": "./vue/Blocks.js",
     "./vue/TabsView": "./vue/TabsView.js",
     "./vue/AccordionView": "./vue/AccordionView.js",
     "./vue/DialogView": "./vue/DialogView.js",
-    "./vue/ButtonView": "./vue/ButtonView.js"
+    "./vue/ButtonView": "./vue/ButtonView.js",
+    "./vue/AlertView": "./vue/AlertView.js"
   },
   "scripts": {
     "test": "node --test"
