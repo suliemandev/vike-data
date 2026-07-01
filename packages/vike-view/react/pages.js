@@ -5,6 +5,13 @@
 // `views` config point to know which view this route is. Plain JS (no JSX) so it is testable.
 import { resolvePage } from 'vike-elements'
 
+// The config-time authoring surface, re-exported here so an app imports everything it declares its
+// views with from ONE jsx-free entry: `import { defineView, crudBlocks, viewPages } from
+// 'vike-view/react/pages'`. It must be jsx-free because +config.js and its +views file are loaded
+// by Vike's Node config loader, which cannot transpile the .jsx the 'vike-view/react' barrel pulls
+// in (the barrel is for RUNTIME page components). All of these come from the pure-JS core.
+export { defineView, crudBlocks, crud, column, display, field } from '../index.js'
+
 // A cumulative `views` config arrives as an array of per-source contributions; flatten it (an
 // entry may be an array or a function returning one), matching how the schemas point flattens.
 export function normalizeViews(views) {

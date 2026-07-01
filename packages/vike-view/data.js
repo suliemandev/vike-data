@@ -11,12 +11,17 @@
 // writes, so a scoped user only ever sees / edits / creates their own rows. Kept as a function
 // the caller passes at request time (not baked into the serialized block), so a scope predicate
 // never has to serialize to the client.
-import { randomUUID } from 'node:crypto'
 import { resolvePage } from 'vike-elements'
 import { projectRow } from './project.js'
 import { tableNamed, recordTitleColumn } from './resolve.js'
 
 const DEFAULT_PAGE_SIZE = 20
+
+// The Web Crypto UUID, not node:crypto's -- so this module stays isomorphic-safe. The root
+// index.js re-exports this file, and a `data` hook (viewData) can be reached from the CLIENT bundle
+// during client-side navigation; a hard `node:crypto` import breaks that build. `globalThis.crypto`
+// is present in Node 18+ and every browser. Only the server-side write path actually calls it.
+const randomUUID = () => globalThis.crypto.randomUUID()
 
 const primaryKeyOf = (schemaTable) => schemaTable?.columns.find((c) => c.primary)?.name ?? 'id'
 

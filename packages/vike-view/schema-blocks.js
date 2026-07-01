@@ -49,9 +49,15 @@ registerBlock('form', {
 // crud page is wired server-side through the data layer, not through the serialized block.
 export function crudBlocks(opts) {
   const cfg = crud(opts) // validates `table`
+  // Collapse the column()/display()/field() BUILDERS in a refinement array to plain specs, so the
+  // block descriptor stays serializable: it rides in a section's `props`, which Vike serializes to
+  // the client, and a builder carries function methods (.sortable(), .build()) that can't cross
+  // that boundary. resolve.js already accepts either a builder or a plain spec, so nothing downstream
+  // changes. (A view built by hand can also pass plain specs directly.)
+  const plain = (arr) => arr?.map((e) => (typeof e?.build === 'function' ? e.build() : e))
   return [
-    { block: 'list', table: cfg.table, ...(cfg.list ? { list: cfg.list } : {}) },
-    { block: 'record', table: cfg.table, ...(cfg.record ? { record: cfg.record } : {}) },
-    { block: 'form', table: cfg.table, ...(cfg.form ? { form: cfg.form } : {}) },
+    { block: 'list', table: cfg.table, ...(cfg.list ? { list: plain(cfg.list) } : {}) },
+    { block: 'record', table: cfg.table, ...(cfg.record ? { record: plain(cfg.record) } : {}) },
+    { block: 'form', table: cfg.table, ...(cfg.form ? { form: plain(cfg.form) } : {}) },
   ]
 }
