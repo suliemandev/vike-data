@@ -48,8 +48,7 @@ export const rating = defineElement('rating', {
 
 ```js
 // vike-element-rating/react — the renderer half, per framework
-// (`registerElementRenderer` is provided by the per-framework renderer package, e.g. a
-// forthcoming vike-elements/react — not by this agnostic core.)
+// (`registerElementRenderer` lives in vike-elements/react, the React binding.)
 import { registerElementRenderer } from 'vike-elements/react'
 registerElementRenderer('rating', Rating)
 ```
@@ -58,27 +57,24 @@ Define once (builder + descriptor + registry entry), render once per framework. 
 elements (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
 your custom element is a peer, not a special case.
 
-## What a renderer does with a resolved page
+## Rendering — `vike-elements/react`
 
-`resolvePage(page, tables)` returns `{ route, sections: [{ block, props, resolved }] }`. A
-per-framework renderer keeps a `block -> component` map and draws each section, handing the
-component the block's serializable `resolved` view-model:
+The React binding ships the dispatch and the primitive components. `<Blocks>` draws already
+resolved sections; `<Page>` resolves a view first. Each block type maps to its registered
+component (via the shared registry), which receives the block's serializable `resolved` model:
 
 ```jsx
-// sketch of a React renderer
-const COMPONENTS = { list: ListView, record: RecordView, heading: Heading, /* ... */ }
+import { Page } from 'vike-elements/react'          // + 'vike-view/react' to render list/record/form
+import { defineView, crudBlocks, heading } from 'vike-view'
 
-function Page({ page, tables }) {
-  const { sections } = resolvePage(page, tables)
-  return sections.map(({ block, resolved }, i) => {
-    const C = COMPONENTS[block]
-    return C ? <C key={i} {...resolved} /> : null
-  })
-}
+const view = defineView({ sections: [heading('Posts'), ...crudBlocks({ table: 'posts' })] })
+// <Page page={view} tables={tables} /> -> the schema drives the table columns, record fields,
+// and form controls (an enum column renders a <select>, a required column is marked, ...).
 ```
 
 `resolved` is plain data (a schema block's `columns`/`fields`, a bespoke block's props), so it
-serializes cleanly into the client hydration payload.
+serializes cleanly into the client hydration payload. A block type with no registered renderer
+is skipped, so a page degrades gracefully.
 
 ## The escape hatch
 

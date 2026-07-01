@@ -119,27 +119,46 @@ export function createDevTransport({ name, entry, line } = {}) {
  *                       the same name share the same slot.
  * @returns {{ register:(token:string, component:Function)=>Function, get:(token:string)=>Function|undefined, tokens:()=>string[] }}
  */
-export function createFieldWidgetRegistry(name) {
-  if (typeof name !== 'string' || !name) {
-    throw new Error('createFieldWidgetRegistry: a non-empty string `name` is required')
+/**
+ * A per-framework, cross-package COMPONENT registry: a `token -> component` map keyed by a
+ * (namespace, name) pair, kept on globalThis so module duplication can't fork it. This is the
+ * generic mechanism behind the field-widget registry AND the block-renderer registry (the third
+ * consumer, vike-elements' `registerElementRenderer`, is what promoted it to a named primitive):
+ * a schema declares intent (a widget token, a block type), each framework binding registers the
+ * component that draws it, and any consumer of the same (namespace, name) sees it — so a package
+ * teaches EVERY consumer a new field kind / block type by registering once, with no dependency
+ * between the two sides. Components are held OPAQUE (kit never renders them), so this stays
+ * JSX-free. A token the registry doesn't know returns undefined, so the caller falls back.
+ *
+ * @param {string} namespace  What kind of component, e.g. 'fieldWidgets' or 'blocks'.
+ * @param {string} name       Per-framework key, e.g. 'react' or 'vue'. Same (namespace, name)
+ *                            pair shares one slot.
+ * @returns {{ register:(token:string, component:Function)=>Function, get:(token:string)=>Function|undefined, tokens:()=>string[] }}
+ */
+export function createComponentRegistry(namespace, name) {
+  if (typeof namespace !== 'string' || !namespace) {
+    throw new Error('createComponentRegistry: a non-empty string `namespace` is required')
   }
-  const KEY = Symbol.for(`vike-data.fieldWidgets:${name}`)
+  if (typeof name !== 'string' || !name) {
+    throw new Error('createComponentRegistry: a non-empty string `name` is required')
+  }
+  const KEY = Symbol.for(`vike-data.components:${namespace}:${name}`)
   const map = () => (globalThis[KEY] ??= new Map())
   return {
-    // Register (or override) the control for a token. Idempotent: a later call wins, so an app
+    // Register (or override) the component for a token. Idempotent: a later call wins, so an app
     // can swap a built-in. Validated so a typo'd token or a non-component fails loudly at
     // registration, not silently at render.
     register(token, component) {
       if (typeof token !== 'string' || token === '') {
-        throw new Error('registerFieldWidget(token, component): token must be a non-empty string')
+        throw new Error('register(token, component): token must be a non-empty string')
       }
       if (typeof component !== 'function') {
-        throw new Error(`registerFieldWidget(${JSON.stringify(token)}, component): component must be a function`)
+        throw new Error(`register(${JSON.stringify(token)}, component): component must be a function`)
       }
       map().set(token, component)
       return component
     },
-    // The control for a token, or undefined when none is registered (the caller falls back).
+    // The component for a token, or undefined when none is registered (the caller falls back).
     get(token) {
       return map().get(token)
     },
@@ -148,6 +167,21 @@ export function createFieldWidgetRegistry(name) {
       return [...map().keys()]
     },
   }
+}
+
+/**
+ * The field-widget registry: a `createComponentRegistry` in the `fieldWidgets` namespace. Kept as
+ * its own named factory because it is the established public surface (vike-admin's
+ * `registerFieldWidget`, vike-storage's `file` control); it now delegates to the generic
+ * primitive so field widgets and block renderers share one mechanism.
+ *
+ * @param {string} name  Per-framework key, e.g. 'react' or 'vue'.
+ */
+export function createFieldWidgetRegistry(name) {
+  if (typeof name !== 'string' || !name) {
+    throw new Error('createFieldWidgetRegistry: a non-empty string `name` is required')
+  }
+  return createComponentRegistry('fieldWidgets', name)
 }
 
 /**
