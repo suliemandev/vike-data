@@ -1,33 +1,39 @@
-// Authoring style 1: FLUENT BUILDERS. `definePage({ sections })` composes a page out of blocks;
-// each section is a builder (heading/text/badge/... or the custom callout) whose `.build()`
-// collapses to a descriptor. `<Page>` resolves the page and draws each block with its registered
-// renderer — importing ./callout.block registers the custom one alongside the built-ins.
-import { definePage, heading, text, badge, divider, link } from 'vike-blocks'
-import { Page } from 'vike-blocks/react'
-import { callout } from '../callout.block.jsx'
+// The catalog landing: a gallery of the built-in blocks, each linking to its demo page. This page
+// is plain app chrome (not composed of blocks) — a directory into the demos.
+const catalog = [
+  { name: 'Tabs', href: '/tabs', tag: 'interactive', desc: 'Tabs with a sliding highlight and animated panels. Each panel composes other blocks.' },
+  { name: 'Button', href: '/button', tag: 'leaf', desc: 'Themed buttons — primary / secondary / ghost / danger, two sizes, optional nav.' },
+  { name: 'Primitives', href: '/primitives', tag: 'leaf', desc: 'heading · text · badge · divider · link — the built-in leaf blocks, composed with definePage.' },
+  { name: 'Custom blocks', href: '/raw', tag: 'extend', desc: 'Define your own with defineBlock, or author a page as plain { block, ...props } descriptors.' },
+]
 
-const home = definePage({
-  sections: [
-    heading('vike-blocks').level(1),
-    text('A page is a composition of BLOCKS — a UI schema, separate from any data schema. These are the built-in primitives; the boxes below are a custom block defined in this app.').tone('muted'),
-    badge('primitives').tone('info'),
-    divider(),
-    callout('What is a block?')
-      .tone('info')
-      .body('A { block: "type", ...props } descriptor. definePage composes them into a page; a per-framework renderer draws each one. No layout DSL — just typed sections.'),
-    callout('Custom blocks are peers')
-      .tone('warn')
-      .body('The callout is not built in — it was created with defineBlock() + registerBlockRenderer() in ./callout.block.jsx. Your block composes exactly like heading/text/badge.'),
-    divider(),
-    text('The same page can also be built from plain descriptors instead of builders:').tone('muted'),
-    link('See the plain-descriptor version ->').to('/raw'),
-  ],
-})
-
-export default function HomePage() {
+export default function CatalogPage() {
   return (
-    <div style={{ maxWidth: 680, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
-      <Page page={home} />
+    <div style={{ maxWidth: 860, margin: '3rem auto', padding: '0 1.25rem', fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
+      <style>{'.vb-card{transition:border-color .15s ease, transform .15s ease}.vb-card:hover{border-color:#2563eb;transform:translateY(-2px)}'}</style>
+      <header style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: 30, margin: '0 0 0.4rem' }}>vike-blocks</h1>
+        <p style={{ color: '#64748b', fontSize: 16, margin: 0, lineHeight: 1.5 }}>
+          Composable UI as data — a page is a composition of blocks. Browse the built-in catalog:
+        </p>
+      </header>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+        {catalog.map((c) => (
+          <a
+            key={c.href}
+            href={c.href}
+            className="vb-card"
+            style={{ display: 'block', textDecoration: 'none', color: 'inherit', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.1rem 1.2rem', background: '#fff' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 17, fontWeight: 600 }}>{c.name}</span>
+              <span style={{ fontSize: 11, color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 999, padding: '1px 8px' }}>{c.tag}</span>
+            </div>
+            <p style={{ margin: '0 0 0.85rem', fontSize: 14, color: '#475569', lineHeight: 1.5 }}>{c.desc}</p>
+            <span style={{ fontSize: 13, color: '#2563eb', fontWeight: 500 }}>View demo -&gt;</span>
+          </a>
+        ))}
+      </div>
     </div>
   )
 }

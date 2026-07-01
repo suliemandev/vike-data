@@ -14,7 +14,7 @@ const sections = [
   { block: 'callout', title: 'A block is just data', tone: 'info', body: 'This is the { block, ...props } shape the builders collapse to. Because it is plain data, a page can be stored, generated, or streamed — not only written by hand.' },
   { block: 'callout', title: 'Same renderer', tone: 'warn', body: 'The custom callout renders identically here — resolvePage + <Blocks> is the low-level path that <Page> wraps.' },
   { block: 'divider' },
-  { block: 'link', label: '<- back to the fluent-builder version', to: '/' },
+  { block: 'link', label: '<- back to the fluent-builder version', to: '/primitives' },
 ]
 
 export default function RawPage() {
@@ -22,6 +22,9 @@ export default function RawPage() {
   return (
     <div style={{ maxWidth: 680, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
       <Blocks sections={resolved.sections} />
+      <p style={{ marginTop: '1.5rem' }}>
+        <a href="/">{'<-'} back to catalog</a>
+      </p>
     </div>
   )
 }

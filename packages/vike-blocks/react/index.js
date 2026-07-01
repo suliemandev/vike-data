@@ -3,6 +3,10 @@
 // registers the built-in block renderers. vike-view/react registers the schema renderers
 // (list/record/form) into the same shared registry; a third-party vike-block-* registers its
 // own with registerBlockRenderer.
+import './ButtonView.jsx' // side-effect: register the button renderer
+import './TabsView.jsx' // side-effect: register the tabs renderer
 export { registerBlockRenderer, getBlockRenderer, blockRendererTokens } from './registry.js'
 export { Blocks, Page } from './Blocks.jsx' // importing Blocks registers the built-in blocks
 export { Text, Heading, Badge, Divider, Link, Markdown, Stat } from './primitives.jsx'
+export { ButtonView } from './ButtonView.jsx'
+export { TabsView } from './TabsView.jsx'
