@@ -4,9 +4,9 @@ vike-blocks used directly — no schema, no data layer, no Tailwind. A page is a
 
 ## What it shows
 
-- **Compose primitives** (`/`): `definePage({ sections: [...] })` composes the built-in blocks (`heading`/`text`/`badge`/`divider`/`link`) with their fluent builders, rendered by `<Page>`.
+- **The catalog** (`/`): a gallery of the built-in blocks, each linking to its demo. The demos: `/primitives` (heading/text/badge/divider/link), `/heading` (the six levels), `/button`, `/alert`, and the interactive containers `/tabs`, `/accordion`, `/dialog`. Each `definePage({ sections: [...] })` composes blocks with their fluent builders, rendered by `<Page>`.
 - **A custom block** (`pages/callout.block.jsx`): `defineBlock('callout', { build, refine })` + `registerBlockRenderer('callout', Component)` add a new block *in the app*. It composes exactly like the built-ins — a third-party block is a peer, not a special case.
-- **Two authoring styles**: the home route uses fluent builders (`callout('Heads up').tone('warn').body('...')`); `/raw` hand-writes the same page as plain `{ block, ...props }` descriptors and draws them with `resolvePage` + `<Blocks>` (the low-level path `<Page>` wraps). Because a block is just data, a page can be stored, generated, or streamed.
+- **Two authoring styles**: the demos use fluent builders (`callout('Heads up').tone('warn').body('...')`); `/raw` hand-writes a page as plain `{ block, ...props }` descriptors and draws them with `resolvePage` + `<Blocks>` (the low-level path `<Page>` wraps). Because a block is just data, a page can be stored, generated, or streamed.
 
 ## Run
 
@@ -24,8 +24,15 @@ Open http://localhost:4300.
 ```
 pages/
   callout.block.jsx   defineBlock('callout') + registerBlockRenderer('callout') — a custom block
-  index/+Page.jsx     definePage(...) with fluent builders, rendered by <Page>
-  raw/+Page.jsx       the same page as plain descriptors, via resolvePage + <Blocks>
+  index/+Page.jsx     the catalog gallery, linking to each demo
+  primitives/+Page.jsx  heading / text / badge / divider / link
+  heading/+Page.jsx   the six heading levels + level-scaled spacing
+  button/+Page.jsx    themed buttons (variants, sizes, .to nav)
+  alert/+Page.jsx     tone-styled notice (info / success / warning / danger)
+  tabs/+Page.jsx      tabs container (sliding highlight, height morph)
+  accordion/+Page.jsx accordion container (single / multi-open)
+  dialog/+Page.jsx    modal dialog (portal, focus trap, Escape, scroll-lock)
+  raw/+Page.jsx       a page as plain descriptors, via resolvePage + <Blocks>
   +config.js          extends vike-react (vike-blocks is a library, not a Vike extension)
 ```
 
