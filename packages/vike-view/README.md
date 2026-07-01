@@ -122,6 +122,27 @@ token. A foreign key becomes a select whose options a data hook fills from the r
 `parseListQuery` validates a `?query=` (filter / orderBy / limit / offset) against a view's
 columns before it reaches the database.
 
+## Data — `vike-view/data`
+
+`resolveView` gives structure; `hydrateView` fills in the data, server-side:
+
+```js
+import { hydrateView, buildDb, resolveViewTables, createRow } from 'vike-view'
+
+const tables = resolveViewTables(config)
+const db = buildDb(tables)               // universal-orm repository on the app's adapter
+const scope = (table, ctx) => ({ user_id: ctx.user.id })  // row scoping (#104), request-time
+
+const hydrated = await hydrateView(view, { tables, db, scope, ctx, search })
+// -> a `list` block now has resolved.rows (paged, scoped) + resolved.fkLabels;
+//    a `record` block (with an id) has resolved.row. Hand it to <Blocks>.
+```
+
+The write path — `createRow` / `updateRow` / `deleteRow` — coerces a submitted form, fills a
+primary key, and enforces the same scope on writes (a forged owner field is overwritten; an
+id-guess for another owner's row matches nothing). Scope stays a request-time function, so a
+predicate never serializes to the client.
+
 ## Rendering — `vike-view/react` (and `/vue`)
 
 > `vike-view/vue` is the exact Vue twin — `ListView` / `RecordView` / `FormView` self-registered for list/record/form, over the shared Vue field-widget registry. Same import shape (`import { Page } from 'vike-view/vue'`).
