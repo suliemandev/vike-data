@@ -1,5 +1,5 @@
 // The generic substrate: definePage composes a page from blocks, resolvePage turns block
-// descriptors into serializable view-models, the registry is open, and defineElement gives
+// descriptors into serializable view-models, the registry is open, and defineBlock gives
 // a leaf block a fluent builder. No schema here — the schema-derived blocks live in vike-view.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -10,7 +10,7 @@ import {
   getBlock,
   hasBlock,
   listBlocks,
-  defineElement,
+  defineBlock,
 } from '../index.js'
 
 // --- definePage normalization -------------------------------------------------
@@ -28,7 +28,7 @@ test('definePage rejects a non-string route and a section without a block type',
   assert.throws(() => definePage({ sections: [{ table: 'posts' }] }), /section 0 must be a block/)
 })
 
-test('definePage flattens nested section arrays and collapses element builders', () => {
+test('definePage flattens nested section arrays and collapses block builders', () => {
   const p = definePage({ sections: [{ block: 'stat', title: 'N' }, [{ block: 'markdown', source: 'x' }, { block: 'custom', component: 'C' }]] })
   assert.deepEqual(p.sections.map((s) => s.block), ['stat', 'markdown', 'custom'])
 })
@@ -45,9 +45,9 @@ test('resolvePage throws a clear error on an unknown block type', () => {
   assert.throws(() => resolvePage(definePage({ sections: [{ block: 'nope' }] })), /unknown block "nope"/)
 })
 
-// --- registry + defineElement -------------------------------------------------
+// --- registry + defineBlock -------------------------------------------------
 
-test('built-in blocks/elements are registered', () => {
+test('built-in blocks are registered', () => {
   for (const t of ['stat', 'markdown', 'custom', 'text', 'heading', 'badge', 'divider', 'link']) assert.ok(hasBlock(t), t)
   assert.ok(listBlocks().length >= 8)
 })
@@ -64,8 +64,8 @@ test('registerBlock validates its inputs', () => {
   assert.equal(getBlock('missing'), null)
 })
 
-test('defineElement registers a block and returns a fluent builder factory', () => {
-  const rating = defineElement('rating', {
+test('defineBlock registers a block and returns a fluent builder factory', () => {
+  const rating = defineBlock('rating', {
     build: (value) => ({ value }),
     refine: { max: (n) => ({ max: n }), readonly: () => ({ readonly: true }) },
   })
@@ -76,11 +76,11 @@ test('defineElement registers a block and returns a fluent builder factory', () 
   assert.deepEqual(r.resolved, { value: 4 })
 })
 
-test('defineElement validates build/refine at define time', () => {
-  assert.throws(() => defineElement('x', { build: 'no' }), /build must be a function/)
-  assert.throws(() => defineElement('x', { refine: 5 }), /refine must be an object/)
+test('defineBlock validates build/refine at define time', () => {
+  assert.throws(() => defineBlock('x', { build: 'no' }), /build must be a function/)
+  assert.throws(() => defineBlock('x', { refine: 5 }), /refine must be an object/)
   // a non-function refinement is caught HERE, not later in app code
-  assert.throws(() => defineElement('x', { refine: { max: 5 } }), /refine\.max must be a function/)
+  assert.throws(() => defineBlock('x', { refine: { max: 5 } }), /refine\.max must be a function/)
 })
 
 // --- robustness fixes ---------------------------------------------------------

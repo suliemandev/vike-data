@@ -1,6 +1,6 @@
 // The block-renderer registry for Vue — the Vue twin of vike-blocks/react's registry. Same
 // kit-backed mechanism, in the 'blocks'/'vue' slot, so vike-view/vue and any third-party Vue
-// element register into ONE shared map that <Blocks> dispatches on. Plain JS (no template) so
+// block register into ONE shared map that <Blocks> dispatches on. Plain JS (no template) so
 // it is unit-testable under node:test.
 import { createComponentRegistry } from '@vike-data/kit'
 

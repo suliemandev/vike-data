@@ -1,9 +1,9 @@
 // The block-renderer registry for React — the per-framework half of the block-rendering seam.
-// Where `defineElement`/`registerBlock` register a block's DESCRIPTOR + resolver (agnostic), this
+// Where `defineBlock`/`registerBlock` register a block's DESCRIPTOR + resolver (agnostic), this
 // registers the React COMPONENT that draws a resolved block, keyed by the same block type. It
 // is a thin binding over kit's generic `createComponentRegistry` in the `blocks` namespace, so
 // vike-view (list/record/form), vike-blocks (the primitives), and any third-party
-// `vike-element-*` all register into ONE shared map that `<Blocks>` dispatches on — no side
+// `vike-block-*` all register into ONE shared map that `<Blocks>` dispatches on — no side
 // depends on another. Plain JS (no JSX) so it is unit-testable under node:test.
 import { createComponentRegistry } from '@vike-data/kit'
 

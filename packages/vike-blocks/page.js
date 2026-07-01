@@ -16,7 +16,7 @@
 import { getBlock, listBlocks } from './registry.js'
 
 // Normalize a section list: flatten fully (so presets — even presets that return other
-// presets, e.g. crudBlocks) mix with single blocks in the same array), collapse element
+// presets, e.g. crudBlocks) mix with single blocks in the same array), collapse block
 // builders to plain specs, and validate each carries a `block` type.
 function normalizeSections(sections) {
   if (!Array.isArray(sections)) throw new Error('definePage: `sections` must be an array of blocks')

@@ -6,8 +6,8 @@ source of truth; a thin `defineView` config refines it; per-framework renderers 
 This package is the **schema layer over [`vike-blocks`](../vike-blocks)**: it derives a
 plain, serializable view-model from the merged schema and registers `list`/`record`/`form`
 blocks into vike-blocks' registry, so a page can compose them. vike-blocks owns the
-generic substrate (the block IR, the `definePage` composer, the registry + `defineElement`
-seam, the primitive elements); vike-view adds the data-driven blocks on top. No React, no
+generic substrate (the block IR, the `definePage` composer, the registry + `defineBlock`
+seam, the primitive blocks); vike-view adds the data-driven blocks on top. No React, no
 Vue, no Vike. "Declare intent, derive implementation."
 
 ## The three views, all derived from schema
@@ -23,7 +23,7 @@ Vue, no Vike. "Declare intent, derive implementation."
 A page is a **composition of blocks** (the UI/UX schema — see vike-blocks). `defineView` is
 vike-view's schema-flavored entry to the `definePage` composer: importing it registers the
 schema-derived blocks (`list`/`record`/`form`), so they resolve out of the box alongside the
-bespoke ones (`stat`/`markdown`/`custom`) and the fluent elements. The genuine long tail ejects
+bespoke ones (`stat`/`markdown`/`custom`) and the fluent blocks. The genuine long tail ejects
 to a real component / an AI-generated page rather than growing more config knobs.
 
 ```js
@@ -54,9 +54,9 @@ page; there is deliberately no layout/expression DSL.
 `crud({ table })` (below) is the schema-derived CRUD preset; `crudBlocks({ table })` expands
 it into the three `list`/`record`/`form` block descriptors for a page.
 
-## Elements — fluent leaf blocks
+## Primitive blocks — fluent leaf builders
 
-For the non-schema bits of a page, author leaf blocks fluently with the element builders from
+For the non-schema bits of a page, author leaf blocks fluently with the block builders from
 vike-blocks (re-exported here for convenience). Same pattern as `column()`/`field()`, one
 level up — a lowercase factory that `.build()`s to a plain block descriptor:
 

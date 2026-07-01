@@ -3,10 +3,10 @@
 // resolved sections; `<Page>` resolves a view first (so an app can hand it a defineView/
 // definePage result + the composed tables). A block type with no registered renderer is skipped
 // (returns nothing) rather than throwing, so a page degrades gracefully. Importing this module
-// registers the built-in element renderers (via ./elements.jsx).
+// registers the built-in block renderers (via ./primitives.jsx).
 import { resolvePage } from '../page.js'
 import { getBlockRenderer } from './registry.js'
-import './elements.jsx' // side-effect: register text / heading / badge / divider / link / markdown / stat
+import './primitives.jsx' // side-effect: register text / heading / badge / divider / link / markdown / stat
 
 // Draw a list of RESOLVED sections (`{ block, props, resolved }`, from resolvePage/resolveView).
 export function Blocks({ sections = [] }) {

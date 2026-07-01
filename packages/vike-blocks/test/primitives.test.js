@@ -1,10 +1,10 @@
-// The built-in fluent element builders: each builds to a leaf block descriptor and drops
+// The built-in fluent block builders: each builds to a leaf block descriptor and drops
 // straight into a page's sections, resolving as a pass-through. Display-only.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { text, heading, badge, divider, link, definePage, resolvePage, hasBlock } from '../index.js'
 
-test('element builders collapse to plain block descriptors', () => {
+test('block builders collapse to plain block descriptors', () => {
   assert.deepEqual(text('Hello').build(), { block: 'text', value: 'Hello' })
   assert.deepEqual(text('Careful').tone('danger').build(), { block: 'text', value: 'Careful', tone: 'danger' })
   assert.deepEqual(heading('Post').build(), { block: 'heading', value: 'Post', level: 2 })
@@ -18,7 +18,7 @@ test('their block types are registered', () => {
   for (const t of ['text', 'heading', 'badge', 'divider', 'link']) assert.ok(hasBlock(t), t)
 })
 
-test('elements compose in a page and resolve as pass-through sections', () => {
+test('blocks compose in a page and resolve as pass-through sections', () => {
   const page = definePage({ route: '/x', sections: [heading('Post').level(1), text('Body'), divider(), link('Back').to('/posts')] })
   const out = resolvePage(page)
   assert.deepEqual(out.sections.map((s) => s.block), ['heading', 'text', 'divider', 'link'])
