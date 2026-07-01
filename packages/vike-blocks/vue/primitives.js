@@ -11,9 +11,13 @@ const TONE = { muted: 'var(--color-muted)', danger: 'var(--color-danger, #dc2626
 export const Text = (props) => h('span', { style: { color: props.tone ? (TONE[props.tone] ?? 'inherit') : 'var(--color-text, inherit)' } }, props.value)
 Text.props = ['value', 'tone']
 
+// Top margin scales with level so sections breathe: a page-title h1 stays flush (usually the first
+// block on a page), while an h2/h3 section heading separates from the block above it.
+const HEADING_TOP = { 1: '0', 2: '1.5rem', 3: '1.25rem' }
+
 export const Heading = (props) => {
   const level = Math.min(6, Math.max(1, props.level ?? 2))
-  return h(`h${level}`, { style: { margin: '0 0 0.5rem' } }, props.value)
+  return h(`h${level}`, { style: { margin: `${HEADING_TOP[level] ?? '1rem'} 0 0.5rem` } }, props.value)
 }
 Heading.props = ['value', 'level']
 
