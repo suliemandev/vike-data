@@ -1,12 +1,13 @@
-// Programmatic surface of vike-view's framework-agnostic core. A preset (vike-admin) or a
-// per-table view consumes these to derive a list / record / form view-model from the
-// composed schema and run it over the app's ORM adapter. No React, no Vike.
-//
-// The top-level primitive is `defineView({ route, sections })` — a page composed of blocks;
-// `crud`/`crudBlocks` are the schema-derived CRUD preset over it.
-export { defineView, resolveView } from './view.js'
-export { registerBlock, getBlock, hasBlock, listBlocks, crudBlocks } from './blocks.js'
-export { text, heading, badge, divider, link } from './elements.js'
+// Programmatic surface of vike-view — the schema-driven layer over vike-elements. It
+// re-exports the vike-elements substrate (the composer, registry, defineElement, and the
+// primitive elements) as a convenience umbrella, and adds the schema layer: crud derivation,
+// the list/record/form blocks, and `defineView`. Importing anything here registers the
+// schema-derived blocks. No React, no Vike.
+export { definePage, resolvePage, registerBlock, getBlock, hasBlock, listBlocks, defineElement, text, heading, badge, divider, link } from 'vike-elements'
+// `resolveView` is the schema-app's name for the generic `resolvePage` (kept for continuity).
+export { resolvePage as resolveView } from 'vike-elements'
+export { defineView } from './view.js' // side-effect: registers list / record / form
+export { crudBlocks } from './schema-blocks.js'
 export { crud, column, display, field } from './define.js'
 export {
   resolveViewTables,
