@@ -629,7 +629,17 @@ importers:
         specifier: workspace:*
         version: link:../vike-stripe
 
-  packages/vike-elements: {}
+  packages/vike-elements:
+    dependencies:
+      '@vike-data/kit':
+        specifier: workspace:*
+        version: link:../kit
+      react:
+        specifier: '>=18'
+        version: 19.2.7
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4)))
 
   packages/vike-i18n:
     dependencies:
@@ -1024,9 +1034,15 @@ importers:
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
+      react:
+        specifier: '>=18'
+        version: 19.2.7
       vike-elements:
         specifier: workspace:*
         version: link:../vike-elements
+      vike-react:
+        specifier: '>=0.6'
+        version: 0.6.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4)))
 
 packages:
 
@@ -9088,6 +9104,13 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
       react-streaming: 0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       vike: 0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@7.3.6(@types/node@20.19.43)(lightningcss@1.32.0)(tsx@4.22.4))
+
+  vike-react@0.6.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4))):
+    dependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-streaming: 0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      vike: 0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(srvx@0.11.17)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(tsx@4.22.4))
 
   vike-toolbar@file:examples/react/ejected/vike-toolbar(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike-react@0.6.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vike@0.4.259-commit-f6ecfb2(@types/express@5.0.6)(react-streaming@0.4.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(srvx@0.11.17)(vite@7.3.5(@types/node@26.0.0)(lightningcss@1.32.0)(tsx@4.22.4)))):
     optionalDependencies:

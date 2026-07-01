@@ -122,6 +122,25 @@ token. A foreign key becomes a select whose options a data hook fills from the r
 `parseListQuery` validates a `?query=` (filter / orderBy / limit / offset) against a view's
 columns before it reaches the database.
 
+## Rendering — `vike-view/react`
+
+Importing `vike-view/react` registers the schema renderers (`ListView` / `RecordView` /
+`FormView`) into vike-elements' block-renderer registry and re-exports the `<Blocks>` / `<Page>`
+dispatch, so one import renders a schema page:
+
+```jsx
+import { Page } from 'vike-view/react'
+import { defineView, crudBlocks, resolveViewTables } from 'vike-view'
+
+const tables = resolveViewTables(config)
+const view = defineView({ route: '/posts', sections: crudBlocks({ table: 'posts' }) })
+// <Page page={view} tables={tables} /> -> list + record + form, derived from the schema.
+```
+
+`FormView` derives each control from the field's widget/type (an `enum` column becomes a
+`<select>`, a required column is marked, a boolean becomes a checkbox). List rows and record
+values are supplied by the data layer (the MVP-proof wiring); the renderer draws the structure.
+
 ## Relationship to vike-admin
 
 `vike-admin` is a **preset over vike-view**: it wires these derivations to a whole-DB

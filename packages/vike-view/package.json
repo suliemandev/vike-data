@@ -11,7 +11,8 @@
     "./define": "./define.js",
     "./resolve": "./resolve.js",
     "./project": "./project.js",
-    "./query": "./query.js"
+    "./query": "./query.js",
+    "./react": "./react/index.js"
   },
   "scripts": {
     "test": "node --test"
@@ -22,5 +23,13 @@
     "@vike-data/kit": "workspace:*",
     "@vike-data/vike-schema": "workspace:*",
     "vike-elements": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vike-react": ">=0.6"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vike-react": { "optional": true }
   }
 }
