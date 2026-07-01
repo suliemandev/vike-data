@@ -5,10 +5,7 @@
   "type": "module",
   "description": "vike-elements: composable UI as data. The framework-agnostic substrate for building a page out of BLOCKS — a block descriptor IR + an open registry, the definePage composer, primitive elements (text/heading/badge/divider/link, stat/markdown/custom), and the defineElement seam so any package can ship a new element with high DX. vike-view layers schema-driven blocks on top.",
   "exports": {
-    ".": "./index.js",
-    "./page": "./page.js",
-    "./registry": "./registry.js",
-    "./elements": "./elements.js"
+    ".": "./index.js"
   },
   "scripts": {
     "test": "node --test"

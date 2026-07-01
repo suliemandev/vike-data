@@ -15,16 +15,24 @@
 //   })
 import { getBlock, listBlocks } from './registry.js'
 
-// Normalize a section list: flatten one level (so a preset that returns several blocks mixes
-// with single blocks in the same array), collapse element builders to plain specs, and
-// validate each carries a `block` type.
+// Normalize a section list: flatten fully (so presets — even presets that return other
+// presets, e.g. crudBlocks) mix with single blocks in the same array), collapse element
+// builders to plain specs, and validate each carries a `block` type.
 function normalizeSections(sections) {
   if (!Array.isArray(sections)) throw new Error('definePage: `sections` must be an array of blocks')
-  const flat = sections.flat().filter((s) => s != null)
+  const flat = sections.flat(Infinity).filter((s) => s != null)
   return flat.map((entry, i) => {
-    const section = entry.build ? entry.build() : entry
+    // Duck-type a builder by a callable `.build`, not truthiness — a bespoke block can carry a
+    // prop literally named `build` (e.g. { block: 'deploy', build: 'ci-123' }).
+    const section = typeof entry?.build === 'function' ? entry.build() : entry
     if (!section || typeof section !== 'object' || typeof section.block !== 'string' || !section.block) {
-      throw new Error(`definePage: section ${i} must be a block descriptor, e.g. { block: "list", table: "posts" }`)
+      // A common slip: dropping a crud() CONFIG (which has `table` but no `block`) into sections
+      // instead of crudBlocks(). Point the way.
+      const hint =
+        section && typeof section === 'object' && typeof section.table === 'string' && !section.block
+          ? ` (a crud config is not a block — did you mean ...crudBlocks({ table: "${section.table}" })?)`
+          : ''
+      throw new Error(`definePage: section ${i} must be a block descriptor, e.g. { block: "list", table: "posts" }${hint}`)
     }
     return { ...section }
   })
@@ -50,12 +58,18 @@ export function definePage(def) {
 // schema, a bespoke block echoes its props). An unknown block type is a clear error listing
 // what IS registered — never a silently dropped section.
 export function resolvePage(page, tables) {
-  const sections = (page?.sections ?? []).map(({ block, ...props }) => {
+  const sections = (page?.sections ?? []).map(({ block, ...props }, i) => {
     const def = getBlock(block)
     if (!def) {
       throw new Error(`resolvePage: unknown block "${block}". Registered blocks: ${listBlocks().join(', ')}`)
     }
-    const resolved = def.resolve ? def.resolve({ props, tables }) : { ...props }
+    let resolved
+    try {
+      resolved = def.resolve ? def.resolve({ props, tables }) : { ...props }
+    } catch (e) {
+      // Name the failing section so a block's internal error isn't a context-free throw.
+      throw new Error(`resolvePage: block "${block}" (section ${i}) failed to resolve: ${e.message}`, { cause: e })
+    }
     return { block, props, resolved }
   })
   return { route: page?.route ?? null, sections }

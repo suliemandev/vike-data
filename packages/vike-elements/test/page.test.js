@@ -76,7 +76,36 @@ test('defineElement registers a block and returns a fluent builder factory', () 
   assert.deepEqual(r.resolved, { value: 4 })
 })
 
-test('defineElement validates build/refine', () => {
+test('defineElement validates build/refine at define time', () => {
   assert.throws(() => defineElement('x', { build: 'no' }), /build must be a function/)
   assert.throws(() => defineElement('x', { refine: 5 }), /refine must be an object/)
+  // a non-function refinement is caught HERE, not later in app code
+  assert.throws(() => defineElement('x', { refine: { max: 5 } }), /refine\.max must be a function/)
+})
+
+// --- robustness fixes ---------------------------------------------------------
+
+test('a bespoke block may carry a prop named "build" (duck-type is callable, not truthy)', () => {
+  const p = definePage({ sections: [{ block: 'deploy', build: 'ci-123' }] })
+  assert.deepEqual(p.sections, [{ block: 'deploy', build: 'ci-123' }])
+})
+
+test('definePage flattens deeply, so a preset of presets still composes', () => {
+  const p = definePage({ sections: [[[{ block: 'stat', title: 'A' }]], { block: 'markdown', source: 'x' }] })
+  assert.deepEqual(p.sections.map((s) => s.block), ['stat', 'markdown'])
+})
+
+test('dropping a crud() config into sections points to crudBlocks', () => {
+  assert.throws(
+    () => definePage({ sections: [{ table: 'posts', icon: null }] }),
+    /did you mean \.\.\.crudBlocks\(\{ table: "posts" \}\)/,
+  )
+})
+
+test('resolvePage names the failing section when a block resolve throws', () => {
+  registerBlock('boom', { resolve: () => { throw new Error('kaboom') } })
+  assert.throws(
+    () => resolvePage(definePage({ sections: [{ block: 'stat' }, { block: 'boom' }] })),
+    /block "boom" \(section 1\) failed to resolve: kaboom/,
+  )
 })

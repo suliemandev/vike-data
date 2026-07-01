@@ -42,11 +42,13 @@ defineView({
 })
 ```
 
-`resolveView(view, tables)` turns those descriptors into serializable view-models a renderer
-draws: a schema-derived block fills its `columns`/`fields` from the schema (through the same
-crud engine), a bespoke block echoes its props. The registry is open — an app or extension
-adds a block with `registerBlock('gauge', { resolve })`, so a new block type ships with the
-component that renders it. The genuine long tail drops to `block: 'custom'` or an AI-ejected
+`resolveView(view, tables)` (which is vike-elements' `resolvePage` re-exported — importing it
+from vike-view is what guarantees the schema blocks are registered) turns those descriptors
+into serializable view-models a renderer draws: a schema-derived block fills its
+`columns`/`fields` from the schema (through the same crud engine), a bespoke block echoes its
+props. The registry is open — an app or extension adds a block with
+`registerBlock('gauge', { resolve })`, so a new block type ships with the component that
+renders it. The genuine long tail drops to `block: 'custom'` or an AI-ejected
 page; there is deliberately no layout/expression DSL.
 
 `crud({ table })` (below) is the schema-derived CRUD preset; `crudBlocks({ table })` expands

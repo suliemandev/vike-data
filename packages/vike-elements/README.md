@@ -48,6 +48,8 @@ export const rating = defineElement('rating', {
 
 ```js
 // vike-element-rating/react — the renderer half, per framework
+// (`registerElementRenderer` is provided by the per-framework renderer package, e.g. a
+// forthcoming vike-elements/react — not by this agnostic core.)
 import { registerElementRenderer } from 'vike-elements/react'
 registerElementRenderer('rating', Rating)
 ```
@@ -55,6 +57,28 @@ registerElementRenderer('rating', Rating)
 Define once (builder + descriptor + registry entry), render once per framework. The built-in
 elements (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
 your custom element is a peer, not a special case.
+
+## What a renderer does with a resolved page
+
+`resolvePage(page, tables)` returns `{ route, sections: [{ block, props, resolved }] }`. A
+per-framework renderer keeps a `block -> component` map and draws each section, handing the
+component the block's serializable `resolved` view-model:
+
+```jsx
+// sketch of a React renderer
+const COMPONENTS = { list: ListView, record: RecordView, heading: Heading, /* ... */ }
+
+function Page({ page, tables }) {
+  const { sections } = resolvePage(page, tables)
+  return sections.map(({ block, resolved }, i) => {
+    const C = COMPONENTS[block]
+    return C ? <C key={i} {...resolved} /> : null
+  })
+}
+```
+
+`resolved` is plain data (a schema block's `columns`/`fields`, a bespoke block's props), so it
+serializes cleanly into the client hydration payload.
 
 ## The escape hatch
 
