@@ -1,11 +1,17 @@
 <script setup>
+// /admin/:table — the list. The TABLE (columns, sortable headers, FK cells, per-row edit link,
+// empty state) is rendered by vike-view/vue's ListView — vike-admin is a preset over vike-view, so
+// it draws its list through the same component instead of a second table (mirrors
+// vike-admin/react/ListPage). This page keeps the admin CHROME around it: the title, the "New"
+// button, and prev/next paging. Navigation is plain query-string links (`?page=&sort=&dir=`), so
+// it works without client JS.
 import { useData } from 'vike-vue/useData'
+import { ListView } from 'vike-view/vue'
 
 const data = useData()
 
-const cell = { padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '14px' }
-const th = { ...cell, color: 'var(--color-muted)', fontWeight: 600 }
-
+// Build an /admin/:table URL carrying the paging/sort state; empty params are dropped so a default
+// view stays a clean `/admin/:table`.
 function listUrl(table, { page, sort, dir }) {
   const qs = new URLSearchParams()
   if (page && page > 1) qs.set('page', String(page))
@@ -17,36 +23,13 @@ function listUrl(table, { page, sort, dir }) {
   return s ? `/admin/${table}?${s}` : `/admin/${table}`
 }
 
-function formatValue(value, format) {
-  if (value == null) return ''
-  if (format === 'since') return relativeTime(value)
-  if (typeof value === 'boolean') return value ? 'yes' : 'no'
-  return String(value)
-}
+// ListView's function props: a sortable header links to the same list sorted by its column; a row
+// links to its edit page (only when the user may edit — so no edit column otherwise).
+const sortHref = (name, nextDir) => listUrl(data.table, { page: 1, sort: name, dir: nextDir })
+const rowHref = data.canEdit ? (row) => `/admin/${data.table}/${encodeURIComponent(String(row[data.pk]))}` : undefined
 
-function relativeTime(value) {
-  const then = new Date(value).getTime()
-  if (Number.isNaN(then)) return String(value)
-  const secs = Math.round((Date.now() - then) / 1000)
-  const units = [['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60]]
-  for (const [name, size] of units) {
-    const n = Math.floor(secs / size)
-    if (n >= 1) return `${n} ${name}${n > 1 ? 's' : ''} ago`
-  }
-  return 'just now'
-}
-
-function headerHref(c) {
-  if (!c.sortable) return null
-  const active = data.sort === c.name
-  const nextDir = active && data.dir === 'asc' ? 'desc' : 'asc'
-  return listUrl(data.table, { page: 1, sort: c.name, dir: nextDir })
-}
-
-function headerArrow(c) {
-  if (data.sort !== c.name) return ''
-  return data.dir === 'asc' ? ' ↑' : ' ↓'
-}
+const pagerLink = { padding: '0.35rem 0.75rem', borderRadius: 'var(--radius, 8px)', border: '1px solid var(--color-border)', textDecoration: 'none', color: 'var(--color-text)' }
+const pagerDisabled = { padding: '0.35rem 0.75rem', color: 'var(--color-muted)', opacity: 0.5 }
 </script>
 <template>
   <div :style="{ maxWidth: '900px', margin: '0 auto' }">
@@ -54,38 +37,26 @@ function headerArrow(c) {
       <h1 :style="{ margin: 0, fontSize: '22px' }">{{ data.label }}</h1>
       <a v-if="data.canEdit" :href="`/admin/${data.table}/new`" :style="{ background: 'var(--color-primary)', color: 'var(--color-primary-text, #fff)', padding: '0.45rem 0.9rem', borderRadius: 'var(--radius, 8px)', textDecoration: 'none', fontSize: '14px' }">+ New</a>
     </div>
-    <div :style="{ overflowX: 'auto' }">
-      <table :style="{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius, 10px)', overflow: 'hidden' }">
-        <thead>
-          <tr>
-            <th v-for="c in data.columns" :key="c.name" :style="th">
-              <a v-if="c.sortable" :href="headerHref(c)" :style="{ color: 'inherit', textDecoration: 'none' }">{{ c.label }}{{ headerArrow(c) }}</a>
-              <template v-else>{{ c.label }}</template>
-            </th>
-            <th v-if="data.canEdit" :style="th"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in data.rows" :key="String(row[data.pk])">
-            <td v-for="c in data.columns" :key="c.name" :style="cell">
-              {{ data.fkLabels?.[c.name]?.[String(row[c.name])] ?? formatValue(row[c.name], c.format) }}
-            </td>
-            <td v-if="data.canEdit" :style="{ ...cell, textAlign: 'right' }">
-              <a :href="`/admin/${data.table}/${encodeURIComponent(String(row[data.pk]))}`" :style="{ color: 'var(--color-primary)', fontSize: '13px', textDecoration: 'none' }">Edit</a>
-            </td>
-          </tr>
-          <tr v-if="data.rows.length === 0">
-            <td :colspan="data.columns.length + (data.canEdit ? 1 : 0)" :style="{ ...cell, color: 'var(--color-muted)', textAlign: 'center' }">No rows found.</td>
-          </tr>
-        </tbody>
-      </table>
+    <div :style="{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius, 10px)', overflow: 'hidden', background: 'var(--color-surface)' }">
+      <ListView
+        :table="data.table"
+        :columns="data.columns"
+        :rows="data.rows"
+        :pk="data.pk"
+        :fkLabels="data.fkLabels"
+        :sort="data.sort"
+        :dir="data.dir"
+        :sortHref="sortHref"
+        :rowHref="rowHref"
+        empty-label="No rows found."
+      />
     </div>
     <div :style="{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 'var(--space-md, 1rem)', fontSize: '14px' }">
-      <a v-if="data.page > 1" :href="listUrl(data.table, { page: data.page - 1, sort: data.sort, dir: data.dir })" :style="{ padding: '0.35rem 0.75rem', borderRadius: 'var(--radius, 8px)', border: '1px solid var(--color-border)', textDecoration: 'none', color: 'var(--color-text)' }">← Prev</a>
-      <span v-else :style="{ padding: '0.35rem 0.75rem', color: 'var(--color-muted)', opacity: 0.5 }">← Prev</span>
+      <a v-if="data.page > 1" :href="listUrl(data.table, { page: data.page - 1, sort: data.sort, dir: data.dir })" :style="pagerLink">← Prev</a>
+      <span v-else :style="pagerDisabled">← Prev</span>
       <span :style="{ color: 'var(--color-muted)' }">{{ data.page }} / {{ data.pageCount }}</span>
-      <a v-if="data.page < data.pageCount" :href="listUrl(data.table, { page: data.page + 1, sort: data.sort, dir: data.dir })" :style="{ padding: '0.35rem 0.75rem', borderRadius: 'var(--radius, 8px)', border: '1px solid var(--color-border)', textDecoration: 'none', color: 'var(--color-text)' }">Next →</a>
-      <span v-else :style="{ padding: '0.35rem 0.75rem', color: 'var(--color-muted)', opacity: 0.5 }">Next →</span>
+      <a v-if="data.page < data.pageCount" :href="listUrl(data.table, { page: data.page + 1, sort: data.sort, dir: data.dir })" :style="pagerLink">Next →</a>
+      <span v-else :style="pagerDisabled">Next →</span>
       <span :style="{ marginInlineStart: 'auto', color: 'var(--color-muted)' }">{{ data.total }} rows</span>
     </div>
   </div>
