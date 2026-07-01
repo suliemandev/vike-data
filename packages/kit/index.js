@@ -152,8 +152,11 @@ export function createComponentRegistry(namespace, name) {
       if (typeof token !== 'string' || token === '') {
         throw new Error('register(token, component): token must be a non-empty string')
       }
-      if (typeof component !== 'function') {
-        throw new Error(`register(${JSON.stringify(token)}, component): component must be a function`)
+      // A component is framework-shaped: a React function component OR a component OBJECT (a Vue
+      // component, or a React memo/forwardRef, which are objects). Held opaque either way; reject
+      // only a clearly-non-component (string/number/null).
+      if (typeof component !== 'function' && (component === null || typeof component !== 'object')) {
+        throw new Error(`register(${JSON.stringify(token)}, component): component must be a function or a component object`)
       }
       map().set(token, component)
       return component

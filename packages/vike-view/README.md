@@ -122,7 +122,10 @@ token. A foreign key becomes a select whose options a data hook fills from the r
 `parseListQuery` validates a `?query=` (filter / orderBy / limit / offset) against a view's
 columns before it reaches the database.
 
-## Rendering — `vike-view/react`
+## Rendering — `vike-view/react` (and `/vue`)
+
+> `vike-view/vue` is the exact Vue twin — `ListView` / `RecordView` / `FormView` self-registered for list/record/form, over the shared Vue field-widget registry. Same import shape (`import { Page } from 'vike-view/vue'`).
+
 
 Importing `vike-view/react` registers the schema renderers (`ListView` / `RecordView` /
 `FormView`) into vike-elements' block-renderer registry and re-exports the `<Blocks>` / `<Page>`

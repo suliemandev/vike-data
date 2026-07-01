@@ -29,6 +29,16 @@ test('createComponentRegistry validates namespace, name, token, component', () =
   assert.throws(() => r.register('x', 'nope'), /must be a function/)
 })
 
+test('a component may be a function (React) OR an object (Vue / memo / forwardRef)', () => {
+  const r = createComponentRegistry('test-shapes', 'vue')
+  const vueComponent = { props: ['value'], setup: () => () => null } // a Vue component options object
+  assert.equal(r.register('list', vueComponent), vueComponent)
+  assert.equal(r.get('list'), vueComponent)
+  // still rejects a clearly-non-component
+  assert.throws(() => r.register('bad', 42), /must be a function or a component object/)
+  assert.throws(() => r.register('bad', null), /must be a function or a component object/)
+})
+
 test('createFieldWidgetRegistry is a fieldWidgets-namespaced component registry', () => {
   // it shares a slot with the equivalent generic registry (the delegation)
   const fw = createFieldWidgetRegistry('test-delegate')
