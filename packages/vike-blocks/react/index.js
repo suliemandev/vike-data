@@ -8,6 +8,7 @@ import './AlertView.jsx' // side-effect: register the alert renderer
 import './TabsView.jsx' // side-effect: register the tabs renderer
 import './AccordionView.jsx' // side-effect: register the accordion renderer
 import './DialogView.jsx' // side-effect: register the dialog renderer
+import './CardView.jsx' // side-effect: register the card renderer
 export { registerBlockRenderer, getBlockRenderer, blockRendererTokens } from './registry.js'
 export { Blocks, Page } from './Blocks.jsx' // importing Blocks registers the built-in blocks
 export { Text, Heading, Badge, Divider, Link, Markdown, Stat } from './primitives.jsx'
@@ -16,3 +17,4 @@ export { AlertView } from './AlertView.jsx'
 export { TabsView } from './TabsView.jsx'
 export { AccordionView } from './AccordionView.jsx'
 export { DialogView } from './DialogView.jsx'
+export { CardView } from './CardView.jsx'

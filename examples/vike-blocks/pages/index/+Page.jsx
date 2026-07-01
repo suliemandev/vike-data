@@ -4,6 +4,7 @@ const catalog = [
   { name: 'Tabs', href: '/tabs', tag: 'interactive', desc: 'Tabs with a sliding highlight and animated panels. Each panel composes other blocks.' },
   { name: 'Accordion', href: '/accordion', tag: 'interactive', desc: 'Expand/collapse sections with an animated height morph. Single or multi-open; each panel composes other blocks.' },
   { name: 'Dialog', href: '/dialog', tag: 'interactive', desc: 'A modal overlay with a portal, focus trap, Escape / outside-click, and scroll-lock. Dep-free; holds nested blocks.' },
+  { name: 'Card', href: '/card', tag: 'container', desc: 'A bordered surface with an optional header + footer, wrapping nested blocks. The most-used building block; cards compose recursively.' },
   { name: 'Headings', href: '/heading', tag: 'leaf', desc: 'Six levels (h1-h6) with level-scaled top spacing, so sections breathe. Theme-native text color.' },
   { name: 'Alert', href: '/alert', tag: 'leaf', desc: 'A tone-styled notice — info / success / warning / danger. Theme-native accent + tint, dep-free.' },
   { name: 'Button', href: '/button', tag: 'leaf', desc: 'Themed buttons — primary / secondary / ghost / danger, two sizes, optional nav.' },
