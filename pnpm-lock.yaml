@@ -629,6 +629,8 @@ importers:
         specifier: workspace:*
         version: link:../vike-stripe
 
+  packages/vike-elements: {}
+
   packages/vike-i18n:
     dependencies:
       '@anthropic-ai/sdk':
@@ -1022,6 +1024,9 @@ importers:
       '@vike-data/vike-schema':
         specifier: workspace:*
         version: link:../vike-schema
+      vike-elements:
+        specifier: workspace:*
+        version: link:../vike-elements
 
 packages:
 

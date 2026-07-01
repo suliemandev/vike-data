@@ -3,12 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "vike-view: schema-driven views (list / record / form) for any framework. The framework-agnostic core that derives a view-model from the composed schema — defineView + column/field/display refinements, schema->widget mapping, row scoping, FK-aware selects, projection, and a validated list query. vike-admin is a preset over it; per-framework renderers draw it.",
+  "description": "vike-view: schema-driven views (list / record / form) for any framework. The schema layer over vike-elements — it derives a view-model from the composed schema (crud + column/field/display refinements, schema->widget mapping, row scoping, FK-aware selects, projection, a validated list query) and registers list/record/form blocks. vike-admin is a preset over it; per-framework renderers draw it.",
   "exports": {
     ".": "./index.js",
     "./view": "./view.js",
-    "./blocks": "./blocks.js",
-    "./elements": "./elements.js",
+    "./schema-blocks": "./schema-blocks.js",
     "./define": "./define.js",
     "./resolve": "./resolve.js",
     "./project": "./project.js",
@@ -21,6 +20,7 @@
     "@universal-orm/core": "workspace:*",
     "@universal-orm/memory": "workspace:*",
     "@vike-data/kit": "workspace:*",
-    "@vike-data/vike-schema": "workspace:*"
+    "@vike-data/vike-schema": "workspace:*",
+    "vike-elements": "workspace:*"
   }
 }

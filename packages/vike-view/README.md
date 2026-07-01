@@ -3,9 +3,12 @@
 Schema-driven views (list / record / form) for any framework. The composed schema is the
 source of truth; a thin `defineView` config refines it; per-framework renderers draw it.
 
-This package is the **framework-agnostic core**: no React, no Vue, no Vike. It derives a
-plain, serializable view-model from the merged schema, so any renderer (and the `vike-admin`
-preset) can consume the same derivation. "Declare intent, derive implementation."
+This package is the **schema layer over [`vike-elements`](../vike-elements)**: it derives a
+plain, serializable view-model from the merged schema and registers `list`/`record`/`form`
+blocks into vike-elements' registry, so a page can compose them. vike-elements owns the
+generic substrate (the block IR, the `definePage` composer, the registry + `defineElement`
+seam, the primitive elements); vike-view adds the data-driven blocks on top. No React, no
+Vue, no Vike. "Declare intent, derive implementation."
 
 ## The three views, all derived from schema
 
@@ -17,16 +20,16 @@ preset) can consume the same derivation. "Declare intent, derive implementation.
 
 ## The view is a UI schema
 
-The top-level primitive is `defineView` — a **page as a composition of blocks** (the UI/UX
-schema), where a block may be schema-derived (`list` / `record` / `form` of a table) or
-bespoke (`stat` / `markdown` / `chart` / `custom`). Blocks live in an open registry, and the
-genuine long tail ejects to a real component / an AI-generated page rather than growing more
-config knobs.
+A page is a **composition of blocks** (the UI/UX schema — see vike-elements). `defineView` is
+vike-view's schema-flavored entry to the `definePage` composer: importing it registers the
+schema-derived blocks (`list`/`record`/`form`), so they resolve out of the box alongside the
+bespoke ones (`stat`/`markdown`/`custom`) and the fluent elements. The genuine long tail ejects
+to a real component / an AI-generated page rather than growing more config knobs.
 
 ```js
-import { defineView, crudBlocks, registerBlock } from 'vike-view'
+import { defineView, crudBlocks } from 'vike-view'
 
-// The general primitive (block IR): any page, composed of blocks.
+// A page composed of blocks; list/record/form derive from the schema.
 defineView({
   route: '/dashboard',
   sections: [
@@ -51,12 +54,13 @@ it into the three `list`/`record`/`form` block descriptors for a page.
 
 ## Elements — fluent leaf blocks
 
-For the non-schema bits of a page, author leaf blocks fluently with the element builders
-(same pattern as `column()`/`field()`, one level up — a lowercase factory that `.build()`s to
-a plain block descriptor):
+For the non-schema bits of a page, author leaf blocks fluently with the element builders from
+vike-elements (re-exported here for convenience). Same pattern as `column()`/`field()`, one
+level up — a lowercase factory that `.build()`s to a plain block descriptor:
 
 ```js
-import { heading, text, badge, divider, link } from 'vike-view/elements'
+import { defineView } from 'vike-view'
+import { heading, text, badge, divider, link } from 'vike-elements'
 
 defineView({
   route: '/posts/@id',
