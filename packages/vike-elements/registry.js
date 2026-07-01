@@ -51,6 +51,11 @@ export const listBlocks = () => [...REGISTRY.keys()]
 export function defineElement(type, { build, refine = {}, resolve } = {}) {
   if (build != null && typeof build !== 'function') throw new Error(`defineElement(${JSON.stringify(type)}): build must be a function`)
   if (refine == null || typeof refine !== 'object') throw new Error(`defineElement(${JSON.stringify(type)}): refine must be an object of functions`)
+  // Validate each refinement up front, so a typo (`refine: { max: 5 }`) throws HERE, where the
+  // element author can fix it, not later as a cryptic "patch is not a function" in app code.
+  for (const name of Object.keys(refine)) {
+    if (typeof refine[name] !== 'function') throw new Error(`defineElement(${JSON.stringify(type)}): refine.${name} must be a function`)
+  }
   registerBlock(type, resolve ? { resolve } : {})
   return (...args) => {
     const spec = build ? { ...build(...args) } : { ...(args[0] ?? {}) }

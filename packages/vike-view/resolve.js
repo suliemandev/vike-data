@@ -69,7 +69,7 @@ export function viewColumns(view, table) {
   const byName = new Map(table.columns.map((c) => [c.name, c]))
   if (view.list?.length) {
     return view.list.map((entry) => {
-      const spec = entry.build ? entry.build() : entry
+      const spec = typeof entry?.build === 'function' ? entry.build() : entry
       const schemaCol = byName.get(spec.name)
       return {
         name: spec.name,
@@ -114,7 +114,7 @@ export function viewRecord(view, table) {
   }
   if (view.record?.length) {
     return view.record.map((entry) => {
-      const spec = entry.build ? entry.build() : entry
+      const spec = typeof entry?.build === 'function' ? entry.build() : entry
       return toField(spec.name, spec)
     })
   }
@@ -131,7 +131,7 @@ export function viewFields(view, table) {
 
   if (view.form?.length) {
     return view.form.map((entry) => {
-      const spec = entry.build ? entry.build() : entry
+      const spec = typeof entry?.build === 'function' ? entry.build() : entry
       const schemaCol = byName.get(spec.name)
       const fk = fkOf(schemaCol)
       const { type, widget, options } = fieldRender(schemaCol, fk, spec.type)

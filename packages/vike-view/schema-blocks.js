@@ -13,6 +13,9 @@ function tableFor(props, tables) {
   if (typeof props?.table !== 'string' || !props.table) {
     throw new Error('a table block needs a `table` name, e.g. { block: "list", table: "posts" }')
   }
+  if (!Array.isArray(tables)) {
+    throw new Error('resolveView: pass the composed tables as the second argument, e.g. resolveView(view, resolveViewTables(config))')
+  }
   const table = tableNamed(tables, props.table)
   if (!table) throw new Error(`block table "${props.table}" is not in the composed schema`)
   return table
@@ -39,13 +42,16 @@ registerBlock('form', {
 
 // The crud PRESET as blocks: expand a table into its list + record + form block descriptors,
 // so `sections: crudBlocks({ table: 'posts' })` drops the full CRUD triad into a page. Each
-// block carries the same props, and each block's resolve reads only the refinement it needs
-// (list reads `.list`, record `.record`, form `.form`), so extra keys are harmless.
+// block carries ONLY the keys it reads (its own refinement array), so the three descriptors
+// share no nested references and — crucially — the crud config's `scope`/`canView`/`canEdit`
+// FUNCTIONS never ride into a block descriptor (those are server-side data concerns; a block
+// descriptor is serializable data handed to the renderer/client). Row scoping for a rendered
+// crud page is wired server-side through the data layer, not through the serialized block.
 export function crudBlocks(opts) {
   const cfg = crud(opts) // validates `table`
   return [
-    { block: 'list', ...cfg },
-    { block: 'record', ...cfg },
-    { block: 'form', ...cfg },
+    { block: 'list', table: cfg.table, ...(cfg.list ? { list: cfg.list } : {}) },
+    { block: 'record', table: cfg.table, ...(cfg.record ? { record: cfg.record } : {}) },
+    { block: 'form', table: cfg.table, ...(cfg.form ? { form: cfg.form } : {}) },
   ]
 }

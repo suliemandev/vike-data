@@ -36,3 +36,19 @@ test('resolveView derives list/record/form blocks from the schema via the crud e
 test('a table block against a missing table is a clear error', () => {
   assert.throws(() => resolveView(defineView({ sections: [{ block: 'list', table: 'ghosts' }] }), tables()), /not in the composed schema/)
 })
+
+test('crudBlocks descriptors are independent and carry no functions (serializable)', () => {
+  const [list, record, form] = crudBlocks({ table: 'posts', list: [{ name: 'title' }], scope: () => ({ x: 1 }), canEdit: () => true })
+  // only the key each block reads, no cross-block sharing, no scope/canEdit functions leaked
+  assert.deepEqual(list, { block: 'list', table: 'posts', list: [{ name: 'title' }] })
+  assert.deepEqual(record, { block: 'record', table: 'posts' })
+  assert.deepEqual(form, { block: 'form', table: 'posts' })
+  for (const b of [list, record, form]) for (const v of Object.values(b)) assert.notEqual(typeof v, 'function')
+})
+
+test('resolveView without the composed tables gives an actionable error', () => {
+  assert.throws(
+    () => resolveView(defineView({ sections: crudBlocks({ table: 'posts' }) })),
+    /pass the composed tables as the second argument/,
+  )
+})
