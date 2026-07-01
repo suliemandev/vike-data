@@ -12,7 +12,10 @@
     "./resolve": "./resolve.js",
     "./project": "./project.js",
     "./query": "./query.js",
-    "./react": "./react/index.js"
+    "./react": "./react/index.js",
+    "./react/ListView": "./react/ListView.jsx",
+    "./react/RecordView": "./react/RecordView.jsx",
+    "./react/FormView": "./react/FormView.jsx"
   },
   "scripts": {
     "test": "node --test"
@@ -26,10 +29,14 @@
   },
   "peerDependencies": {
     "react": ">=18",
-    "vike-react": ">=0.6"
+    "vike-react": ">=0.6",
+    "vue": ">=3.5",
+    "vike-vue": ">=0.9"
   },
   "peerDependenciesMeta": {
     "react": { "optional": true },
-    "vike-react": { "optional": true }
+    "vike-react": { "optional": true },
+    "vue": { "optional": true },
+    "vike-vue": { "optional": true }
   }
 }
