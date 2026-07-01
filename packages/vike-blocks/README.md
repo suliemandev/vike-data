@@ -2,7 +2,7 @@
 
 Composable UI as data. The framework-agnostic substrate for building a page out of **blocks**
 — a block descriptor IR, an open registry, the `definePage` composer, the built-in primitive
-elements, and the `defineElement` seam so any package can ship a new element with high DX.
+blocks, and the `defineBlock` seam so any package can ship a new block with high DX.
 
 `vike-view` layers schema-driven blocks (list / record / form derived from your data schema)
 on top of this; a per-framework package (e.g. a React renderer) draws the blocks.
@@ -30,16 +30,16 @@ definePage({
 renderer draws (`{ block, props, resolved }` per section). A bespoke block echoes its props; a
 schema-derived block (registered by vike-view) fills its `columns`/`fields` from the schema.
 
-## The open registry + `defineElement`
+## The open registry + `defineBlock`
 
 Blocks live in an open registry — add one with `registerBlock(type, { resolve })`, or, for a
-leaf element with a fluent builder, `defineElement`:
+leaf block with a fluent builder, `defineBlock`:
 
 ```js
-// vike-element-rating (a third-party package) — the agnostic half, one call
-import { defineElement } from 'vike-blocks'
+// vike-block-rating (a third-party package) — the agnostic half, one call
+import { defineBlock } from 'vike-blocks'
 
-export const rating = defineElement('rating', {
+export const rating = defineBlock('rating', {
   build:  (value) => ({ value }),                       // rating(3) -> { block:'rating', value:3 }
   refine: { max: (n) => ({ max: n }), readonly: () => ({ readonly: true }) },
 })
@@ -47,15 +47,15 @@ export const rating = defineElement('rating', {
 ```
 
 ```js
-// vike-element-rating/react — the renderer half, per framework
+// vike-block-rating/react — the renderer half, per framework
 // (`registerBlockRenderer` lives in vike-blocks/react, the React binding.)
 import { registerBlockRenderer } from 'vike-blocks/react'
 registerBlockRenderer('rating', Rating)
 ```
 
 Define once (builder + descriptor + registry entry), render once per framework. The built-in
-elements (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
-your custom element is a peer, not a special case.
+blocks (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
+your custom block is a peer, not a special case.
 
 ## Rendering — `vike-blocks/react` (and `/vue`)
 

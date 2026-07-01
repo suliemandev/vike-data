@@ -4,7 +4,7 @@
 // a `resolve` (vike-view's list/record/form register their derivation this way).
 //
 // The registry is OPEN: an extension registers its own block with `registerBlock(type, def)`
-// (or, for a leaf element with a fluent builder, `defineElement`), so a new block type ships
+// (or, for a leaf block with a fluent builder, `defineBlock`), so a new block type ships
 // alongside the component that renders it, with no change to vike-blocks. The genuine long
 // tail that no block expresses drops to `block: 'custom'` (your component) or an AI-ejected
 // real page — this stays a composition of blocks, not a layout DSL.
@@ -33,28 +33,28 @@ export const getBlock = (type) => REGISTRY.get(type) ?? null
 export const hasBlock = (type) => REGISTRY.has(type)
 export const listBlocks = () => [...REGISTRY.keys()]
 
-// Define an ELEMENT — a leaf block with a fluent authoring builder — in ONE call. This is the
-// high-DX seam: a package ships a new element (its builder + descriptor shape + registry
-// entry) with a single `defineElement`, and registers the matching renderer per framework
+// Define a BLOCK with a fluent authoring builder — in ONE call. This is the
+// high-DX seam: a package ships a new block (its builder + descriptor shape + registry
+// entry) with a single `defineBlock`, and registers the matching renderer per framework
 // separately (`registerBlockRenderer`, in the framework package).
 //
-//   export const rating = defineElement('rating', {
+//   export const rating = defineBlock('rating', {
 //     build:  (value) => ({ value }),                 // rating(3) -> { block:'rating', value:3 }
 //     refine: { max: (n) => ({ max: n }), readonly: () => ({ readonly: true }) },
 //   })
 //   // author usage:  rating(3).max(5).readonly()
 //
 // `build(...args)` produces the base props; `refine` maps chainable method names to prop
-// patches; `resolve` (optional) makes the element schema/data-aware instead of a pass-through.
+// patches; `resolve` (optional) makes the block schema/data-aware instead of a pass-through.
 // Returns the builder FACTORY; calling it yields a chainable builder whose `.build()` collapses
 // to a `{ block, ...props }` descriptor — exactly what a view's `sections` accepts.
-export function defineElement(type, { build, refine = {}, resolve } = {}) {
-  if (build != null && typeof build !== 'function') throw new Error(`defineElement(${JSON.stringify(type)}): build must be a function`)
-  if (refine == null || typeof refine !== 'object') throw new Error(`defineElement(${JSON.stringify(type)}): refine must be an object of functions`)
+export function defineBlock(type, { build, refine = {}, resolve } = {}) {
+  if (build != null && typeof build !== 'function') throw new Error(`defineBlock(${JSON.stringify(type)}): build must be a function`)
+  if (refine == null || typeof refine !== 'object') throw new Error(`defineBlock(${JSON.stringify(type)}): refine must be an object of functions`)
   // Validate each refinement up front, so a typo (`refine: { max: 5 }`) throws HERE, where the
-  // element author can fix it, not later as a cryptic "patch is not a function" in app code.
+  // block author can fix it, not later as a cryptic "patch is not a function" in app code.
   for (const name of Object.keys(refine)) {
-    if (typeof refine[name] !== 'function') throw new Error(`defineElement(${JSON.stringify(type)}): refine.${name} must be a function`)
+    if (typeof refine[name] !== 'function') throw new Error(`defineBlock(${JSON.stringify(type)}): refine.${name} must be a function`)
   }
   registerBlock(type, resolve ? { resolve } : {})
   return (...args) => {

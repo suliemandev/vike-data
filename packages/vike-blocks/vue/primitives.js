@@ -1,5 +1,5 @@
-// The Vue components for the built-in leaf elements, registered against their block types. The
-// Vue twin of vike-blocks/react/elements.jsx. Written as functional components (a function of
+// The Vue components for the built-in leaf blocks, registered against their block types. The
+// Vue twin of vike-blocks/react/blocks.jsx. Written as functional components (a function of
 // props with an explicit `.props` list) — the closest Vue analog to React's function components,
 // so no .vue compile step and the same shape as the React side. Each receives the block's
 // resolved view-model as props. Importing this module registers the built-ins as a side effect.

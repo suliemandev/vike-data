@@ -1,5 +1,5 @@
-// The React components for the built-in leaf elements, registered against their block types.
-// Each receives the block's resolved view-model as props (for a pass-through element that IS its
+// The React components for the built-in leaf blocks, registered against their block types.
+// Each receives the block's resolved view-model as props (for a pass-through block that IS its
 // descriptor props, e.g. text -> { value, tone }). No React import — vike-react uses the
 // automatic JSX runtime, matching the rest of the family. Importing this module registers the
 // built-ins as a side effect (Blocks.jsx imports it for exactly that).

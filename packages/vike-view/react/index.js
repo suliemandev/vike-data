@@ -17,7 +17,7 @@ export { ListView, RecordView, FormView }
 export { FormFields } from './FormFields.jsx'
 // The field-widget seam: register a control for a `.as()` semantic token (shared with vike-admin).
 export { registerFieldWidget, getFieldWidget, fieldWidgetTokens } from './widget-registry.js'
-// Re-export the dispatch surface (which also registers the primitive element renderers).
+// Re-export the dispatch surface (which also registers the primitive block renderers).
 export { Blocks, Page, registerBlockRenderer, getBlockRenderer, blockRendererTokens } from 'vike-blocks/react'
 // Page generation: turn `defineView`s into Vike pages (spread into `+config.js` `pages`).
 export { viewPages, viewForRoute } from './pages.js'

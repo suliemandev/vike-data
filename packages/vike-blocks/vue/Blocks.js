@@ -2,11 +2,11 @@
 // Vue component and handing it the section's resolved view-model. The Vue twin of
 // vike-blocks/react/Blocks.jsx. `Blocks` takes already resolved sections; `Page` resolves a
 // view first. A block type with no registered renderer is skipped. Importing this module
-// registers the built-in element renderers (via ./elements.js).
+// registers the built-in block renderers (via ./primitives.js).
 import { h } from 'vue'
 import { resolvePage } from '../page.js'
 import { getBlockRenderer } from './registry.js'
-import './elements.js' // side-effect: register text / heading / badge / divider / link / markdown / stat
+import './primitives.js' // side-effect: register text / heading / badge / divider / link / markdown / stat
 
 // Draw a list of RESOLVED sections (`{ block, props, resolved }`, from resolvePage/resolveView).
 export const Blocks = (props) =>
