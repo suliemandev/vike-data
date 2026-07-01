@@ -1,6 +1,6 @@
 <script setup>
 import { useData } from 'vike-vue/useData'
-import FormFields from './FormFields.vue'
+import { FormFields } from './FormFields.js'
 
 const data = useData()
 
