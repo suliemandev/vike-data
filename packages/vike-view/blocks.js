@@ -74,6 +74,14 @@ registerBlock('stat', {}) // { title, source|value } — pass-through
 registerBlock('markdown', {}) // { source } — pass-through
 registerBlock('custom', {}) // { component } — the renderer imports the component — pass-through
 
+// Display-only leaf blocks authored fluently via ./elements.js (text/heading/badge/divider/
+// link). All pass-through — their view-model is their props; the renderer draws them.
+registerBlock('text', {}) // { value, tone? }
+registerBlock('heading', {}) // { value, level }
+registerBlock('badge', {}) // { value, tone? }
+registerBlock('divider', {}) // {}
+registerBlock('link', {}) // { label, to?, tone? } — declarative navigation (no closure)
+
 // The crud PRESET as blocks: expand a table into its list + record + form block descriptors,
 // so `sections: crudBlocks({ table: 'posts' })` drops the full CRUD triad into a page. Each
 // block carries the same props, and each block's resolve reads only the refinement it needs

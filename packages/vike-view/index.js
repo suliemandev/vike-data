@@ -6,6 +6,7 @@
 // `crud`/`crudBlocks` are the schema-derived CRUD preset over it.
 export { defineView, resolveView } from './view.js'
 export { registerBlock, getBlock, hasBlock, listBlocks, crudBlocks } from './blocks.js'
+export { text, heading, badge, divider, link } from './elements.js'
 export { crud, column, display, field } from './define.js'
 export {
   resolveViewTables,

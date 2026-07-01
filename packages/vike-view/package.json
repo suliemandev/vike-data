@@ -8,6 +8,7 @@
     ".": "./index.js",
     "./view": "./view.js",
     "./blocks": "./blocks.js",
+    "./elements": "./elements.js",
     "./define": "./define.js",
     "./resolve": "./resolve.js",
     "./project": "./project.js",
