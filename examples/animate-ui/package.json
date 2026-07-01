@@ -1,0 +1,26 @@
+{
+  "name": "app-animate-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sandbox: Animate UI components (the 'animate' primitive variant, motion + Tailwind, shadcn-style copy-paste) installed in a Vike + React app. Where the components run unmodified before parts are harvested into the vike-* extensions.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "motion": "^11.15.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^2.6.0",
+    "vike": "^0.4.0",
+    "vike-react": "^0.6.25",
+    "vite": "^7.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0"
+  }
+}

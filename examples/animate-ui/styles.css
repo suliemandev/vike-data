@@ -1,0 +1,36 @@
+/* Tailwind v4 + a compact shadcn/ui token set — enough for the Animate UI demo's utility classes
+   (bg-background / bg-accent / text-muted-foreground / bg-primary / border, etc.). A real app would
+   paste shadcn's full globals.css; this keeps only what the tabs demo references. */
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --ring: #94a3b8;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+}
