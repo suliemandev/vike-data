@@ -5,6 +5,7 @@ const catalog = [
   { name: 'Accordion', href: '/accordion', tag: 'interactive', desc: 'Expand/collapse sections with an animated height morph. Single or multi-open; each panel composes other blocks.' },
   { name: 'Dialog', href: '/dialog', tag: 'interactive', desc: 'A modal overlay with a portal, focus trap, Escape / outside-click, and scroll-lock. Dep-free; holds nested blocks.' },
   { name: 'Headings', href: '/heading', tag: 'leaf', desc: 'Six levels (h1-h6) with level-scaled top spacing, so sections breathe. Theme-native text color.' },
+  { name: 'Alert', href: '/alert', tag: 'leaf', desc: 'A tone-styled notice — info / success / warning / danger. Theme-native accent + tint, dep-free.' },
   { name: 'Button', href: '/button', tag: 'leaf', desc: 'Themed buttons — primary / secondary / ghost / danger, two sizes, optional nav.' },
   { name: 'Primitives', href: '/primitives', tag: 'leaf', desc: 'heading · text · badge · divider · link — the built-in leaf blocks, composed with definePage.' },
   { name: 'Custom blocks', href: '/raw', tag: 'extend', desc: 'Define your own with defineBlock, or author a page as plain { block, ...props } descriptors.' },
