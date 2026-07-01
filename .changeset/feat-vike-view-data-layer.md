@@ -9,4 +9,13 @@ Add the server-side data layer (`vike-view/data`) — the complement to `resolve
 
 Verified end to end: a `defineView` over a seeded table hydrates and server-renders to HTML with the real rows and FK labels; the write path round-trips and enforces ownership on the memory adapter.
 
-Auto-generating a Vike page from a `defineView` route (the app-integration half of #377) is a follow-up.
+**Page generation** (`vike-view/react/config`): an app installs the Vike extension and turns its views into real pages with `viewPages(views)` — each `view.route` becomes a page whose GET hydrates + renders the view and whose POST writes through the scoped data hook (a plain SSR form post, no separate endpoint), modeled on vike-admin's data hooks:
+
+```js
+import vikeView from 'vike-view/react/config'
+import { defineView, crudBlocks, viewPages } from 'vike-view/react'
+const views = [defineView({ route: '/posts', sections: crudBlocks({ table: 'posts' }) })]
+export default { extends: [vikeView], views, pages: viewPages(views) }
+```
+
+`views` is a server-only cumulative config point, so a view's `scope` function survives to the data hook instead of being serialized away. The page-gen logic (`viewPages` / `viewForRoute` / `formFieldsFor`) is unit-tested; the generic `ViewPage` + `viewData` Vike hook are transpile-checked and modeled on the proven admin pattern (full Vike-runtime verification via an example app is the remaining step).

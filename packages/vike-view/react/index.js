@@ -19,3 +19,5 @@ export { FormFields } from './FormFields.jsx'
 export { registerFieldWidget, getFieldWidget, fieldWidgetTokens } from './widget-registry.js'
 // Re-export the dispatch surface (which also registers the primitive element renderers).
 export { Blocks, Page, registerElementRenderer, getElementRenderer, elementRendererTokens } from 'vike-elements/react'
+// Page generation: turn `defineView`s into Vike pages (spread into `+config.js` `pages`).
+export { viewPages, viewForRoute } from './pages.js'
