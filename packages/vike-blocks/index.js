@@ -8,6 +8,7 @@ import './primitives.js' // side-effect: register text / heading / badge / divid
 import './button.js' // side-effect: register the button block
 import './tabs.js' // side-effect: register the tabs container block
 import './accordion.js' // side-effect: register the accordion container block
+import './dialog.js' // side-effect: register the dialog container block
 
 export { definePage, resolvePage } from './page.js'
 export { registerBlock, getBlock, hasBlock, listBlocks, defineBlock } from './registry.js'
@@ -15,3 +16,4 @@ export { text, heading, badge, divider, link } from './primitives.js'
 export { button } from './button.js'
 export { tabs } from './tabs.js'
 export { accordion } from './accordion.js'
+export { dialog } from './dialog.js'
