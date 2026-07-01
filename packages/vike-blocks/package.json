@@ -6,12 +6,18 @@
   "description": "vike-blocks: composable UI as data. The framework-agnostic substrate for building a page out of BLOCKS — a block descriptor IR + an open registry, the definePage composer, primitive blocks (text/heading/badge/divider/link, stat/markdown/custom), and the defineBlock seam so any package can ship a new block with high DX. A React binding (vike-blocks/react) draws the blocks; vike-view layers schema-driven blocks on top.",
   "exports": {
     ".": "./index.js",
+    "./tabs": "./tabs.js",
+    "./button": "./button.js",
     "./react": "./react/index.js",
     "./react/registry": "./react/registry.js",
     "./react/Blocks": "./react/Blocks.jsx",
+    "./react/TabsView": "./react/TabsView.jsx",
+    "./react/ButtonView": "./react/ButtonView.jsx",
     "./vue": "./vue/index.js",
     "./vue/registry": "./vue/registry.js",
-    "./vue/Blocks": "./vue/Blocks.js"
+    "./vue/Blocks": "./vue/Blocks.js",
+    "./vue/TabsView": "./vue/TabsView.js",
+    "./vue/ButtonView": "./vue/ButtonView.js"
   },
   "scripts": {
     "test": "node --test"
