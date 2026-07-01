@@ -11,9 +11,14 @@ export function Text({ value, tone }) {
   return <span style={{ color: tone ? (TONE[tone] ?? 'inherit') : 'var(--color-text, inherit)' }}>{value}</span>
 }
 
+// Top margin scales with level so sections breathe: a page-title h1 stays flush (usually the first
+// block on a page), while an h2/h3 section heading separates from the block above it.
+const HEADING_TOP = { 1: '0', 2: '1.5rem', 3: '1.25rem' }
+
 export function Heading({ value, level = 2 }) {
-  const Tag = `h${Math.min(6, Math.max(1, level))}`
-  return <Tag style={{ margin: '0 0 0.5rem' }}>{value}</Tag>
+  const lvl = Math.min(6, Math.max(1, level))
+  const Tag = `h${lvl}`
+  return <Tag style={{ margin: `${HEADING_TOP[lvl] ?? '1rem'} 0 0.5rem` }}>{value}</Tag>
 }
 
 export function Badge({ value, tone }) {
