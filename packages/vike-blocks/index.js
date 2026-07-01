@@ -7,9 +7,11 @@ import './blocks.js' // side-effect: register stat / markdown / custom
 import './primitives.js' // side-effect: register text / heading / badge / divider / link
 import './button.js' // side-effect: register the button block
 import './tabs.js' // side-effect: register the tabs container block
+import './accordion.js' // side-effect: register the accordion container block
 
 export { definePage, resolvePage } from './page.js'
 export { registerBlock, getBlock, hasBlock, listBlocks, defineBlock } from './registry.js'
 export { text, heading, badge, divider, link } from './primitives.js'
 export { button } from './button.js'
 export { tabs } from './tabs.js'
+export { accordion } from './accordion.js'

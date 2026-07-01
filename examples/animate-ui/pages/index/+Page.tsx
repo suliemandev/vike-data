@@ -12,6 +12,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/animate-ui/primitives/animate/tabs'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionHeader,
+  AccordionTrigger,
+  AccordionPanel,
+} from '@/components/animate-ui/primitives/base/accordion'
 
 export default function Page() {
   return (
@@ -57,6 +64,34 @@ export default function Page() {
           </TabsContent>
         </TabsContents>
       </Tabs>
+
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '2.5rem 0 4px' }}>Accordion</h2>
+      <p style={{ color: 'var(--muted-foreground)', fontSize: 14, marginBottom: 16 }}>
+        The <code>base</code> Accordion primitive (Base UI + motion), copied in via the registry. The panel height morphs
+        open/closed. This is the reference the dep-free vike-blocks <code>accordion</code> block was harvested from.
+      </p>
+      <Accordion defaultValue={['what']} className="border rounded-lg divide-y">
+        <AccordionItem value="what" className="px-4">
+          <AccordionHeader>
+            <AccordionTrigger className="flex w-full items-center justify-between py-3 text-sm font-medium">
+              What is a block?
+            </AccordionTrigger>
+          </AccordionHeader>
+          <AccordionPanel className="text-sm text-muted-foreground">
+            <p className="pb-3">A block is one section of a page — a composition of nested blocks.</p>
+          </AccordionPanel>
+        </AccordionItem>
+        <AccordionItem value="animate" className="px-4">
+          <AccordionHeader>
+            <AccordionTrigger className="flex w-full items-center justify-between py-3 text-sm font-medium">
+              How does it animate?
+            </AccordionTrigger>
+          </AccordionHeader>
+          <AccordionPanel className="text-sm text-muted-foreground">
+            <p className="pb-3">The panel morphs height between 0 and auto. The native block re-implements this with a measured CSS transition, dep-free.</p>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }

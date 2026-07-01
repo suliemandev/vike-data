@@ -2,6 +2,7 @@
 // is plain app chrome (not composed of blocks) — a directory into the demos.
 const catalog = [
   { name: 'Tabs', href: '/tabs', tag: 'interactive', desc: 'Tabs with a sliding highlight and animated panels. Each panel composes other blocks.' },
+  { name: 'Accordion', href: '/accordion', tag: 'interactive', desc: 'Expand/collapse sections with an animated height morph. Single or multi-open; each panel composes other blocks.' },
   { name: 'Button', href: '/button', tag: 'leaf', desc: 'Themed buttons — primary / secondary / ghost / danger, two sizes, optional nav.' },
   { name: 'Primitives', href: '/primitives', tag: 'leaf', desc: 'heading · text · badge · divider · link — the built-in leaf blocks, composed with definePage.' },
   { name: 'Custom blocks', href: '/raw', tag: 'extend', desc: 'Define your own with defineBlock, or author a page as plain { block, ...props } descriptors.' },
