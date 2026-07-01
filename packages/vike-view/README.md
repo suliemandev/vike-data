@@ -15,12 +15,46 @@ preset) can consume the same derivation. "Declare intent, derive implementation.
 | **Record** | one row + relations | read-only detail display, FK-aware cells |
 | **Form** | field types + validation | inputs, relation selects, required-ness |
 
-## `defineView`
+## The view is a UI schema
+
+The top-level primitive is `defineView` — a **page as a composition of blocks** (the UI/UX
+schema), where a block may be schema-derived (`list` / `record` / `form` of a table) or
+bespoke (`stat` / `markdown` / `chart` / `custom`). Blocks live in an open registry, and the
+genuine long tail ejects to a real component / an AI-generated page rather than growing more
+config knobs.
 
 ```js
-import { defineView, column, display, field } from 'vike-view'
+import { defineView, crudBlocks, registerBlock } from 'vike-view'
 
+// The general primitive (block IR): any page, composed of blocks.
 defineView({
+  route: '/dashboard',
+  sections: [
+    { block: 'stat',     title: 'Revenue', source: 'orders.sum(total)' },
+    { block: 'list',     table: 'orders' },        // schema-derived
+    { block: 'markdown', source: '# Welcome' },
+    { block: 'custom',   component: 'MyChart' },    // your own component
+    ...crudBlocks({ table: 'posts' }),              // the crud preset: list + record + form
+  ],
+})
+```
+
+`resolveView(view, tables)` turns those descriptors into serializable view-models a renderer
+draws: a schema-derived block fills its `columns`/`fields` from the schema (through the same
+crud engine), a bespoke block echoes its props. The registry is open — an app or extension
+adds a block with `registerBlock('gauge', { resolve })`, so a new block type ships with the
+component that renders it. The genuine long tail drops to `block: 'custom'` or an AI-ejected
+page; there is deliberately no layout/expression DSL.
+
+`crud({ table })` (below) is the schema-derived CRUD preset; `crudBlocks({ table })` expands
+it into the three `list`/`record`/`form` block descriptors for a page.
+
+## `crud` — the built-in CRUD preset
+
+```js
+import { crud, column, display, field } from 'vike-view'
+
+crud({
   table: 'posts',                                    // a table in the composed schema
   list:   [column('title').sortable(), column('created_at').format('since')],
   record: [display('title'), display('body'), display('author_id')],

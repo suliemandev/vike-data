@@ -6,6 +6,8 @@
   "description": "vike-view: schema-driven views (list / record / form) for any framework. The framework-agnostic core that derives a view-model from the composed schema — defineView + column/field/display refinements, schema->widget mapping, row scoping, FK-aware selects, projection, and a validated list query. vike-admin is a preset over it; per-framework renderers draw it.",
   "exports": {
     ".": "./index.js",
+    "./view": "./view.js",
+    "./blocks": "./blocks.js",
     "./define": "./define.js",
     "./resolve": "./resolve.js",
     "./project": "./project.js",

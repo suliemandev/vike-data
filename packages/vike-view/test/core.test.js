@@ -1,4 +1,4 @@
-// vike-view's framework-agnostic core, exercised without Vike or React: defineView, the
+// vike-view's framework-agnostic core, exercised without Vike or React: crud, the
 // schema-default derivation for list / record / form, the auto-hide convention, semantic
 // widgets, FK-aware fields, projection, and the validated list query. This is the core the
 // vike-admin preset (and every future renderer) consumes.
@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineSchema } from '@vike-data/vike-schema/schema'
 import {
-  defineView,
+  crud,
   column,
   display,
   field,
@@ -44,18 +44,18 @@ const tables = () => resolveViewTables(config)
 const usersTable = () => tableNamed(tables(), 'users')
 const postsTable = () => tableNamed(tables(), 'posts')
 
-// --- defineView ---------------------------------------------------------------
+// --- crud ---------------------------------------------------------------
 
-test('defineView requires a table name and defaults icon to null', () => {
-  assert.throws(() => defineView(), /expected a definition object/)
-  assert.throws(() => defineView({}), /`table`.*is required/)
-  assert.deepEqual(defineView({ table: 'posts' }), { icon: null, table: 'posts' })
+test('crud requires a table name and defaults icon to null', () => {
+  assert.throws(() => crud(), /expected a definition object/)
+  assert.throws(() => crud({}), /`table`.*is required/)
+  assert.deepEqual(crud({ table: 'posts' }), { icon: null, table: 'posts' })
 })
 
 // --- list ---------------------------------------------------------------------
 
 test('viewColumns defaults from the schema and auto-hides id / *_hash / timestamps', () => {
-  const cols = viewColumns(defineView({ table: 'users' }), usersTable())
+  const cols = viewColumns(crud({ table: 'users' }), usersTable())
   assert.deepEqual(cols.map((c) => c.name), ['email', 'name', 'role', 'active'])
   assert.equal(cols[0].label, 'Email')
   assert.equal(cols.find((c) => c.name === 'active').type, 'boolean')
@@ -63,7 +63,7 @@ test('viewColumns defaults from the schema and auto-hides id / *_hash / timestam
 
 test('viewColumns honors an explicit list with refinements', () => {
   const cols = viewColumns(
-    defineView({ table: 'users', list: [column('email').sortable().searchable(), column('created_at').format('since').label('Joined')] }),
+    crud({ table: 'users', list: [column('email').sortable().searchable(), column('created_at').format('since').label('Joined')] }),
     usersTable(),
   )
   assert.deepEqual(cols.map((c) => c.name), ['email', 'created_at'])
@@ -76,7 +76,7 @@ test('viewColumns honors an explicit list with refinements', () => {
 // --- record (the new read-only detail view) -----------------------------------
 
 test('viewRecord defaults to every non-hidden column, read-only, with widgets from the schema', () => {
-  const fields = viewRecord(defineView({ table: 'users' }), usersTable())
+  const fields = viewRecord(crud({ table: 'users' }), usersTable())
   assert.deepEqual(fields.map((f) => f.name), ['email', 'name', 'role', 'active'])
   // no `required` on a read-only detail view
   assert.ok(fields.every((f) => !('required' in f)))
@@ -88,7 +88,7 @@ test('viewRecord defaults to every non-hidden column, read-only, with widgets fr
 
 test('viewRecord honors an explicit record selection with label/format refinements', () => {
   const fields = viewRecord(
-    defineView({ table: 'users', record: [display('email').label('Contact'), display('created_at').format('since')] }),
+    crud({ table: 'users', record: [display('email').label('Contact'), display('created_at').format('since')] }),
     usersTable(),
   )
   assert.deepEqual(fields.map((f) => f.name), ['email', 'created_at'])
@@ -97,14 +97,14 @@ test('viewRecord honors an explicit record selection with label/format refinemen
 })
 
 test('viewRecord carries fk info so a renderer can show the referenced row title', () => {
-  const authorField = viewRecord(defineView({ table: 'posts' }), postsTable()).find((f) => f.name === 'author_id')
+  const authorField = viewRecord(crud({ table: 'posts' }), postsTable()).find((f) => f.name === 'author_id')
   assert.deepEqual(authorField.fk, { table: 'users', column: 'id' })
 })
 
 // --- form ---------------------------------------------------------------------
 
 test('viewFields infers required, widgets, and marks a foreign key as a select', () => {
-  const fields = viewFields(defineView({ table: 'posts' }), postsTable())
+  const fields = viewFields(crud({ table: 'posts' }), postsTable())
   const title = fields.find((f) => f.name === 'title')
   const body = fields.find((f) => f.name === 'body')
   const author = fields.find((f) => f.name === 'author_id')
@@ -115,7 +115,7 @@ test('viewFields infers required, widgets, and marks a foreign key as a select',
 })
 
 test('viewFields surfaces enum semantic values as static select options', () => {
-  const role = viewFields(defineView({ table: 'users' }), usersTable()).find((f) => f.name === 'role')
+  const role = viewFields(crud({ table: 'users' }), usersTable()).find((f) => f.name === 'role')
   assert.equal(role.widget, 'enum')
   assert.deepEqual(role.options, [
     { value: 'admin', label: 'admin' },
@@ -124,7 +124,7 @@ test('viewFields surfaces enum semantic values as static select options', () => 
 })
 
 test('an explicit field .type() override wins over the column semantic', () => {
-  const email = viewFields(defineView({ table: 'users', form: [field('email').type('text')] }), usersTable())[0]
+  const email = viewFields(crud({ table: 'users', form: [field('email').type('text')] }), usersTable())[0]
   assert.equal(email.type, 'text')
   assert.equal(email.widget, 'text')
 })
@@ -132,8 +132,8 @@ test('an explicit field .type() override wins over the column semantic', () => {
 // --- misc core ----------------------------------------------------------------
 
 test('recordTitleColumn honors recordTitle, else the first string column', () => {
-  assert.equal(recordTitleColumn(defineView({ table: 'users' }), usersTable()), 'email')
-  assert.equal(recordTitleColumn(defineView({ table: 'users', recordTitle: 'name' }), usersTable()), 'name')
+  assert.equal(recordTitleColumn(crud({ table: 'users' }), usersTable()), 'email')
+  assert.equal(recordTitleColumn(crud({ table: 'users', recordTitle: 'name' }), usersTable()), 'name')
 })
 
 test('projectRow narrows a row to the visible columns plus the primary key', () => {
