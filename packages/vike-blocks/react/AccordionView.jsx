@@ -95,7 +95,7 @@ export function AccordionView({ items = [], multiple = false, openValues = [] })
   }
 
   return (
-    <div data-slot="accordion" style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border, #e2e8f0)' }}>
+    <div data-slot="accordion" style={{ margin: '0.75rem 0', borderTop: '1px solid var(--color-border, #e2e8f0)' }}>
       {items.map((item) => (
         <AccordionItem key={item.value} item={item} open={openSet.has(item.value)} onToggle={() => toggle(item.value)} />
       ))}

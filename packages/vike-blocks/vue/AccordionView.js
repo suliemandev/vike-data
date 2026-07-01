@@ -102,7 +102,7 @@ export const AccordionView = {
         return h('div', { key: item.value, 'data-slot': 'accordion-item', style: { borderBottom: '1px solid var(--color-border, #e2e8f0)' } }, [header, panel])
       })
 
-      return h('div', { 'data-slot': 'accordion', style: { marginTop: '0.75rem', borderTop: '1px solid var(--color-border, #e2e8f0)' } }, rows)
+      return h('div', { 'data-slot': 'accordion', style: { margin: '0.75rem 0', borderTop: '1px solid var(--color-border, #e2e8f0)' } }, rows)
     }
   },
 }
