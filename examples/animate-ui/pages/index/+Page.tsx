@@ -19,6 +19,16 @@ import {
   AccordionTrigger,
   AccordionPanel,
 } from '@/components/animate-ui/primitives/base/accordion'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogBackdrop,
+  DialogPopup,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from '@/components/animate-ui/primitives/base/dialog'
 
 export default function Page() {
   return (
@@ -92,6 +102,30 @@ export default function Page() {
           </AccordionPanel>
         </AccordionItem>
       </Accordion>
+
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '2.5rem 0 4px' }}>Dialog</h2>
+      <p style={{ color: 'var(--muted-foreground)', fontSize: 14, marginBottom: 16 }}>
+        The <code>base</code> Dialog primitive (Base UI + motion): portal, backdrop, focus trap, Escape / outside-click. This
+        is the reference the dep-free vike-blocks <code>dialog</code> block was harvested from.
+      </p>
+      <Dialog>
+        <DialogTrigger className="bg-primary text-primary-foreground px-3 py-1.5 text-sm rounded-md">
+          Open dialog
+        </DialogTrigger>
+        <DialogPortal>
+          <DialogBackdrop className="fixed inset-0 bg-black/50 z-40" />
+          <DialogPopup className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-background border rounded-lg p-5 shadow-xl">
+            <DialogTitle className="text-base font-semibold">Delete post</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
+              This action cannot be undone.
+            </DialogDescription>
+            <div className="flex justify-end gap-2 mt-5">
+              <DialogClose className="border px-3 py-1.5 text-sm rounded-md">Cancel</DialogClose>
+              <DialogClose className="bg-primary text-primary-foreground px-3 py-1.5 text-sm rounded-md">Delete</DialogClose>
+            </div>
+          </DialogPopup>
+        </DialogPortal>
+      </Dialog>
     </div>
   )
 }
