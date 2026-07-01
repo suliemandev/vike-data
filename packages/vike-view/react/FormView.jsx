@@ -6,9 +6,12 @@
 // render. A page that wants its own <form> chrome can use FormFields directly instead.
 import { FormFields } from './FormFields.jsx'
 
-export function FormView({ table, fields = [], values, action, submitLabel = 'Save' }) {
+export function FormView({ table, fields = [], values, action, id, submitLabel = 'Save' }) {
   return (
     <form method="post" action={action} data-table={table} style={{ display: 'grid', gap: '0.9rem' }}>
+      {/* which table + row this form writes, so the generated page's data hook can dispatch the POST */}
+      <input type="hidden" name="_table" value={table} />
+      {id != null && <input type="hidden" name="_id" value={id} />}
       <FormFields fields={fields} values={values} />
       <div>
         <button type="submit">{submitLabel}</button>
