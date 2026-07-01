@@ -7,7 +7,7 @@ const catalog = [
   { name: 'Card', href: '/card', tag: 'container', desc: 'A bordered surface with an optional header + footer, wrapping nested blocks. The most-used building block; cards compose recursively.' },
   { name: 'Headings', href: '/heading', tag: 'leaf', desc: 'Six levels (h1-h6) with level-scaled top spacing, so sections breathe. Theme-native text color.' },
   { name: 'Alert', href: '/alert', tag: 'leaf', desc: 'A tone-styled notice — info / success / warning / danger. Theme-native accent + tint, dep-free.' },
-  { name: 'Button', href: '/button', tag: 'leaf', desc: 'Themed buttons — primary / secondary / ghost / danger, two sizes, optional nav.' },
+  { name: 'Button', href: '/button', tag: 'leaf', desc: 'The shadcn Base button — six variants, four sizes, focus ring + disabled, optional declarative nav.' },
   { name: 'Primitives', href: '/primitives', tag: 'leaf', desc: 'heading · text · badge · divider · link — the built-in leaf blocks, composed with definePage.' },
   { name: 'Custom blocks', href: '/raw', tag: 'extend', desc: 'Define your own with defineBlock, or author a page as plain { block, ...props } descriptors.' },
 ]

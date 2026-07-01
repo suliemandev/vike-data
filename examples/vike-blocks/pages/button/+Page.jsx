@@ -1,5 +1,6 @@
 // The button block demo. Each button below is the `button` block rendered through the registry
-// (resolvePage + <Blocks>), grouped into rows so variants/sizes sit side by side.
+// (resolvePage + <Blocks>), grouped into rows so variants/sizes sit side by side. The surface is
+// the shadcn Base button — six variants, four sizes, a focus-visible ring, hover, and disabled.
 import { resolvePage } from 'vike-blocks'
 import { Blocks } from 'vike-blocks/react'
 
@@ -13,22 +14,34 @@ export default function ButtonPage() {
     <div style={{ maxWidth: 680, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ marginTop: 0 }}>Button block</h1>
       <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-        A themed button block. <code>button('Save').variant('primary')</code>; add <code>.to(path)</code> to render a link
-        styled as a button, <code>.size('sm')</code> for compact. Colors/radius read vike-themes CSS vars.
+        The shadcn Base button, theme-native. <code>button('Save').variant('default')</code>; add <code>.to(path)</code> to render a
+        link styled as a button, <code>.size('sm')</code> for compact, <code>.disabled()</code> to disable. Our old names still
+        work (<code>primary</code> {'->'} <code>default</code>, <code>danger</code> {'->'} <code>destructive</code>). Colors/radius read vike-themes CSS vars.
       </p>
 
       <Label>Variants</Label>
       <Row>
-        <Btn label="Primary" variant="primary" />
+        <Btn label="Default" variant="default" />
         <Btn label="Secondary" variant="secondary" />
+        <Btn label="Outline" variant="outline" />
         <Btn label="Ghost" variant="ghost" />
-        <Btn label="Danger" variant="danger" />
+        <Btn label="Link" variant="link" />
+        <Btn label="Destructive" variant="destructive" />
       </Row>
 
-      <Label>Sizes</Label>
+      <Label>Sizes (sm / default / lg / icon)</Label>
       <Row>
-        <Btn label="Small" variant="primary" size="sm" />
-        <Btn label="Medium" variant="primary" />
+        <Btn label="Small" size="sm" />
+        <Btn label="Default" />
+        <Btn label="Large" size="lg" />
+        <Btn label="+" size="icon" aria-label="Add" />
+      </Row>
+
+      <Label>Disabled</Label>
+      <Row>
+        <Btn label="Default" disabled />
+        <Btn label="Outline" variant="outline" disabled />
+        <Btn label="Destructive" variant="destructive" disabled />
       </Row>
 
       <Label>As a link (declarative nav)</Label>
