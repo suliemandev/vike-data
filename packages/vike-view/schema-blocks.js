@@ -1,9 +1,9 @@
-// The schema-driven blocks — vike-view's contribution to vike-elements' registry. Where a
+// The schema-driven blocks — vike-view's contribution to vike-blocks' registry. Where a
 // bespoke block (stat/markdown/custom) carries its own props, a `list`/`record`/`form` block
 // DERIVES its view-model from the composed schema through the crud engine (viewColumns /
 // viewRecord / viewFields) — the same derivation the crud preset uses, no second copy.
 // Importing this module registers the three blocks into the shared registry.
-import { registerBlock } from 'vike-elements'
+import { registerBlock } from 'vike-blocks'
 import { crud } from './define.js'
 import { tableNamed, viewColumns, viewRecord, viewFields } from './resolve.js'
 

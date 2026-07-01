@@ -11,7 +11,7 @@
 // writes, so a scoped user only ever sees / edits / creates their own rows. Kept as a function
 // the caller passes at request time (not baked into the serialized block), so a scope predicate
 // never has to serialize to the client.
-import { resolvePage } from 'vike-elements'
+import { resolvePage } from 'vike-blocks'
 import { projectRow } from './project.js'
 import { tableNamed, recordTitleColumn } from './resolve.js'
 

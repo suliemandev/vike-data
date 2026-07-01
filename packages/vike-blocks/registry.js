@@ -5,7 +5,7 @@
 //
 // The registry is OPEN: an extension registers its own block with `registerBlock(type, def)`
 // (or, for a leaf element with a fluent builder, `defineElement`), so a new block type ships
-// alongside the component that renders it, with no change to vike-elements. The genuine long
+// alongside the component that renders it, with no change to vike-blocks. The genuine long
 // tail that no block expresses drops to `block: 'custom'` (your component) or an AI-ejected
 // real page — this stays a composition of blocks, not a layout DSL.
 //
@@ -36,7 +36,7 @@ export const listBlocks = () => [...REGISTRY.keys()]
 // Define an ELEMENT — a leaf block with a fluent authoring builder — in ONE call. This is the
 // high-DX seam: a package ships a new element (its builder + descriptor shape + registry
 // entry) with a single `defineElement`, and registers the matching renderer per framework
-// separately (`registerElementRenderer`, in the framework package).
+// separately (`registerBlockRenderer`, in the framework package).
 //
 //   export const rating = defineElement('rating', {
 //     build:  (value) => ({ value }),                 // rating(3) -> { block:'rating', value:3 }

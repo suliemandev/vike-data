@@ -1,9 +1,9 @@
 {
-  "name": "vike-elements",
+  "name": "vike-blocks",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "vike-elements: composable UI as data. The framework-agnostic substrate for building a page out of BLOCKS — a block descriptor IR + an open registry, the definePage composer, primitive elements (text/heading/badge/divider/link, stat/markdown/custom), and the defineElement seam so any package can ship a new element with high DX. A React binding (vike-elements/react) draws the blocks; vike-view layers schema-driven blocks on top.",
+  "description": "vike-blocks: composable UI as data. The framework-agnostic substrate for building a page out of BLOCKS — a block descriptor IR + an open registry, the definePage composer, primitive elements (text/heading/badge/divider/link, stat/markdown/custom), and the defineElement seam so any package can ship a new element with high DX. A React binding (vike-blocks/react) draws the blocks; vike-view layers schema-driven blocks on top.",
   "exports": {
     ".": "./index.js",
     "./react": "./react/index.js",

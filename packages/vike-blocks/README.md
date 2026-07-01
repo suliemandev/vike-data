@@ -1,4 +1,4 @@
-# vike-elements
+# vike-blocks
 
 Composable UI as data. The framework-agnostic substrate for building a page out of **blocks**
 — a block descriptor IR, an open registry, the `definePage` composer, the built-in primitive
@@ -10,7 +10,7 @@ on top of this; a per-framework package (e.g. a React renderer) draws the blocks
 ## A page is a composition of blocks
 
 ```js
-import { definePage, heading, badge, divider, link } from 'vike-elements'
+import { definePage, heading, badge, divider, link } from 'vike-blocks'
 
 definePage({
   route: '/dashboard',
@@ -37,7 +37,7 @@ leaf element with a fluent builder, `defineElement`:
 
 ```js
 // vike-element-rating (a third-party package) — the agnostic half, one call
-import { defineElement } from 'vike-elements'
+import { defineElement } from 'vike-blocks'
 
 export const rating = defineElement('rating', {
   build:  (value) => ({ value }),                       // rating(3) -> { block:'rating', value:3 }
@@ -48,18 +48,18 @@ export const rating = defineElement('rating', {
 
 ```js
 // vike-element-rating/react — the renderer half, per framework
-// (`registerElementRenderer` lives in vike-elements/react, the React binding.)
-import { registerElementRenderer } from 'vike-elements/react'
-registerElementRenderer('rating', Rating)
+// (`registerBlockRenderer` lives in vike-blocks/react, the React binding.)
+import { registerBlockRenderer } from 'vike-blocks/react'
+registerBlockRenderer('rating', Rating)
 ```
 
 Define once (builder + descriptor + registry entry), render once per framework. The built-in
 elements (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
 your custom element is a peer, not a special case.
 
-## Rendering — `vike-elements/react` (and `/vue`)
+## Rendering — `vike-blocks/react` (and `/vue`)
 
-> `vike-elements/vue` is the exact Vue twin — same `registerElementRenderer` + `<Blocks>`/`<Page>` + primitive components, over the shared `blocks`/`vue` registry slot.
+> `vike-blocks/vue` is the exact Vue twin — same `registerBlockRenderer` + `<Blocks>`/`<Page>` + primitive components, over the shared `blocks`/`vue` registry slot.
 
 
 The React binding ships the dispatch and the primitive components. `<Blocks>` draws already
@@ -67,7 +67,7 @@ resolved sections; `<Page>` resolves a view first. Each block type maps to its r
 component (via the shared registry), which receives the block's serializable `resolved` model:
 
 ```jsx
-import { Page } from 'vike-elements/react'          // + 'vike-view/react' to render list/record/form
+import { Page } from 'vike-blocks/react'          // + 'vike-view/react' to render list/record/form
 import { defineView, crudBlocks, heading } from 'vike-view'
 
 const view = defineView({ sections: [heading('Posts'), ...crudBlocks({ table: 'posts' })] })

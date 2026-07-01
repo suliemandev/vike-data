@@ -5,7 +5,7 @@
 // (returns nothing) rather than throwing, so a page degrades gracefully. Importing this module
 // registers the built-in element renderers (via ./elements.jsx).
 import { resolvePage } from '../page.js'
-import { getElementRenderer } from './registry.js'
+import { getBlockRenderer } from './registry.js'
 import './elements.jsx' // side-effect: register text / heading / badge / divider / link / markdown / stat
 
 // Draw a list of RESOLVED sections (`{ block, props, resolved }`, from resolvePage/resolveView).
@@ -13,7 +13,7 @@ export function Blocks({ sections = [] }) {
   return (
     <>
       {sections.map((section, i) => {
-        const Component = getElementRenderer(section.block)
+        const Component = getBlockRenderer(section.block)
         if (!Component) return null // no renderer registered for this block type -> skip
         return <Component key={i} {...section.resolved} />
       })}

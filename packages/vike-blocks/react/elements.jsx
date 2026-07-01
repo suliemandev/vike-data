@@ -3,7 +3,7 @@
 // descriptor props, e.g. text -> { value, tone }). No React import — vike-react uses the
 // automatic JSX runtime, matching the rest of the family. Importing this module registers the
 // built-ins as a side effect (Blocks.jsx imports it for exactly that).
-import { registerElementRenderer } from './registry.js'
+import { registerBlockRenderer } from './registry.js'
 
 const TONE = { muted: 'var(--color-muted)', danger: 'var(--color-danger, #dc2626)', success: 'var(--color-success, #16a34a)', info: 'var(--color-primary, #2563eb)' }
 
@@ -38,7 +38,7 @@ export function Link({ label, to, tone }) {
 }
 
 // Markdown MVP: render the source in a pre-wrapped block. A real markdown renderer is an app/
-// extension concern (registerElementRenderer('markdown', ...) swaps this); this keeps zero deps.
+// extension concern (registerBlockRenderer('markdown', ...) swaps this); this keeps zero deps.
 export function Markdown({ source }) {
   return <div style={{ whiteSpace: 'pre-wrap' }}>{source}</div>
 }
@@ -54,10 +54,10 @@ export function Stat({ title, value }) {
   )
 }
 
-registerElementRenderer('text', Text)
-registerElementRenderer('heading', Heading)
-registerElementRenderer('badge', Badge)
-registerElementRenderer('divider', Divider)
-registerElementRenderer('link', Link)
-registerElementRenderer('markdown', Markdown)
-registerElementRenderer('stat', Stat)
+registerBlockRenderer('text', Text)
+registerBlockRenderer('heading', Heading)
+registerBlockRenderer('badge', Badge)
+registerBlockRenderer('divider', Divider)
+registerBlockRenderer('link', Link)
+registerBlockRenderer('markdown', Markdown)
+registerBlockRenderer('stat', Stat)
