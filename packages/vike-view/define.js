@@ -1,11 +1,13 @@
-// The view DSL. A VIEW is the REFINEMENT on top of a table in the composed schema:
-// the schema is the intent, the UI (list / record / form) is derived, and a view only
-// declares what differs from the derived default.
+// The `crud` preset — the built-in CRUD view for a table: derive its list / record / form
+// screens from the composed schema. It is ONE preset over the general view primitive
+// (`defineView({ route, sections })`, which composes blocks); `crud({ table })` is the sugar
+// that emits the list/record/form blocks for a table, the 80% case. The schema is the
+// intent, the UI is derived, and a crud view only declares what differs from that default.
 //
-// The minimal case is `defineView({ table: 'posts' })` — every column derives from the
-// schema, full list + record + form. You reach for `list`/`record`/`form` and the
-// `column()` / `display()` / `field()` builders only to refine: pick/rename/order
-// columns, mark a field's input type, gate with `canView` / `canEdit`, scope to owned rows.
+// The minimal case is `crud({ table: 'posts' })` — every column derives from the schema,
+// full list + record + form. You reach for `list`/`record`/`form` and the `column()` /
+// `display()` / `field()` builders only to refine: pick/rename/order columns, mark a
+// field's input type, gate with `canView` / `canEdit`, scope to owned rows.
 //
 // The builders are deliberately FLAT (`field('x').type('select')`, not a per-type
 // subclass). `.build()` collapses a builder to a plain spec; resolve.js calls it, so a
@@ -87,10 +89,10 @@ export function field(name) {
   return self
 }
 
-// Declare a view. `table` (a table in the COMPOSED schema, not a Model class) is the only
-// required field; everything else refines the schema-derived default.
+// Declare a CRUD view for a table. `table` (a table in the COMPOSED schema, not a Model
+// class) is the only required field; everything else refines the schema-derived default.
 //
-//   defineView({
+//   crud({
 //     table: 'posts',
 //     label: 'Posts',
 //     list:   [ column('title').sortable(), column('created_at').format('since') ],
@@ -103,12 +105,12 @@ export function field(name) {
 //     // AND-merged into list/load/update/delete and forced onto inserts.
 //     scope: (user) => (user?.role === 'admin' ? null : { user_id: user.id }),
 //   })
-export function defineView(def) {
+export function crud(def) {
   if (!def || typeof def !== 'object') {
-    throw new Error('defineView: expected a definition object, e.g. defineView({ table: "posts" })')
+    throw new Error('crud: expected a definition object, e.g. crud({ table: "posts" })')
   }
   if (typeof def.table !== 'string' || !def.table) {
-    throw new Error('defineView: `table` (a table name in the composed schema) is required')
+    throw new Error('crud: `table` (a table name in the composed schema) is required')
   }
   return { icon: null, ...def }
 }

@@ -15,12 +15,37 @@ preset) can consume the same derivation. "Declare intent, derive implementation.
 | **Record** | one row + relations | read-only detail display, FK-aware cells |
 | **Form** | field types + validation | inputs, relation selects, required-ness |
 
-## `defineView`
+## The view is a UI schema
+
+The top-level primitive is `defineView` — a **page as a composition of blocks** (the UI/UX
+schema), where a block may be schema-derived (`list` / `record` / `form` of a table) or
+bespoke (`stat` / `markdown` / `chart` / `custom`). Blocks live in an open registry, and the
+genuine long tail ejects to a real component / an AI-generated page rather than growing more
+config knobs.
 
 ```js
-import { defineView, column, display, field } from 'vike-view'
-
+// The general primitive (block IR): any page, composed of blocks.
 defineView({
+  route: '/dashboard',
+  sections: [
+    { block: 'stat',     title: 'Revenue', source: 'orders.sum(total)' },
+    { block: 'list',     table: 'orders' },   // schema-derived
+    { block: 'markdown', source: '# Welcome' },
+    { block: 'custom',   component: 'MyChart' },
+  ],
+})
+```
+
+> Status: `defineView`/blocks is the epic's next issue. This package ships the **`crud`
+> preset** below — the built-in list/record/form blocks for a table — which is both the 80%
+> case and the engine the `list`/`record`/`form` blocks are built on.
+
+## `crud` — the built-in CRUD preset
+
+```js
+import { crud, column, display, field } from 'vike-view'
+
+crud({
   table: 'posts',                                    // a table in the composed schema
   list:   [column('title').sortable(), column('created_at').format('since')],
   record: [display('title'), display('body'), display('author_id')],

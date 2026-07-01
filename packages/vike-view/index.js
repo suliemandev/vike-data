@@ -1,7 +1,7 @@
 // Programmatic surface of vike-view's framework-agnostic core. A preset (vike-admin) or a
 // per-table view consumes these to derive a list / record / form view-model from the
 // composed schema and run it over the app's ORM adapter. No React, no Vike.
-export { defineView, column, display, field } from './define.js'
+export { crud, column, display, field } from './define.js'
 export {
   resolveViewTables,
   tableNamed,
