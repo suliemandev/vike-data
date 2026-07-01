@@ -1,6 +1,6 @@
 // vike-view's schema-driven blocks: crudBlocks expands a table into list/record/form block
 // descriptors, and resolveView derives each from the composed schema through the crud engine.
-// The generic composer/registry behavior is tested in vike-elements; this is the schema layer.
+// The generic composer/registry behavior is tested in vike-blocks; this is the schema layer.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defineSchema } from '@vike-data/vike-schema/schema'

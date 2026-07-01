@@ -1,10 +1,10 @@
 // The Vue components for the built-in leaf elements, registered against their block types. The
-// Vue twin of vike-elements/react/elements.jsx. Written as functional components (a function of
+// Vue twin of vike-blocks/react/elements.jsx. Written as functional components (a function of
 // props with an explicit `.props` list) — the closest Vue analog to React's function components,
 // so no .vue compile step and the same shape as the React side. Each receives the block's
 // resolved view-model as props. Importing this module registers the built-ins as a side effect.
 import { h } from 'vue'
-import { registerElementRenderer } from './registry.js'
+import { registerBlockRenderer } from './registry.js'
 
 const TONE = { muted: 'var(--color-muted)', danger: 'var(--color-danger, #dc2626)', success: 'var(--color-success, #16a34a)', info: 'var(--color-primary, #2563eb)' }
 
@@ -39,10 +39,10 @@ export const Stat = (props) =>
   ])
 Stat.props = ['title', 'value']
 
-registerElementRenderer('text', Text)
-registerElementRenderer('heading', Heading)
-registerElementRenderer('badge', Badge)
-registerElementRenderer('divider', Divider)
-registerElementRenderer('link', Link)
-registerElementRenderer('markdown', Markdown)
-registerElementRenderer('stat', Stat)
+registerBlockRenderer('text', Text)
+registerBlockRenderer('heading', Heading)
+registerBlockRenderer('badge', Badge)
+registerBlockRenderer('divider', Divider)
+registerBlockRenderer('link', Link)
+registerBlockRenderer('markdown', Markdown)
+registerBlockRenderer('stat', Stat)

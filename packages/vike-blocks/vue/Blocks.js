@@ -1,17 +1,17 @@
 // The Vue dispatch: draw a page's blocks by mapping each section's block type to its registered
 // Vue component and handing it the section's resolved view-model. The Vue twin of
-// vike-elements/react/Blocks.jsx. `Blocks` takes already resolved sections; `Page` resolves a
+// vike-blocks/react/Blocks.jsx. `Blocks` takes already resolved sections; `Page` resolves a
 // view first. A block type with no registered renderer is skipped. Importing this module
 // registers the built-in element renderers (via ./elements.js).
 import { h } from 'vue'
 import { resolvePage } from '../page.js'
-import { getElementRenderer } from './registry.js'
+import { getBlockRenderer } from './registry.js'
 import './elements.js' // side-effect: register text / heading / badge / divider / link / markdown / stat
 
 // Draw a list of RESOLVED sections (`{ block, props, resolved }`, from resolvePage/resolveView).
 export const Blocks = (props) =>
   (props.sections ?? []).map((section, i) => {
-    const Component = getElementRenderer(section.block)
+    const Component = getBlockRenderer(section.block)
     return Component ? h(Component, { key: i, ...section.resolved }) : null
   })
 Blocks.props = ['sections']

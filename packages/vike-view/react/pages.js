@@ -3,7 +3,7 @@
 // `viewPages(views)` into its `+config.js` `pages`, so each view.route becomes a real Vike page
 // backed by ONE generic page (ViewPage) + ONE generic data hook (viewData); the hook reads the
 // `views` config point to know which view this route is. Plain JS (no JSX) so it is testable.
-import { resolvePage } from 'vike-elements'
+import { resolvePage } from 'vike-blocks'
 
 // The config-time authoring surface, re-exported here so an app imports everything it declares its
 // views with from ONE jsx-free entry: `import { defineView, crudBlocks, viewPages } from

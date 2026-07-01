@@ -123,7 +123,7 @@ export function createDevTransport({ name, entry, line } = {}) {
  * A per-framework, cross-package COMPONENT registry: a `token -> component` map keyed by a
  * (namespace, name) pair, kept on globalThis so module duplication can't fork it. This is the
  * generic mechanism behind the field-widget registry AND the block-renderer registry (the third
- * consumer, vike-elements' `registerElementRenderer`, is what promoted it to a named primitive):
+ * consumer, vike-blocks' `registerBlockRenderer`, is what promoted it to a named primitive):
  * a schema declares intent (a widget token, a block type), each framework binding registers the
  * component that draws it, and any consumer of the same (namespace, name) sees it — so a package
  * teaches EVERY consumer a new field kind / block type by registering once, with no dependency

@@ -1,4 +1,4 @@
-// vike-elements — composable UI as data. The framework-agnostic substrate: the block
+// vike-blocks — composable UI as data. The framework-agnostic substrate: the block
 // registry + defineElement seam, the definePage composer, and the built-in blocks/elements.
 // Importing this root registers the built-in blocks (stat/markdown/custom) and elements
 // (text/heading/badge/divider/link). vike-view layers schema-driven blocks on top; a

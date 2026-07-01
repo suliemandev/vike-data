@@ -3,9 +3,9 @@
 Schema-driven views (list / record / form) for any framework. The composed schema is the
 source of truth; a thin `defineView` config refines it; per-framework renderers draw it.
 
-This package is the **schema layer over [`vike-elements`](../vike-elements)**: it derives a
+This package is the **schema layer over [`vike-blocks`](../vike-blocks)**: it derives a
 plain, serializable view-model from the merged schema and registers `list`/`record`/`form`
-blocks into vike-elements' registry, so a page can compose them. vike-elements owns the
+blocks into vike-blocks' registry, so a page can compose them. vike-blocks owns the
 generic substrate (the block IR, the `definePage` composer, the registry + `defineElement`
 seam, the primitive elements); vike-view adds the data-driven blocks on top. No React, no
 Vue, no Vike. "Declare intent, derive implementation."
@@ -20,7 +20,7 @@ Vue, no Vike. "Declare intent, derive implementation."
 
 ## The view is a UI schema
 
-A page is a **composition of blocks** (the UI/UX schema — see vike-elements). `defineView` is
+A page is a **composition of blocks** (the UI/UX schema — see vike-blocks). `defineView` is
 vike-view's schema-flavored entry to the `definePage` composer: importing it registers the
 schema-derived blocks (`list`/`record`/`form`), so they resolve out of the box alongside the
 bespoke ones (`stat`/`markdown`/`custom`) and the fluent elements. The genuine long tail ejects
@@ -42,7 +42,7 @@ defineView({
 })
 ```
 
-`resolveView(view, tables)` (which is vike-elements' `resolvePage` re-exported — importing it
+`resolveView(view, tables)` (which is vike-blocks' `resolvePage` re-exported — importing it
 from vike-view is what guarantees the schema blocks are registered) turns those descriptors
 into serializable view-models a renderer draws: a schema-derived block fills its
 `columns`/`fields` from the schema (through the same crud engine), a bespoke block echoes its
@@ -57,12 +57,12 @@ it into the three `list`/`record`/`form` block descriptors for a page.
 ## Elements — fluent leaf blocks
 
 For the non-schema bits of a page, author leaf blocks fluently with the element builders from
-vike-elements (re-exported here for convenience). Same pattern as `column()`/`field()`, one
+vike-blocks (re-exported here for convenience). Same pattern as `column()`/`field()`, one
 level up — a lowercase factory that `.build()`s to a plain block descriptor:
 
 ```js
 import { defineView } from 'vike-view'
-import { heading, text, badge, divider, link } from 'vike-elements'
+import { heading, text, badge, divider, link } from 'vike-blocks'
 
 defineView({
   route: '/posts/@id',
@@ -149,7 +149,7 @@ predicate never serializes to the client.
 
 
 Importing `vike-view/react` registers the schema renderers (`ListView` / `RecordView` /
-`FormView`) into vike-elements' block-renderer registry and re-exports the `<Blocks>` / `<Page>`
+`FormView`) into vike-blocks' block-renderer registry and re-exports the `<Blocks>` / `<Page>`
 dispatch, so one import renders a schema page:
 
 ```jsx
