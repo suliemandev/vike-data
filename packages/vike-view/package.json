@@ -43,6 +43,7 @@
     "vike-elements": "workspace:*"
   },
   "peerDependencies": {
+    "vike": "*",
     "react": ">=18",
     "vike-react": ">=0.6",
     "vue": ">=3.5",
