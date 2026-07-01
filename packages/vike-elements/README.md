@@ -57,7 +57,10 @@ Define once (builder + descriptor + registry entry), render once per framework. 
 elements (`text`/`heading`/`badge`/`divider`/`link`) are defined through this same seam, so
 your custom element is a peer, not a special case.
 
-## Rendering — `vike-elements/react`
+## Rendering — `vike-elements/react` (and `/vue`)
+
+> `vike-elements/vue` is the exact Vue twin — same `registerElementRenderer` + `<Blocks>`/`<Page>` + primitive components, over the shared `blocks`/`vue` registry slot.
+
 
 The React binding ships the dispatch and the primitive components. `<Blocks>` draws already
 resolved sections; `<Page>` resolves a view first. Each block type maps to its registered
