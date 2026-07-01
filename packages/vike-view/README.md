@@ -49,6 +49,32 @@ page; there is deliberately no layout/expression DSL.
 `crud({ table })` (below) is the schema-derived CRUD preset; `crudBlocks({ table })` expands
 it into the three `list`/`record`/`form` block descriptors for a page.
 
+## Elements — fluent leaf blocks
+
+For the non-schema bits of a page, author leaf blocks fluently with the element builders
+(same pattern as `column()`/`field()`, one level up — a lowercase factory that `.build()`s to
+a plain block descriptor):
+
+```js
+import { heading, text, badge, divider, link } from 'vike-view/elements'
+
+defineView({
+  route: '/posts/@id',
+  sections: [
+    heading('Post').level(2),
+    { block: 'record', table: 'posts' },
+    badge('Draft').tone('warning'),
+    divider(),
+    link('Back to posts').to('/posts'),
+  ],
+})
+```
+
+Display-only today (`text` / `heading` / `badge` / `divider` / `link`). Interactivity — a
+button that *does* something — is a separate axis: behavior can't be an inline closure in
+serializable config, so it's being scoped on its own (see the vike-actions investigation).
+`link().to(path)` covers declarative navigation in the meantime.
+
 ## `crud` — the built-in CRUD preset
 
 ```js
