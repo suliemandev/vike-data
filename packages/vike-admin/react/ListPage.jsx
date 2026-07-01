@@ -1,15 +1,15 @@
-// /admin/:table — the list. A table of one PAGE of the resource's rows over the resolved
-// columns, with a link to the create form, sortable column headers, and prev/next paging.
-// The data hook (vike-admin/data:listData) reads just the page through universal-orm
-// (find limit/offset/orderBy + count) and hands over the page/sort state; navigation is
-// plain query-string links (`?page=&sort=&dir=`), so it works without client JS.
+// /admin/:table — the list. The TABLE (columns, sortable headers, FK cells, per-row edit link,
+// empty state) is rendered by vike-view's ListView — vike-admin is a preset over vike-view, so
+// it draws its list through the same component instead of a second table. This page keeps the
+// admin CHROME around it: the title, the "New" button, and prev/next paging. The data hook
+// (vike-admin/data:listData) reads just the page through universal-orm and hands over the
+// page/sort state; navigation is plain query-string links (`?page=&sort=&dir=`), so it works
+// without client JS.
 import { useData } from 'vike-react/useData'
+import { ListView } from 'vike-view/react'
 
-const cell = { padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: 14 }
-const th = { ...cell, color: 'var(--color-muted)', fontWeight: 600 }
-
-// Build an /admin/:table URL carrying the paging/sort state; empty params are dropped
-// so a default view stays a clean `/admin/:table`.
+// Build an /admin/:table URL carrying the paging/sort state; empty params are dropped so a
+// default view stays a clean `/admin/:table`.
 function listUrl(table, { page, sort, dir }) {
   const qs = new URLSearchParams()
   if (page && page > 1) qs.set('page', String(page))
@@ -21,50 +21,8 @@ function listUrl(table, { page, sort, dir }) {
   return s ? `/admin/${table}?${s}` : `/admin/${table}`
 }
 
-// Client-applied formatters (the `format` token a column may carry). Unknown tokens fall
-// back to the raw value.
-function formatValue(value, format) {
-  if (value == null) return ''
-  if (format === 'since') return relativeTime(value)
-  if (typeof value === 'boolean') return value ? 'yes' : 'no'
-  return String(value)
-}
-
-function relativeTime(value) {
-  const then = new Date(value).getTime()
-  if (Number.isNaN(then)) return String(value)
-  const secs = Math.round((Date.now() - then) / 1000)
-  const units = [
-    ['year', 31536000],
-    ['month', 2592000],
-    ['day', 86400],
-    ['hour', 3600],
-    ['minute', 60],
-  ]
-  for (const [name, size] of units) {
-    const n = Math.floor(secs / size)
-    if (n >= 1) return `${n} ${name}${n > 1 ? 's' : ''} ago`
-  }
-  return 'just now'
-}
-
 export default function ListPage() {
   const { table, label, columns, rows, fkLabels, pk, canEdit, page, pageCount, total, sort, dir } = useData()
-
-  // A sortable header links to the same list sorted by its column. Clicking the active
-  // column flips the direction; any new column starts ascending. Sorting resets to page 1.
-  function headerContent(c) {
-    if (!c.sortable) return c.label
-    const active = sort === c.name
-    const nextDir = active && dir === 'asc' ? 'desc' : 'asc'
-    const arrow = active ? (dir === 'asc' ? ' ↑' : ' ↓') : ''
-    return (
-      <a href={listUrl(table, { page: 1, sort: c.name, dir: nextDir })} style={{ color: 'inherit', textDecoration: 'none' }}>
-        {c.label}
-        {arrow}
-      </a>
-    )
-  }
 
   // A prev/next control: a real link, or a muted, non-interactive span at the ends.
   function pageControl(targetPage, content, disabled) {
@@ -124,45 +82,18 @@ export default function ListPage() {
           background: 'var(--color-surface)',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c.name} style={th}>
-                  {headerContent(c)}
-                </th>
-              ))}
-              {canEdit && <th style={{ ...th, width: 1 }} />}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td style={{ ...cell, color: 'var(--color-muted)' }} colSpan={columns.length + (canEdit ? 1 : 0) || 1}>
-                  No rows yet.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row, i) => (
-                <tr key={row[pk] ?? i}>
-                  {columns.map((c) => (
-                    <td key={c.name} style={cell}>
-                      {/* a FK cell shows the referenced row's title (from fkLabels), else the raw value */}
-                      {fkLabels?.[c.name]?.[row[c.name]] ?? formatValue(row[c.name], c.format)}
-                    </td>
-                  ))}
-                  {canEdit && (
-                    <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <a href={`/admin/${table}/${row[pk]}`} style={{ color: 'var(--color-primary)', fontSize: 14 }}>
-                        Edit
-                      </a>
-                    </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ListView
+          table={table}
+          columns={columns}
+          rows={rows}
+          pk={pk}
+          fkLabels={fkLabels}
+          sort={sort}
+          dir={dir}
+          sortHref={(name, nextDir) => listUrl(table, { page: 1, sort: name, dir: nextDir })}
+          rowHref={canEdit ? (row) => `/admin/${table}/${row[pk]}` : undefined}
+          emptyLabel="No rows yet."
+        />
       </div>
 
       <div
