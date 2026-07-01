@@ -13,6 +13,9 @@
     "./project": "./project.js",
     "./query": "./query.js",
     "./react": "./react/index.js",
+    "./react/widget-registry": "./react/widget-registry.js",
+    "./react/widgets": "./react/widgets.jsx",
+    "./react/FormFields": "./react/FormFields.jsx",
     "./react/ListView": "./react/ListView.jsx",
     "./react/RecordView": "./react/RecordView.jsx",
     "./react/FormView": "./react/FormView.jsx"
